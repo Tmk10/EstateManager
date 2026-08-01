@@ -61,7 +61,7 @@ On a fresh clone run `npx astro sync` before `npm run lint` — the type-checked
 │ ├── layouts/ # Astro layouts
 │ ├── pages/ # Astro pages
 │ │ ├── api/ # API endpoints
-│ │ └── auth/ # Sign-in / sign-up / confirm-email pages
+│ │ └── auth/ # Sign-in page
 │ ├── components/ # UI components (Astro & React)
 │ │ ├── auth/ # Auth form islands (React)
 │ │ └── ui/ # shadcn/ui components
@@ -130,28 +130,16 @@ Two constraints on the hosted project, both load-bearing:
 - **Region must be EU (Frankfurt / `eu-central-1`).** Worker compute location cannot be pinned below an Enterprise plan, so where the data lives is the only residency lever this architecture has. The region is immutable after project creation — getting it wrong means recreating the project and re-issuing every credential.
 - **Use the `anon` key, never the service-role key.** A service-role key bypasses Row Level Security entirely, on an app whose guardrail is that owners' data never leaves their building.
 
-### Email confirmation in local development
-
-By default Supabase requires email confirmation before a user can sign in. To skip this during local development:
-
-1. Open the Supabase dashboard for your project
-2. Go to **Authentication → Email → Confirm email**
-3. Toggle it **off**
-
-Users can then sign in immediately after sign-up without clicking a confirmation link.
-
 ### Auth routes
 
-| Route                 | Description                                                             |
-| --------------------- | ----------------------------------------------------------------------- |
-| `/auth/signin`        | Email/password sign-in form                                             |
-| `/auth/signup`        | Email/password sign-up form                                             |
-| `/auth/confirm-email` | Post-signup "check your inbox" page                                     |
-| `/dashboard`          | Example protected page (redirects to `/auth/signin` if unauthenticated) |
+| Route          | Description                                                             |
+| -------------- | ----------------------------------------------------------------------- |
+| `/auth/signin` | Email/password sign-in form; a successful sign-in lands on `/dashboard` |
+| `/dashboard`   | Example protected page (redirects to `/auth/signin` if unauthenticated) |
 
 Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_ROUTES` array there to require authentication.
 
-**Product decision (2026-08-01):** administrator accounts are created **directly in the database, through the Supabase dashboard** — the product has no self-service registration (`context/foundation/prd.md` §Access Control). To add one: Supabase dashboard → **Authentication → Users → Add user**, enter email and password, and tick *Auto Confirm User* so the account can sign in without a confirmation mail. For the MVP the database holds `test@test.com` with password `Test123!`, and `/auth/signin` states both facts on screen. `/auth/signup` and `/auth/confirm-email` are starter leftovers scheduled for removal in roadmap item `F-01`; do not build on them.
+**Product decision (2026-08-01):** administrator accounts are created **directly in the database, through the Supabase dashboard** — the product has no self-service registration (`context/foundation/prd.md` §Access Control). To add one: Supabase dashboard → **Authentication → Users → Add user**, enter email and password, and tick *Auto Confirm User* so the account can sign in without a confirmation mail. For the MVP the database holds `test@test.com` with password `Test123!`, and `/auth/signin` states both facts on screen. The app has no registration screen: `/auth/signup`, `/auth/confirm-email` and `POST /api/auth/signup` were removed in roadmap item `F-01` and now return `404`.
 
 ## Health check
 

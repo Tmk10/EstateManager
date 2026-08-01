@@ -640,9 +640,9 @@ Rollback is `wrangler rollback` to a prior version — but note the runbook's wa
 - [ ] 0.1 `npx supabase db reset` applies `supabase/seed.sql` without error
 - [ ] 0.2 Sign-in against the local stack with the seeded credentials succeeds
 - [ ] 0.3 Running the seed twice does not error (idempotent)
-- [x] 0.4 Production `/api/health` returns `200 {"status":"ok"}`
-- [x] 0.5 `POST /api/auth/signin` on the live Worker returns `302` to `/` and sets a session cookie
-- [x] 0.6 A wrong password still returns `302` to `/auth/signin?error=…`
+- [x] 0.4 Production `/api/health` returns `200 {"status":"ok"}` — 2bcc3aa
+- [x] 0.5 `POST /api/auth/signin` on the live Worker returns `302` to `/` and sets a session cookie — 2bcc3aa
+- [x] 0.6 A wrong password still returns `302` to `/auth/signin?error=…` — 2bcc3aa
 
 > 0.1–0.3 are **blocked, not failed**: Docker is not installed on this machine (`docker` not on
 > PATH, no Docker.app / OrbStack), so `npx supabase start` cannot bring up the local stack. Per the
@@ -656,24 +656,24 @@ Rollback is `wrangler rollback` to a prior version — but note the runbook's wa
 
 #### Manual
 
-- [x] 0.7 No service_role key fetched, exported or written by this phase
-- [x] 0.8 Seed creates an administrator account only — no buildings, units or owners
-- [x] 0.9 Credentials match `/auth/signin`'s on-screen notice character for character
+- [x] 0.7 No service_role key fetched, exported or written by this phase — 2bcc3aa
+- [x] 0.8 Seed creates an administrator account only — no buildings, units or owners — 2bcc3aa
+- [x] 0.9 Credentials match `/auth/signin`'s on-screen notice character for character — 2bcc3aa
 
 ### Phase 1: Remove the registration path
 
 #### Automated
 
-- [ ] 1.1 `npx astro sync && npm run lint` passes
-- [ ] 1.2 `npm run build` passes
-- [ ] 1.3 `grep -rn "signup\|confirm-email" src/` returns nothing
-- [ ] 1.4 Local `/auth/signup` and `/auth/confirm-email` return `404`
+- [x] 1.1 `npx astro sync && npm run lint` passes
+- [x] 1.2 `npm run build` passes
+- [x] 1.3 `grep -rn "signup\|confirm-email" src/` returns nothing
+- [x] 1.4 Local `/auth/signup` and `/auth/confirm-email` return `404`
 
 #### Manual
 
-- [ ] 1.5 `/auth/signin` renders with the dashboard-accounts notice intact
-- [ ] 1.6 Signed-out Topbar and landing page show one sign-in affordance, no broken link
-- [ ] 1.7 Local sign-in lands on `/dashboard`
+- [x] 1.5 `/auth/signin` renders with the dashboard-accounts notice intact
+- [x] 1.6 Signed-out Topbar and landing page show one sign-in affordance, no broken link
+- [x] 1.7 Local sign-in lands on `/dashboard`
 
 ### Phase 2: Assert deploy health in CI
 
