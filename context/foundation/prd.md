@@ -1,8 +1,9 @@
 ---
 project: "EstateManager"
-version: 1
+version: 2
 status: draft
 created: 2026-08-01
+updated: 2026-08-01
 context_type: greenfield
 product_type: web-app
 target_scale:
@@ -213,8 +214,6 @@ Ustalenia domenowe wiążące powyższe wymagania:
 
 ## Non-Functional Requirements
 
-- Powiadomienie o rozpoczętym głosowaniu dociera do skrzynki głównej odbiorcy,
-  a nie do folderu spam.
 - Dla każdej zakończonej uchwały da się — w dowolnym momencie po jej zakończeniu —
   wykazać, które udziały złożyły się na wynik.
 - Właściciel biorący udział w głosowaniu nie poznaje metraży, udziałów, danych
@@ -223,6 +222,13 @@ Ustalenia domenowe wiążące powyższe wymagania:
 Rozważona i **nieprzyjęta** jako wiążąca właściwość: użyteczność całej ścieżki
 głosowania na ekranie telefonu. Odnotowane, ponieważ ścieżka główna zaczyna się
 od otwarcia wiadomości e-mail, a poczta bywa czytana na telefonie.
+
+Rozważona i **przeniesiona do v2**: dostarczalność powiadomienia do skrzynki
+głównej odbiorcy zamiast do folderu spam. Wymaganie obowiązywało w v1 do
+2026-08-01; uznane za zbyt wymagające dla PoC i MVP, ponieważ jego spełnienie
+zależy od własnej domeny nadawczej z rekordami uwierzytelniającymi pocztę
+i od reputacji nadawcy budowanej w czasie — czyli od rzeczy, których kod
+aplikacji nie rozstrzyga. Szczegóły w `## Non-Goals`.
 
 ## Business Logic
 
@@ -313,6 +319,15 @@ Non-goale niefunkcjonalne:
 
 - **Bez zobowiązania do użyteczności całej ścieżki na ekranie telefonu.** Rozważone
   i nieprzyjęte jako wiążąca właściwość.
+- **Bez zobowiązania do dostarczalności powiadomień poza folder spam.** Przeniesione
+  do v2 dnia 2026-08-01. MVP wysyła powiadomienia z domeny testowej dostawcy poczty
+  i **nie deklaruje**, że trafiają do skrzynki głównej odbiorcy. Konsekwencja przyjęta
+  świadomie: część właścicieli nie zobaczy linku, więc frekwencja udziałowa zmierzona
+  w PoC jest dolnym oszacowaniem — nie wolno jej czytać jako sufitu możliwości kanału
+  elektronicznego. Kryterium sukcesu pozostaje bez zmian, ale jego niespełnienie
+  w PoC nie obala tezy produktu, dopóki dostarczalność nie zostanie zaadresowana.
+  Do v2 należy: własna domena nadawcza, rekordy SPF/DKIM/DMARC, rozłożenie wysyłki
+  w czasie i obsługa odbić (`context/foundation/infrastructure.md` §G12).
 - **Bez potwierdzonej zgodności prawnej formy głosowania.** MVP powstaje przed
   rozstrzygnięciem otwartego pytania nr 1; nie deklaruje, że produkowane uchwały
   są formalnie skuteczne.
