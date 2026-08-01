@@ -22,7 +22,7 @@ value depends on not being retrofitted after the fact.
 | **Worker** | `estate-manager` |
 | **URL** | https://estate-manager.estate-manager.workers.dev |
 | **Version ID (current)** | `b86cd1b3-830e-459f-bc80-a2137a492c7c` |
-| **Version ID (previous)** | `d411e297-ac61-476e-b060-bb3ae4df0ca5` — initial deploy, before secrets |
+| **Rollback targets** | `545af708-218a-450e-a1c5-951fc8917102`, `10ff270e-33e3-4f30-93c9-c5d853942611` (both created implicitly by `wrangler secret put`), `d411e297-ac61-476e-b060-bb3ae4df0ca5` (initial deploy, before secrets — **do not roll back to this one**, it has no credentials) |
 | **Plan** | [`deployment-plan.md`](../changes/deployment/deployment-plan.md), sections A–D |
 | **Bundle** | 1913 KiB raw / 391 KiB gzip; Worker startup 21 ms |
 | **Cloudflare plan** | Workers **Free** |
@@ -78,20 +78,36 @@ because the plan is the contract, and silent drift is what makes runbooks rot.
 | Production `/api/health` after secrets + redeploy | `200 {"status":"ok"}` — proves the Worker reaches Supabase with the anon key |
 | Production `/`, `/auth/signin`, `/auth/signup` | `200` |
 | Production `/dashboard` unauthenticated | `302` → `/auth/signin` |
+| Production `/does-not-exist` | `404` |
+| Production `POST /api/auth/signin`, bad credentials | `302` → `/auth/signin?error=Invalid%20login%20credentials`. The error text comes from Supabase Auth, so the deployed Worker really does authenticate against the cloud project |
 | Config-status banner in production | absent — secrets are being read |
-| Rollback available | yes — prior version `d411e297…` |
+| `wrangler tail` while exercising the above | attached (`Connected to estate-manager`), logged `POST /api/auth/signin - Ok`, **no exceptions and no `nodejs_compat` stub errors** |
+| CI (`ci.yml`) on first push | **success** |
+| `deploy.yml` on first push | **failure, expected** — `npm ci` → `astro sync` → `lint` → `build` all passed and only the wrangler step failed on the missing `CLOUDFLARE_API_TOKEN` |
+| Rollback available | yes — see rollback targets above |
+
+**Note on the CSRF check.** A `POST` to an auth endpoint without an `Origin`
+header returns `403`, not a redirect. That is Astro's `security.checkOrigin`
+behaving correctly, not a broken endpoint — browsers always send `Origin`. Worth
+knowing before anyone debugs a `403` from `curl` or a health-check probe.
 
 ### Not verified
 
-- **Functional smoke (plan verification step 3)** — sign up with a real inbox,
-  confirm the email, sign in, load `/dashboard`, sign out. Email confirmation is
-  on, so this needs a human with a mailbox. **Outstanding.**
-- **CI/CD loop (plan verification step 5)** — that `deploy.yml` deploys on a
-  green push and, more importantly, *refuses to deploy* on a deliberate lint
-  error. This is the substitute for the deferred branch protection and the plan
-  is explicit that it must be proven rather than assumed. **Outstanding**, and
-  blocked on `CLOUDFLARE_API_TOKEN`.
-- **`wrangler tail --status error`** during the above. **Outstanding.**
+- **Functional smoke (plan verification step 3)** — the *authenticated* half is
+  unproven: sign up with a real inbox, click the confirmation link, sign in, load
+  `/dashboard` as a logged-in user, sign out. Email confirmation is on, so this
+  needs a human with a mailbox. Rejection of bad credentials **is** confirmed
+  against cloud Supabase (above); no successful login has ever occurred in
+  production. **Outstanding**, and note it will keep failing until B7 sets the
+  Site URL, since confirmation links currently point at the wrong origin.
+- **CI/CD loop (plan verification step 5)** — half proven. The first push showed
+  `deploy.yml` running lint and build *before* wrangler, so the ordering gate is
+  real. What is **not** proven is the important half: that a deliberate lint
+  error fails the job *without deploying*. The plan is explicit that this must be
+  demonstrated rather than assumed, because it is the entire substitute for the
+  deferred branch protection. Blocked on `CLOUDFLARE_API_TOKEN` — until the token
+  exists, the job fails at the wrangler step for the wrong reason and proves
+  nothing.
 
 ### Open residuals
 
