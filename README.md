@@ -194,7 +194,7 @@ npx wrangler rollback <version-id>
 
 This reverts **code only** — database migrations are not covered.
 
-Each deployment is recorded in [`context/foundation/deployment-history.md`](./context/foundation/deployment-history.md).
+The full runbook — prerequisites, current state, and the deployment log — is [`context/changes/deployment/deployment.md`](./context/changes/deployment/deployment.md).
 
 ## CI
 
