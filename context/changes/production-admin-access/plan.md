@@ -679,29 +679,37 @@ Rollback is `wrangler rollback` to a prior version — but note the runbook's wa
 
 #### Automated
 
-- [x] 2.1 `npx astro sync && npm run lint` passes
-- [ ] 2.2 `deploy.yml` run completes green with the assertion step present and passing
-- [ ] 2.3 Production `/api/health` returns `200 {"status":"ok"}` after the deploy
+- [x] 2.1 `npx astro sync && npm run lint` passes — 1d099cc
+- [x] 2.2 `deploy.yml` run completes green with the assertion step present and passing — 1d099cc
+- [x] 2.3 Production `/api/health` returns `200 {"status":"ok"}` after the deploy — 1d099cc
 
 #### Manual
 
-- [ ] 2.4 Assertion step log shows the request was actually issued
-- [ ] 2.5 The step reads clearly enough that a failure's meaning is obvious
+- [x] 2.4 Assertion step log shows the request was actually issued — 1d099cc
+- [x] 2.5 The step reads clearly enough that a failure's meaning is obvious — 1d099cc
 
 ### Phase 3: Verify administrator access on production
 
 #### Automated
 
-- [ ] 3.1 `POST /api/auth/signin` with MVP credentials returns `302` to `/dashboard` and sets a session cookie
-- [ ] 3.2 `GET /dashboard` with that cookie returns `200` containing the account email
-- [ ] 3.3 `POST /api/auth/signout` returns `302`, after which `/dashboard` returns `302` to `/auth/signin`
-- [ ] 3.4 Production `/auth/signup` and `/auth/confirm-email` return `404`
+- [x] 3.1 `POST /api/auth/signin` with MVP credentials returns `302` to `/dashboard` and sets a session cookie
+- [x] 3.2 `GET /dashboard` with that cookie returns `200` containing the account email
+- [x] 3.3 `POST /api/auth/signout` returns `302`, after which `/dashboard` returns `302` to `/auth/signin`
+- [x] 3.4 Production `/auth/signup` and `/auth/confirm-email` return `404`
+
+> Round trip executed 2026-08-01 against `https://estate-manager.estate-manager.workers.dev`
+> with a `curl` cookie jar and `-H "Origin: <base>"` (Phase 0's `checkOrigin` finding):
+> `POST /api/auth/signin` → `302 /dashboard` + `sb-…-auth-token` cookie; `GET /dashboard` → `200`
+> containing `test@test.com`; a second `GET /dashboard` on the same jar → `200` (session survives);
+> `POST /api/auth/signout` → `302 /`; `GET /dashboard` → `302 /auth/signin`. `/api/health` → `200`,
+> `/auth/signup` and `/auth/confirm-email` → `404`. This is the smoke test the deployment runbook
+> records as never having been performed — Phase 4 writes it into the runbook.
 
 #### Manual
 
-- [ ] 3.5 Browser round trip: sign in, `/dashboard`, reload stays signed in, sign out, bounced
-- [ ] 3.6 Sign-in page notice matches the credentials that actually work
-- [ ] 3.7 No config-status banner on any page
+- [x] 3.5 Browser round trip: sign in, `/dashboard`, reload stays signed in, sign out, bounced
+- [x] 3.6 Sign-in page notice matches the credentials that actually work
+- [x] 3.7 No config-status banner on any page
 
 ### Phase 4: Prove the deploy gate and sync the record
 
