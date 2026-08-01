@@ -40,7 +40,7 @@ before touching anything.
 | **Cloudflare plan** | Workers **Free** |
 | **Deploy trigger** | push to `main` → `.github/workflows/deploy.yml` |
 | **Health probe** | `GET /api/health` → `200 {"status":"ok"}` |
-| **Live version** | `a09eff2f-9068-4c1f-8a9c-0fd1136262ab` (CI-authored, 100%) |
+| **Live version** | `4fbe8892-6de0-4646-94d0-1da58a391e4b` (CI-authored, 100%) |
 | **Supabase** | hosted project, EU Frankfurt (`eu-central-1`), `anon` key |
 | **Secrets in Workers** | `SUPABASE_URL`, `SUPABASE_KEY` (write-only, no read-back) |
 | **Secrets in GitHub** | `CLOUDFLARE_API_TOKEN`, `SUPABASE_URL`, `SUPABASE_KEY` |
@@ -69,32 +69,49 @@ after the fact.
 | Local `/api/health` without `.dev.vars` | `503 misconfigured / missing-credentials` |
 | Production `/api/health` **before** secrets | connection failed — TLS cert for a first-ever `*.workers.dev` subdomain was still provisioning |
 | Production `/api/health` after secrets + redeploy | `200 {"status":"ok"}` — proves the Worker reaches Supabase with the anon key |
-| Production `/`, `/auth/signin`, `/auth/signup` | `200` |
+| Production `/`, `/auth/signin` | `200` |
+| Production `/auth/signup`, `/auth/confirm-email` | `404` — **revised 2026-08-01**, both answered `200` until `F-01` deleted the registration path (PRD §Access Control). `wrangler.jsonc`'s `not_found_handling: "404-page"` handles them; no stub and no tombstone redirect |
 | Production `/dashboard` unauthenticated | `302` → `/auth/signin` |
 | Production `/does-not-exist` | `404` |
 | Production `POST /api/auth/signin`, bad credentials | `302` → `/auth/signin?error=Invalid%20login%20credentials`. The error text comes from Supabase Auth, so the deployed Worker really does authenticate against the cloud project |
+| **Functional smoke, authenticated half** | **passed 2026-08-01** (`F-01` Phase 3) — see below |
+| **The deploy gate's negative case** | **proven 2026-08-01** (`F-01` Phase 4) — see below |
 | Config-status banner in production | absent — secrets are being read |
 | `wrangler tail` while exercising the above | attached (`Connected to estate-manager`), logged `POST /api/auth/signin - Ok`, **no exceptions and no `nodejs_compat` stub errors** |
 | `ci.yml` on push to `main` | **success** |
 | `deploy.yml` on push to `main` | **success** — ran green end to end on two separate commits and published each as current at 100% |
 | Rollback available | yes — see targets above |
 
-### What was not verified
+### What was verified later, by `F-01`
 
-- **Functional smoke** — the *authenticated* half is unproven: sign in, load
-  `/dashboard` as a logged-in user, sign out. Rejection of bad credentials
-  **is** confirmed against cloud Supabase (above); no successful login has ever
-  occurred in production. Revised 2026-08-01: the product decision is that
-  administrator accounts are created **in the Supabase dashboard** (Authentication
-  → Users → Add user) and there is no registration (PRD §Access Control), so the
-  smoke test no longer runs through sign-up and email confirmation — it signs in
-  with the MVP account `test@test.com` / `Test123!`, which must be added in the
-  dashboard of the production Supabase project first.
-- **The deploy gate's negative case** — `deploy.yml` deploys on green, proven.
-  That a deliberate lint error fails the job **without** deploying is *not*
-  proven. This is the entire substitute for the branch protection deferred in
-  [D15](#d-cicd--auto-deploy-on-merge), and the plan is explicit that it be
-  demonstrated rather than assumed.
+Both entries below were open items on 2026-08-01 and were closed the same day by
+`production-admin-access`. Kept as prose rather than table rows because the
+*result* is the durable part, not the pass/fail.
+
+- **Functional smoke, authenticated half — passed.** The MVP account
+  `test@test.com` / `Test123!` was added by hand in the production Supabase
+  dashboard (*Auto Confirm User* ticked), then the full round trip ran against
+  the live Worker with a `curl` cookie jar and again in a browser:
+  `POST /api/auth/signin` → `302` to `/dashboard` with the
+  `sb-…-auth-token` cookie set; `GET /dashboard` → `200` rendering the account
+  email; a second `GET /dashboard` on the same jar → `200`, so the session
+  survives a reload; `POST /api/auth/signout` → `302` to `/`; `GET /dashboard`
+  → `302` back to `/auth/signin`. This is the first successful login ever
+  performed in production, and it proves cookie-based `@supabase/ssr` sessions
+  work on workerd — the divergence class `astro dev` cannot reproduce.
+- **The deploy gate's negative case — proven.** Commit `11968c0` introduced an
+  unused module-scope const in `src/lib/utils.ts` and was pushed with
+  `git commit --no-verify`, because lint-staged's `eslint --fix` runs on
+  `*.{ts,tsx,astro}` and would otherwise have blocked the commit, leaving the
+  gate unexercised. `Deploy` run **30713400532** failed at `npm run lint`;
+  `npm run build`, `cloudflare/wrangler-action@v3` and the health assertion were
+  all marked **skipped**, not failed-after-attempting. `/api/health` answered
+  `200` throughout — the live version was untouched. `ci.yml` failed on the same
+  commit, which is the same gate, not a second problem. Revert `ffeac9f`, run
+  **30713455557**, went green through all nine steps. This closes the
+  demonstration [D15](#d-cicd--auto-deploy-on-merge) deferred branch protection
+  onto; the **G13 residual stays open** — a proven gate is not branch protection,
+  and it still depends on nobody disabling or reordering the workflow.
 
 ### Outstanding
 
@@ -103,11 +120,16 @@ after the fact.
    and no registration in the product, nothing sends a confirmation link, so the
    Site URL no longer gates any flow. Reopen this if a v2 flow (password reset,
    invitations) starts mailing links.
-2. **Prove the deploy gate.** Push a commit with a deliberate lint error,
-   confirm `deploy.yml` fails without deploying, then revert.
-3. **Run the functional smoke test** above. Needs the MVP account
+2. ~~**Prove the deploy gate.** Push a commit with a deliberate lint error,
+   confirm `deploy.yml` fails without deploying, then revert.~~
+   Closed 2026-08-01 by `F-01` Phase 4 — runs `30713400532` (red, no deploy) and
+   `30713455557` (green). See [What was verified later](#what-was-verified-later-by-f-01).
+3. ~~**Run the functional smoke test** above. Needs the MVP account
    `test@test.com` / `Test123!` added in the cloud Supabase project's dashboard
-   (Authentication → Users → Add user, *Auto Confirm User* ticked).
+   (Authentication → Users → Add user, *Auto Confirm User* ticked).~~
+   Closed 2026-08-01 by `F-01` Phase 3 — the account was added in the dashboard
+   and the full round trip passed. See
+   [What was verified later](#what-was-verified-later-by-f-01).
 4. `src/lib/config-status.ts:16` still links the banner to the
    `10x-astro-starter` README. Left alone because this change freezes `src/lib/`.
 5. Optional cleanup: `actions/checkout@v4` and `actions/setup-node@v4` trigger a
@@ -395,17 +417,19 @@ Run these after any deploy, not just the first.
 2. **Post-deploy.** `curl https://estate-manager.estate-manager.workers.dev/api/health`
    → `200`. A `503` means the secrets did not land — the exact failure G6
    describes, now visible instead of silent.
-3. **Functional smoke.** Sign up (real inbox) → confirm → sign in →
-   `/dashboard` renders authenticated against cloud Supabase; sign out
-   redirects to `/`.
+3. **Functional smoke.** Sign in with an account created in the Supabase
+   dashboard (for the MVP, `test@test.com` / `Test123!`) → `/dashboard` renders
+   authenticated against cloud Supabase, and survives a reload; sign out
+   redirects to `/` and `/dashboard` bounces to `/auth/signin` again. There is
+   no sign-up step: `F-01` deleted the registration path.
 4. **Runtime.** `npx wrangler tail --format pretty` clean while exercising the
    above. Confirm no `nodejs_compat` stub errors — the divergence class the
    pre-mortem warns `astro dev` cannot reproduce.
 5. **CI/CD loop.** Push a trivial commit to `main`; confirm `deploy.yml` runs
    green and `npx wrangler deployments list` shows the CI-authored deployment as
-   current. Then push a commit with a deliberate lint error and confirm the job
-   fails **without** deploying — this is the D15 substitute and must be proven,
-   not assumed.
+   current. The negative case — a deliberate lint error failing the job
+   **without** deploying — was proven on 2026-08-01 and does not need re-running
+   after every deploy; re-run it if the workflow's step ordering ever changes.
 6. **Rollback available.** `npx wrangler versions list` returns the prior
    version ID; `npx wrangler rollback <version-id>` reverts **code only**.
 
@@ -468,3 +492,8 @@ Newest last. **Append only.**
 | 2026-08-01 | `fe6b839` | — | CI (`deploy.yml`) | **Failed, no deploy.** `CLOUDFLARE_API_TOKEN` was missing. Lint and build passed; only the wrangler step failed. |
 | 2026-08-01 | `a699ab2` | `c7d7e037-aad5-4909-848a-b388c70b95dc` | CI (`deploy.yml`) | Re-run after the token was fixed. First CI-authored deploy. |
 | 2026-08-01 | `d2d830d` | `a09eff2f-9068-4c1f-8a9c-0fd1136262ab` | CI (`deploy.yml`) | Full push-to-`main` → auto-deploy cycle on a real commit. `CI` and `Deploy` both green; health `200` after. |
+| 2026-08-01 | `2287893` | — | CI (`deploy.yml`) | `F-01` Phase 1. Registration path deleted: `/auth/signup`, `/auth/confirm-email` and `POST /api/auth/signup` gone; sign-in now lands on `/dashboard`. |
+| 2026-08-01 | `1d099cc` | — | CI (`deploy.yml`) | `F-01` Phase 2. `deploy.yml` gains a final step that curls `/api/health` and fails the job on anything but `200`. First deploy to assert its own health. |
+| 2026-08-01 | `08b3f2c` | — | CI (`deploy.yml`) | `F-01` Phase 3. Docs-only; recorded because it is the deploy the production smoke test was run against. First successful production login. |
+| 2026-08-01 | `11968c0` | — | CI (`deploy.yml`) | **Failed by design, no deploy.** `F-01` Phase 4's deliberate lint error. Run `30713400532` stopped at `npm run lint`; build, `wrangler deploy` and the health assertion all skipped. Live version unchanged, health `200` throughout. |
+| 2026-08-01 | `ffeac9f` | `4fbe8892-6de0-4646-94d0-1da58a391e4b` | CI (`deploy.yml`) | Revert of the deliberate error. Run `30713455557` green through all nine steps including the health assertion. |

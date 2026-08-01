@@ -692,10 +692,10 @@ Rollback is `wrangler rollback` to a prior version — but note the runbook's wa
 
 #### Automated
 
-- [x] 3.1 `POST /api/auth/signin` with MVP credentials returns `302` to `/dashboard` and sets a session cookie
-- [x] 3.2 `GET /dashboard` with that cookie returns `200` containing the account email
-- [x] 3.3 `POST /api/auth/signout` returns `302`, after which `/dashboard` returns `302` to `/auth/signin`
-- [x] 3.4 Production `/auth/signup` and `/auth/confirm-email` return `404`
+- [x] 3.1 `POST /api/auth/signin` with MVP credentials returns `302` to `/dashboard` and sets a session cookie — 08b3f2c
+- [x] 3.2 `GET /dashboard` with that cookie returns `200` containing the account email — 08b3f2c
+- [x] 3.3 `POST /api/auth/signout` returns `302`, after which `/dashboard` returns `302` to `/auth/signin` — 08b3f2c
+- [x] 3.4 Production `/auth/signup` and `/auth/confirm-email` return `404` — 08b3f2c
 
 > Round trip executed 2026-08-01 against `https://estate-manager.estate-manager.workers.dev`
 > with a `curl` cookie jar and `-H "Origin: <base>"` (Phase 0's `checkOrigin` finding):
@@ -707,22 +707,29 @@ Rollback is `wrangler rollback` to a prior version — but note the runbook's wa
 
 #### Manual
 
-- [x] 3.5 Browser round trip: sign in, `/dashboard`, reload stays signed in, sign out, bounced
-- [x] 3.6 Sign-in page notice matches the credentials that actually work
-- [x] 3.7 No config-status banner on any page
+- [x] 3.5 Browser round trip: sign in, `/dashboard`, reload stays signed in, sign out, bounced — 08b3f2c
+- [x] 3.6 Sign-in page notice matches the credentials that actually work — 08b3f2c
+- [x] 3.7 No config-status banner on any page — 08b3f2c
 
 ### Phase 4: Prove the deploy gate and sync the record
 
 #### Automated
 
-- [ ] 4.1 Deliberate-error commit fails `deploy.yml` at lint with no `wrangler deploy` executed
-- [ ] 4.2 Production `/api/health` still returns `200` during the red run
-- [ ] 4.3 Revert commit produces a green `deploy.yml` run including the health assertion
-- [ ] 4.4 `npx astro sync && npm run lint && npm run build` pass on the reverted tree
+- [x] 4.1 Deliberate-error commit fails `deploy.yml` at lint with no `wrangler deploy` executed
+- [x] 4.2 Production `/api/health` still returns `200` during the red run
+- [x] 4.3 Revert commit produces a green `deploy.yml` run including the health assertion
+- [x] 4.4 `npx astro sync && npm run lint && npm run build` pass on the reverted tree
+
+> Gate demonstrated 2026-08-01 with an unused module-scope const in `src/lib/utils.ts`
+> (`@typescript-eslint/no-unused-vars`, not auto-fixable — which is why `--no-verify` was
+> load-bearing). Commit `11968c0`, `Deploy` run **30713400532**: step 6 `npm run lint` **failure**;
+> steps 7 `npm run build`, 8 `wrangler-action` and 9 the health assertion all **skipped**.
+> `/api/health` answered `200` throughout — the live Worker was never touched. Revert `ffeac9f`,
+> run **30713455557**: all nine steps green, version `4fbe8892-6de0-4646-94d0-1da58a391e4b`.
 
 #### Manual
 
-- [ ] 4.5 Failed run's log confirms the deploy step was skipped, not failed-after-attempting
-- [ ] 4.6 Runbook, `CLAUDE.md` §Current state and roadmap contain no contradicted claim
-- [ ] 4.7 README documents the local seed and states that nothing in the repo creates production users
-- [ ] 4.8 `CLAUDE.md` alone tells a new reader what production is verified to do
+- [x] 4.5 Failed run's log confirms the deploy step was skipped, not failed-after-attempting
+- [x] 4.6 Runbook, `CLAUDE.md` §Current state and roadmap contain no contradicted claim
+- [x] 4.7 README documents the local seed and states that nothing in the repo creates production users
+- [x] 4.8 `CLAUDE.md` alone tells a new reader what production is verified to do

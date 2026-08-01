@@ -101,13 +101,29 @@ SUPABASE_URL=http://127.0.0.1:54321
 SUPABASE_KEY=<anon key from CLI output>
 ```
 
-4. To stop the stack when done:
+4. Provision the local administrator account:
+
+```bash
+npx supabase db reset
+```
+
+This applies `supabase/seed.sql`, which creates `test@test.com` / `Test123!` — the same credentials `/auth/signin` shows on screen — already confirmed and ready to sign in. There is no manual step, and re-running it is safe: the seed is idempotent.
+
+5. To stop the stack when done:
 
 ```bash
 npx supabase stop
 ```
 
 The local Studio UI is available at `http://localhost:54323`.
+
+### Local and production create accounts differently — on purpose
+
+Local data is disposable and wants zero friction, so the seed above creates the administrator automatically. **Nothing in this repository creates users in the production Supabase project** — no script, no seed, and no service-role key. A production account is a manual prerequisite, made by hand in the dashboard (see [Auth routes](#auth-routes) below).
+
+That asymmetry is deliberate, not an inconsistency waiting to be tidied up. A code path capable of minting administrators against production has no product justification — every account in the database is a full administrator with sight of the registry and of owners' contact details — and it is a standing risk to the guardrail that owners' data never leaves their building. Do not "fix" this by scripting production account creation.
+
+The two environments also behave differently underneath: `supabase/config.toml` sets `enable_confirmations = false` locally, so a seeded user can sign in immediately, while the hosted project reports `mailer_autoconfirm: false` — an account created there without an explicit confirmation flag lands unconfirmed and cannot sign in. That is what the dashboard's *Auto Confirm User* tickbox overrides.
 
 Authentication itself needs no tables — it uses Supabase Auth's built-in `auth.users`. Domain tables for EstateManager go in `supabase/migrations/`, named `YYYYMMDDHHmmss_short_description.sql`, with RLS enabled on every table.
 
@@ -139,7 +155,9 @@ Two constraints on the hosted project, both load-bearing:
 
 Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_ROUTES` array there to require authentication.
 
-**Product decision (2026-08-01):** administrator accounts are created **directly in the database, through the Supabase dashboard** — the product has no self-service registration (`context/foundation/prd.md` §Access Control). To add one: Supabase dashboard → **Authentication → Users → Add user**, enter email and password, and tick *Auto Confirm User* so the account can sign in without a confirmation mail. For the MVP the database holds `test@test.com` with password `Test123!`, and `/auth/signin` states both facts on screen. The app has no registration screen: `/auth/signup`, `/auth/confirm-email` and `POST /api/auth/signup` were removed in roadmap item `F-01` and now return `404`.
+**Product decision (2026-08-01):** administrator accounts are created **directly in the database, through the Supabase dashboard** — the product has no self-service registration (`context/foundation/prd.md` §Access Control). To add one: Supabase dashboard → **Authentication → Users → Add user**, enter email and password, and tick *Auto Confirm User* so the account can sign in without a confirmation mail. Without that tick the account exists and cannot sign in, which fails identically to a missing one. For the MVP the database holds `test@test.com` with password `Test123!`, and `/auth/signin` states both facts on screen. The app has no registration screen: `/auth/signup`, `/auth/confirm-email` and `POST /api/auth/signup` were removed in roadmap item `F-01` and now return `404`.
+
+This dashboard procedure is the **only** way a production account comes into existence — see [Local and production create accounts differently](#local-and-production-create-accounts-differently--on-purpose). Locally, `npx supabase db reset` does it for you.
 
 ## Health check
 
