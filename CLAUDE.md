@@ -10,6 +10,7 @@ How far along the project actually is: see "Current state" at the bottom.
 
 ## Hard rules
 
+- **Commit straight to `main`.** Never create a feature branch and never ask which branch to use — this repo has no remote and no PR flow, so a branch only adds a merge step. Committing is still opt-in: wait to be asked.
 - **There is no test runner.** No `npm test`, no test files, no framework installed. Verify with `npm run lint && npm run build`. Never report that tests passed.
 - **`context/archive/` is immutable.** Never write there. Open a new change under `context/changes/` instead.
 - **Supabase env vars are `optional: true`** in `astro.config.mjs`. When unset, `createClient()` in `src/lib/supabase.ts` returns `null` and every auth path silently no-ops — the build stays green and the app deploys broken. Any new code touching Supabase must handle the `null` client, and any new required secret should be surfaced through `src/lib/config-status.ts` (the banner shown by `src/components/Banner.astro`).
