@@ -1,7 +1,7 @@
 ---
 change_id: production-admin-access
 title: Make administrator access on production real and verified
-status: implementing
+status: implemented
 created: 2026-08-01
 updated: 2026-08-01
 archived_at: null

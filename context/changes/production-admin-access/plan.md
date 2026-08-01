@@ -637,17 +637,21 @@ Rollback is `wrangler rollback` to a prior version — but note the runbook's wa
 
 #### Automated
 
-- [ ] 0.1 `npx supabase db reset` applies `supabase/seed.sql` without error
-- [ ] 0.2 Sign-in against the local stack with the seeded credentials succeeds
-- [ ] 0.3 Running the seed twice does not error (idempotent)
+- [x] 0.1 ~~`npx supabase db reset` applies `supabase/seed.sql` without error~~ — descoped to `S-01`
+- [x] 0.2 ~~Sign-in against the local stack with the seeded credentials succeeds~~ — descoped to `S-01`
+- [x] 0.3 ~~Running the seed twice does not error (idempotent)~~ — descoped to `S-01`
 - [x] 0.4 Production `/api/health` returns `200 {"status":"ok"}` — 2bcc3aa
 - [x] 0.5 `POST /api/auth/signin` on the live Worker returns `302` to `/` and sets a session cookie — 2bcc3aa
 - [x] 0.6 A wrong password still returns `302` to `/auth/signin?error=…` — 2bcc3aa
 
-> 0.1–0.3 are **blocked, not failed**: Docker is not installed on this machine (`docker` not on
-> PATH, no Docker.app / OrbStack), so `npx supabase start` cannot bring up the local stack. Per the
-> phase's Implementation Note the seed file lands unexercised; `S-01` brings the first real local
-> database and will exercise it. Re-run these three once Docker is available.
+> 0.1–0.3 were **blocked, not failed**, and are now **descoped to `S-01`** (2026-08-01): Docker is
+> not installed on this machine (`docker` not on PATH, no Docker.app / OrbStack), so
+> `npx supabase start` cannot bring up the local stack. Per the phase's Implementation Note the
+> seed file lands unexercised — `supabase/seed.sql` ships **never having been run**. `S-01` brings
+> the first real local database and is the first thing that will execute it. If it fails there, the
+> suspect is the assumption this seed makes about `auth.users`'s Supabase-owned schema, which the
+> phase already flagged as the part most likely to age badly. Checked off to close this plan, not
+> because they passed.
 >
 > Also recorded during 0.5: Astro's `security.checkOrigin` rejects a form POST without an `Origin`
 > header with `403 Cross-site POST form submissions are forbidden`. Every `curl` against
@@ -715,10 +719,10 @@ Rollback is `wrangler rollback` to a prior version — but note the runbook's wa
 
 #### Automated
 
-- [x] 4.1 Deliberate-error commit fails `deploy.yml` at lint with no `wrangler deploy` executed
-- [x] 4.2 Production `/api/health` still returns `200` during the red run
-- [x] 4.3 Revert commit produces a green `deploy.yml` run including the health assertion
-- [x] 4.4 `npx astro sync && npm run lint && npm run build` pass on the reverted tree
+- [x] 4.1 Deliberate-error commit fails `deploy.yml` at lint with no `wrangler deploy` executed — 21977d2
+- [x] 4.2 Production `/api/health` still returns `200` during the red run — 21977d2
+- [x] 4.3 Revert commit produces a green `deploy.yml` run including the health assertion — 21977d2
+- [x] 4.4 `npx astro sync && npm run lint && npm run build` pass on the reverted tree — 21977d2
 
 > Gate demonstrated 2026-08-01 with an unused module-scope const in `src/lib/utils.ts`
 > (`@typescript-eslint/no-unused-vars`, not auto-fixable — which is why `--no-verify` was
@@ -729,7 +733,7 @@ Rollback is `wrangler rollback` to a prior version — but note the runbook's wa
 
 #### Manual
 
-- [x] 4.5 Failed run's log confirms the deploy step was skipped, not failed-after-attempting
-- [x] 4.6 Runbook, `CLAUDE.md` §Current state and roadmap contain no contradicted claim
-- [x] 4.7 README documents the local seed and states that nothing in the repo creates production users
-- [x] 4.8 `CLAUDE.md` alone tells a new reader what production is verified to do
+- [x] 4.5 Failed run's log confirms the deploy step was skipped, not failed-after-attempting — 21977d2
+- [x] 4.6 Runbook, `CLAUDE.md` §Current state and roadmap contain no contradicted claim — 21977d2
+- [x] 4.7 README documents the local seed and states that nothing in the repo creates production users — 21977d2
+- [x] 4.8 `CLAUDE.md` alone tells a new reader what production is verified to do — 21977d2
