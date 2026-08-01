@@ -675,17 +675,17 @@ unused.
 
 #### Automated
 
-- [x] 3.1 `npx astro sync && npm run lint && npm run build` pass
-- [x] 3.2 Unauthenticated `POST /api/email/test` returns `302` to `/auth/signin`
-- [x] 3.3 With the binding removed, `/api/health` returns `200` with `"email":"missing"`
-- [x] 3.4 With the binding restored, `/api/health` returns `200` with `"email":"ok"`
-- [x] 3.5 `git status` is clean of the temporary binding removal
+- [x] 3.1 `npx astro sync && npm run lint && npm run build` pass — 7a43746
+- [x] 3.2 Unauthenticated `POST /api/email/test` returns `302` to `/auth/signin` — 7a43746
+- [x] 3.3 With the binding removed, `/api/health` returns `200` with `"email":"missing"` — 7a43746
+- [x] 3.4 With the binding restored, `/api/health` returns `200` with `"email":"ok"` — 7a43746
+- [x] 3.5 `git status` is clean of the temporary binding removal — 7a43746
 
 #### Manual
 
-- [x] 3.6 The config-status banner appears when the binding is absent and disappears when present
-- [x] 3.7 A local send with `"remote": true` and a signed-in session delivers to the test inbox
-- [x] 3.8 `"remote": true` is removed again and does not appear in `git diff`
+- [x] 3.6 The config-status banner appears when the binding is absent and disappears when present — 7a43746
+- [x] 3.7 A local send with `"remote": true` and a signed-in session delivers to the test inbox — 7a43746
+- [x] 3.8 `"remote": true` is removed again and does not appear in `git diff` — 7a43746
 
 ### Phase 4: Deploy and prove from production
 
