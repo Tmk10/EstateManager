@@ -1,8 +1,8 @@
-# 10x Astro Starter
+# EstateManager
 
-![](./public/template.png)
+Głosowanie nad uchwałami wspólnoty mieszkaniowej z wagą według udziałów — bez zebrania i bez zbierania podpisów po mieszkaniach.
 
-A modern, opinionated starter template for building fast, accessible web applications.
+Wymagania produktowe i reguły domenowe: [`context/foundation/prd.md`](./context/foundation/prd.md).
 
 ## Tech Stack
 
@@ -20,32 +20,27 @@ A modern, opinionated starter template for building fast, accessible web applica
 
 ## Getting Started
 
-1. Clone the repository:
-
-```bash
-git clone https://github.com/przeprogramowani/10x-astro-starter.git
-cd 10x-astro-starter
-```
-
-2. Install dependencies:
+1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-3. Set up Supabase and configure environment variables — see [Supabase Configuration](#supabase-configuration) below.
+2. Set up Supabase and configure environment variables — see [Supabase Configuration](#supabase-configuration) below.
 
-4. Create a `.dev.vars` file for local Cloudflare dev secrets:
+3. Create a `.dev.vars` file for local Cloudflare dev secrets:
 
 ```bash
 cp .env.example .dev.vars
 ```
 
-5. Run the development server:
+4. Run the development server:
 
 ```bash
 npm run dev
 ```
+
+Without Supabase credentials the app still builds and runs, but authentication is disabled and a banner says so — the env vars are declared `optional` in `astro.config.mjs`.
 
 ## Available Scripts
 
@@ -56,6 +51,8 @@ npm run dev
 - `npm run lint:fix` - Auto-fix ESLint issues
 - `npm run format` - Run Prettier
 
+On a fresh clone run `npx astro sync` before `npm run lint` — the type-checked rules need Astro's generated types.
+
 ## Project Structure
 
 ```md
@@ -63,9 +60,16 @@ npm run dev
 ├── src/
 │ ├── layouts/ # Astro layouts
 │ ├── pages/ # Astro pages
-│ │ └── api/ # API endpoints
+│ │ ├── api/ # API endpoints
+│ │ └── auth/ # Sign-in / sign-up / confirm-email pages
 │ ├── components/ # UI components (Astro & React)
-│ └── assets/ # Static assets
+│ │ ├── auth/ # Auth form islands (React)
+│ │ └── ui/ # shadcn/ui components
+│ ├── lib/ # Supabase client, helpers
+│ ├── styles/ # Global Tailwind styles
+│ └── middleware.ts # Session resolution + route protection
+├── supabase/ # Local Supabase config, migrations
+├── context/ # Product docs (PRD, tech stack, infrastructure)
 ├── public/ # Public assets
 ├── wrangler.jsonc # Cloudflare Workers config
 ```
@@ -84,26 +88,20 @@ Requires [Docker](https://www.docker.com/) and ~7 GB RAM.
 cp .env.example .env
 ```
 
-2. Initialize the local Supabase project (creates a `supabase/` config folder):
-
-```bash
-npx supabase init
-```
-
-3. Start the local stack (downloads Docker images on first run):
+2. Start the local stack (downloads Docker images on first run; `supabase/config.toml` is already committed):
 
 ```bash
 npx supabase start
 ```
 
-4. Copy the credentials printed by the CLI into your `.env` and `.dev.vars`:
+3. Copy the credentials printed by the CLI into your `.env` and `.dev.vars`:
 
 ```
 SUPABASE_URL=http://127.0.0.1:54321
 SUPABASE_KEY=<anon key from CLI output>
 ```
 
-5. To stop the stack when done:
+4. To stop the stack when done:
 
 ```bash
 npx supabase stop
@@ -111,7 +109,7 @@ npx supabase stop
 
 The local Studio UI is available at `http://localhost:54323`.
 
-No database tables or migrations are required — this project uses Supabase Auth's built-in `auth.users` table only.
+Authentication itself needs no tables — it uses Supabase Auth's built-in `auth.users`. Domain tables for EstateManager go in `supabase/migrations/`, named `YYYYMMDDHHmmss_short_description.sql`, with RLS enabled on every table.
 
 ### Using a cloud Supabase project instead
 
@@ -150,25 +148,22 @@ Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_
 
 ## Deployment
 
-This project deploys to [Cloudflare Workers](https://workers.cloudflare.com/).
+Target platform is [Cloudflare Workers](https://workers.cloudflare.com/). **The project has not been deployed yet** — there is no git remote, `wrangler` is not authenticated, and no hosted Supabase project exists.
 
-1. Build the project:
+The first deploy is planned in [`context/changes/deployment/deployment-plan.md`](./context/changes/deployment/deployment-plan.md) and gated on [`deployment-preflight.md`](./context/changes/deployment/deployment-preflight.md). Follow those rather than deploying ad hoc.
+
+Once the plan has been executed, the loop is:
 
 ```bash
 npm run build
-```
-
-2. Deploy with Wrangler:
-
-```bash
 npx wrangler deploy
 ```
 
-Set `SUPABASE_URL` and `SUPABASE_KEY` as secrets in your Cloudflare dashboard or via `npx wrangler secret put`.
+Set `SUPABASE_URL` and `SUPABASE_KEY` as Workers secrets via `npx wrangler secret put`.
 
 ## CI
 
-GitHub Actions runs lint + build on every push and PR to `master`. Configure `SUPABASE_URL` and `SUPABASE_KEY` as repository secrets in GitHub for the build step.
+GitHub Actions (`.github/workflows/ci.yml`) runs lint + build on every push and PR to `main`. Configure `SUPABASE_URL` and `SUPABASE_KEY` as repository secrets in GitHub for the build step.
 
 ## License
 
