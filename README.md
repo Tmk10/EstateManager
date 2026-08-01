@@ -80,7 +80,15 @@ This project uses [Supabase](https://supabase.com/) for authentication. Environm
 
 ### First-time setup (local, no cloud project needed)
 
-Requires [Docker](https://www.docker.com/) and ~7 GB RAM.
+Requires [Docker](https://www.docker.com/) and ~7 GB RAM. Docker is a **real prerequisite** now, not an optional convenience: the schema lives in `supabase/migrations/` and `npm run db:types` reads it from the running local stack.
+
+If `supabase` cannot reach the Docker daemon, it is usually looking in the wrong place. Docker Desktop on macOS puts its socket at `~/.docker/run/docker.sock` and creates `/var/run/docker.sock` only when *Settings → Advanced → Allow the default Docker socket* is enabled. Either turn that on once, or prefix commands:
+
+```bash
+export DOCKER_HOST="unix://$HOME/.docker/run/docker.sock"
+```
+
+The `docker` CLI itself ships inside the app bundle (`/Applications/Docker.app/Contents/Resources/bin`) and is not always on `PATH`.
 
 1. Create your `.env` file:
 
@@ -107,9 +115,23 @@ SUPABASE_KEY=<anon key from CLI output>
 npx supabase db reset
 ```
 
-This applies `supabase/seed.sql`, which creates `test@test.com` / `Test123!` — the same credentials `/auth/signin` shows on screen — already confirmed and ready to sign in. There is no manual step, and re-running it is safe: the seed is idempotent.
+This applies every migration in `supabase/migrations/`, then `supabase/seed.sql`, which creates `test@test.com` / `Test123!` — the same credentials `/auth/signin` shows on screen — already confirmed and ready to sign in, plus one demo building so `/buildings` is not empty. There is no manual step, and re-running it is safe: every insert in the seed is idempotent.
 
-5. To stop the stack when done:
+Note that `npx supabase seed` does **not** replay `seed.sql` — that command only exposes a `buckets` subcommand. To re-run the seed without wiping the database, pipe it in yourself:
+
+```bash
+docker exec -i supabase_db_estate-manager psql -U postgres -d postgres < supabase/seed.sql
+```
+
+5. After changing the schema, regenerate the committed database types:
+
+```bash
+npm run db:types
+```
+
+`src/db/database.types.ts` is generated output. Commit it in the **same commit** as the migration that changed the schema — nothing in CI regenerates it, so a stale file means CI type-checks against a schema that no longer exists.
+
+6. To stop the stack when done:
 
 ```bash
 npx supabase stop
@@ -126,6 +148,31 @@ That asymmetry is deliberate, not an inconsistency waiting to be tidied up. A co
 The two environments also behave differently underneath: `supabase/config.toml` sets `enable_confirmations = false` locally, so a seeded user can sign in immediately, while the hosted project reports `mailer_autoconfirm: false` — an account created there without an explicit confirmation flag lands unconfirmed and cannot sign in. That is what the dashboard's *Auto Confirm User* tickbox overrides.
 
 Authentication itself needs no tables — it uses Supabase Auth's built-in `auth.users`. Domain tables for EstateManager go in `supabase/migrations/`, named `YYYYMMDDHHmmss_short_description.sql`, with RLS enabled on every table.
+
+### Applying migrations to production
+
+**No pipeline does this.** `deploy.yml` never invokes the `supabase` CLI and no service-role credential exists in CI, so a migration committed to the repo is not applied by pushing it. Applying it is a deliberate manual step:
+
+```bash
+npx supabase login                                  # once, browser flow
+npx supabase link --project-ref <ref>               # once per checkout
+npx supabase db push --dry-run                      # read every line of this
+npx supabase db push
+```
+
+Three rules, each of which has a reason rather than a preference behind it:
+
+- **Schema first, then code.** Push the migration, confirm it applied, and only then push to `main`. Reversed, the deploy puts live code in front of a table that does not exist yet.
+- **Never `--include-seed`.** The seed mints an administrator account; against production that is exactly the code path this project refuses to have (see the section above).
+- **Never `--include-all`.** It pushes everything missing from the remote history table, which is not necessarily what you just reviewed in the dry run.
+
+It is forward-only. `wrangler rollback` reverts code, never schema, so undoing a migration means writing the reversal by hand. Verify afterwards that the two schemas agree:
+
+```bash
+npx supabase gen types typescript --linked --schema public
+```
+
+Compare against the committed `src/db/database.types.ts`; they should differ only by a `__InternalSupabase` PostgREST-version block, which the remote generator emits and the local one does not.
 
 ### Using a cloud Supabase project instead
 

@@ -585,31 +585,31 @@ This is the project's first migration, so it also establishes the operational sh
 
 #### Automated
 
-- [x] 3.1 `npx astro sync && npm run lint && npm run build` all pass
-- [x] 3.2 `GET /buildings` while signed out redirects to `/auth/signin` — `/buildings/new` too
-- [x] 3.3 `POST /api/buildings` while signed out redirects to `/auth/signin`
-- [x] 3.4 Signed in, `POST /api/buildings` returns 302 to `/buildings` and the row exists
-- [x] 3.5 Posting a duplicate name, city and street returns 302 with `?error=` rather than a 500 — whitespace-only field rejected the same way
+- [x] 3.1 `npx astro sync && npm run lint && npm run build` all pass — 088b77a
+- [x] 3.2 `GET /buildings` while signed out redirects to `/auth/signin` — `/buildings/new` too — 088b77a
+- [x] 3.3 `POST /api/buildings` while signed out redirects to `/auth/signin` — 088b77a
+- [x] 3.4 Signed in, `POST /api/buildings` returns 302 to `/buildings` and the row exists — 088b77a
+- [x] 3.5 Posting a duplicate name, city and street returns 302 with `?error=` rather than a 500 — whitespace-only field rejected the same way — 088b77a
 
 #### Manual
 
-- [x] 3.6 Creating a building in the browser puts it on the `/buildings` list
-- [x] 3.7 Empty-form submit shows client-side errors and never reaches the server
-- [x] 3.8 The duplicate message reads as intended Polish
-- [x] 3.9 The empty state renders sensibly with no buildings in the database
+- [x] 3.6 Creating a building in the browser puts it on the `/buildings` list — 088b77a
+- [x] 3.7 Empty-form submit shows client-side errors and never reaches the server — 088b77a
+- [x] 3.8 The duplicate message reads as intended Polish — 088b77a
+- [x] 3.9 The empty state renders sensibly with no buildings in the database — 088b77a
 
 ### Phase 4: Production and the record
 
 #### Automated
 
-- [ ] 4.1 `npx supabase db push --dry-run` lists exactly one migration
-- [ ] 4.2 `npx supabase db push` completes without error
-- [ ] 4.3 `gen types --linked` output is identical to the committed file
-- [ ] 4.4 The `deploy.yml` run is green including the `/api/health` assertion
-- [ ] 4.5 `GET /buildings` on production redirects to `/auth/signin` when signed out
+- [x] 4.1 `npx supabase db push --dry-run` lists exactly one migration — `migration list` also showed Remote empty, confirming a clean first application
+- [x] 4.2 `npx supabase db push` completes without error — Remote history now `20260801222109`
+- [x] 4.3 `gen types --linked` matches the committed file — identical apart from a remote-only `__InternalSupabase` PostgREST-version block; table definitions byte-identical
+- [x] 4.4 The `deploy.yml` run is green including the `/api/health` assertion — run `30721715492`, `{"status":"ok","email":"ok"}`
+- [x] 4.5 `GET /buildings` on production redirects to `/auth/signin` when signed out — `/buildings/new` and `POST /api/buildings` too
 
 #### Manual
 
-- [ ] 4.6 Full round trip on production: sign in, create a building, see it listed
-- [ ] 4.7 Supabase dashboard shows `buildings` with RLS and 8 policies on the production project
-- [ ] 4.8 `CLAUDE.md` alone tells a new reader that the data layer exists and how migrations get applied
+- [x] 4.6 Full round trip on production: sign in, create a building, see it listed
+- [x] 4.7 Supabase dashboard shows `buildings` with RLS and 8 policies on the production project
+- [x] 4.8 `CLAUDE.md` alone tells a new reader that the data layer exists and how migrations get applied
