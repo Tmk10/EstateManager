@@ -298,6 +298,27 @@ without re-deriving it and without losing the `| null` contract.
 
 **Contract**: `"db:types": "supabase gen types typescript --local --schema public > src/db/database.types.ts"`.
 
+#### 6. Exclude the generated types from ESLint (added during implementation)
+
+**File**: `eslint.config.js`
+
+**Intent**: Not in the plan as written. Supabase's generator does not emit
+Prettier-formatted output, so linting `src/db/database.types.ts` produced 68
+`prettier/prettier` errors — and `--fix`ing them would be undone by the next
+regeneration. The repo already has this exact case: `worker-configuration.d.ts` is
+ignored for the same reason (`eslint.config.js:76`, `CLAUDE.md`).
+
+**Contract**: `src/db/database.types.ts` added to the existing `ignores` entry alongside
+`worker-configuration.d.ts`. TypeScript still checks the file — it is imported by
+`src/lib/supabase.ts`, which is linted.
+
+**What the typed client actually buys** (measured, not assumed — a deliberate-typo probe
+compiled against `tsc --noEmit`): a wrong **table** name is caught (`TS2769`) and a wrong
+column in an **insert/update** payload is caught (`TS2353`), but a wrong column inside a
+`.select("...")` **string is not** — this version of `supabase-js` does not parse the
+projection string at type level. So the parameterization is load-bearing for writes and
+decorative for read projections. Worth knowing before trusting it in `S-01b`.
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -533,32 +554,32 @@ This is the project's first migration, so it also establishes the operational sh
 
 #### Automated
 
-- [x] 1.1 `docker info` exits 0
-- [x] 1.2 `npx supabase start` brings the stack up and prints API URL, anon key and Studio URL
-- [x] 1.3 `npx supabase db reset` completes without error
-- [x] 1.4 seed re-run is idempotent — `supabase seed` has no sql_paths subcommand in CLI 2.98, so `seed.sql` was replayed directly (`INSERT 0 0`, counts unchanged)
-- [x] 1.5 `npx astro sync && npm run lint && npm run build` all pass
+- [x] 1.1 `docker info` exits 0 — 52b3e11
+- [x] 1.2 `npx supabase start` brings the stack up and prints API URL, anon key and Studio URL — 52b3e11
+- [x] 1.3 `npx supabase db reset` completes without error — 52b3e11
+- [x] 1.4 seed re-run is idempotent — `supabase seed` has no sql_paths subcommand in CLI 2.98, so `seed.sql` was replayed directly (`INSERT 0 0`, counts unchanged) — 52b3e11
+- [x] 1.5 `npx astro sync && npm run lint && npm run build` all pass — 52b3e11
 
 #### Manual
 
-- [x] 1.6 Signing in locally with `test@test.com` / `Test123!` succeeds and lands on `/dashboard`
-- [x] 1.7 Studio shows the seeded user under Authentication → Users
+- [x] 1.6 Signing in locally with `test@test.com` / `Test123!` succeeds and lands on `/dashboard` — 52b3e11
+- [x] 1.7 Studio shows the seeded user under Authentication → Users — 52b3e11
 
 ### Phase 2: The buildings table, its access contract, and generated types
 
 #### Automated
 
-- [ ] 2.1 `npx supabase db reset` applies the migration and the seed with no error
-- [ ] 2.2 `public.buildings` has RLS enabled and exactly 8 policies
-- [ ] 2.3 Inserting a duplicate `(name, city, street)` is rejected by the unique constraint
-- [ ] 2.4 `npx supabase seed` run twice does not error and does not create a second demo building
-- [ ] 2.5 `src/db/database.types.ts` contains a `buildings` entry under `public.Tables`
-- [ ] 2.6 `npx astro sync && npm run lint && npm run build` all pass
+- [x] 2.1 `npx supabase db reset` applies the migration and the seed with no error
+- [x] 2.2 `public.buildings` has RLS enabled and exactly 8 policies — verified in `pg_policy` AND through PostgREST (anon select `[]`, anon insert `42501`, authenticated select + insert `201`)
+- [x] 2.3 Inserting a duplicate `(name, city, street)` is rejected by the unique constraint — blank-field check constraints verified too
+- [x] 2.4 seed replayed against the live database: `INSERT 0 0` ×3, building count stays 1
+- [x] 2.5 `src/db/database.types.ts` contains a `buildings` entry under `public.Tables`
+- [x] 2.6 `npx astro sync && npm run lint && npm run build` all pass
 
 #### Manual
 
-- [ ] 2.7 Studio shows the seeded demo building in the buildings table
-- [ ] 2.8 Policy list reads as 4 × `authenticated` + 4 × `anon` with the anon set denying
+- [x] 2.7 Studio shows the seeded demo building in the buildings table
+- [x] 2.8 Policy list reads as 4 × `authenticated` + 4 × `anon` with the anon set denying
 
 ### Phase 3: The screens
 
