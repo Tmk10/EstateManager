@@ -117,3 +117,34 @@ With the header supplied, the auth gate behaves exactly as designed: an unauthen
 
 This is not specific to `F-02` — it applies to any form endpoint in this repo, which is why it
 is written into `README.md` rather than left here.
+
+### Phase 4 — first production send (2026-08-01)
+
+**The deployed Worker sends mail.** This is the fact `F-02` existed to establish, and it is
+what unblocks `S-04`.
+
+| | |
+| --- | --- |
+| Date | 2026-08-01 |
+| Worker | `https://estate-manager.estate-manager.workers.dev` |
+| Deploy run | GitHub Actions `30719106110`, green including the `/api/health` assertion |
+| Commit deployed | `7f34ab2` |
+| From | `glosowanie@estatemanager.dev` |
+| To | an inbox controlled by the maintainer |
+| **`messageId`** | **`<zp7Un3ZRDflfWr2q1xX3WSCOh3YQE04aIPGy@estatemanager.dev>`** |
+| Endpoint | `POST /api/email/test`, `200 {"status":"sent","messageId":"…"}` |
+
+Also verified against production on the same deploy:
+
+- `GET /api/health` → `200 {"status":"ok","email":"ok"}` — the deployed Worker resolves the
+  `EMAIL` binding, which a local run with the remote flag cannot prove.
+- `POST /api/email/test` with no session → `302` to `/auth/signin`. The auth gate holds in
+  production.
+
+An earlier local send through the same endpoint (remote flag temporarily enabled, since
+reverted) returned `<dSRtADZUdV4FsNbNpfr8lZgpWiZ8oWLwsG5P@estatemanager.dev>`. Two
+`messageId`s therefore exist for this change; the production one above is the one that matters.
+
+Since this is a beta API, the date above is what dates the last known-good send if Cloudflare
+changes something underneath us. `POST /api/email/test` stays in the repository precisely so
+the check can be repeated.

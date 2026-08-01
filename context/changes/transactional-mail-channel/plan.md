@@ -691,16 +691,16 @@ unused.
 
 #### Automated
 
-- [ ] 4.1 The `deploy.yml` run for this push is green, including the health assertion
-- [ ] 4.2 Production `/api/health` returns `200` with `"status":"ok"` and `"email":"ok"`
-- [ ] 4.3 Production `POST /api/email/test` returns `200` with a `messageId`
-- [ ] 4.4 Unauthenticated production `POST /api/email/test` returns `302`
+- [x] 4.1 The `deploy.yml` run for this push is green, including the health assertion
+- [x] 4.2 Production `/api/health` returns `200` with `"status":"ok"` and `"email":"ok"`
+- [x] 4.3 Production `POST /api/email/test` returns `200` with a `messageId`
+- [x] 4.4 Unauthenticated production `POST /api/email/test` returns `302`
 
 #### Manual
 
-- [ ] 4.5 The message arrives in the test inbox
-- [ ] 4.6 The `messageId` is recorded in `change.md`
-- [ ] 4.7 Cloudflare's Email Sending dashboard shows the send
+- [x] 4.5 The message arrives in the test inbox
+- [x] 4.6 The `messageId` is recorded in `change.md`
+- [x] 4.7 Cloudflare's Email Sending dashboard shows the send
 
 ### Phase 5: Documentation and close-out
 
