@@ -100,14 +100,14 @@ knowing before anyone debugs a `403` from `curl` or a health-check probe.
   against cloud Supabase (above); no successful login has ever occurred in
   production. **Outstanding**, and note it will keep failing until B7 sets the
   Site URL, since confirmation links currently point at the wrong origin.
-- **CI/CD loop (plan verification step 5)** — half proven. The first push showed
-  `deploy.yml` running lint and build *before* wrangler, so the ordering gate is
-  real. What is **not** proven is the important half: that a deliberate lint
-  error fails the job *without deploying*. The plan is explicit that this must be
-  demonstrated rather than assumed, because it is the entire substitute for the
-  deferred branch protection. Blocked on `CLOUDFLARE_API_TOKEN` — until the token
-  exists, the job fails at the wrangler step for the wrong reason and proves
-  nothing.
+- **CI/CD loop (plan verification step 5)** — half proven. `CLOUDFLARE_API_TOKEN`
+  was added on 2026-08-01 and `deploy.yml` then ran green end to end, publishing
+  version `c7d7e037-aad5-4909-848a-b388c70b95dc` as the current deployment at
+  100%. So auto-deploy-on-merge works. What is **still not proven** is the half
+  that matters: that a deliberate lint error fails the job *without deploying*.
+  The plan is explicit that this must be demonstrated rather than assumed,
+  because it is the entire substitute for the branch protection D15 deferred.
+  **Outstanding.**
 
 ### Open residuals
 
@@ -121,14 +121,40 @@ knowing before anyone debugs a `403` from `curl` or a health-check probe.
 | — | Preview URLs public by default | **open** — harmless while no owner data exists; needs Cloudflare Access before any preview points at a real registry |
 | — | Workers Paid ($5/mo) | **not triggered** — trigger is the first real building import |
 
+### Gotcha: the CI token is account-owned
+
+`CLOUDFLARE_API_TOKEN` is an **account-owned** token (prefix `cfat_`), not a
+user-owned one. This matters when debugging it, because the usual validity check
+lies:
+
+```
+GET /client/v4/user/tokens/verify                 -> 1000 "Invalid API Token"   (WRONG)
+GET /client/v4/accounts/{account_id}/tokens/verify -> success, status: active   (right)
+```
+
+An account-owned token reports as invalid against the `/user/` endpoint even
+when it is perfectly good. Verify against the account endpoint instead. This one
+does have permission to enumerate `/accounts`, which is the first call
+`wrangler deploy` makes — a token that cannot will fail there regardless of its
+Workers permissions.
+
+Related: when storing it, pipe the value into `gh secret set` on **stdin**. A
+value passed as an argument risks landing as the secret *name*, and secret names
+are not secret — they are shown in the Actions UI and in `gh secret list`.
+
 ### Follow-ups for a human
 
-1. Create a Cloudflare API token (*Edit Cloudflare Workers* template) and add it
-   to GitHub as `CLOUDFLARE_API_TOKEN`. Until then `deploy.yml` cannot run.
-2. Supabase → Auth → URL Configuration: set **Site URL** to
+1. Supabase → Auth → URL Configuration: set **Site URL** to
    `https://estate-manager.estate-manager.workers.dev` (plan step **B7**).
    Until this is set, confirmation links in signup emails point at the wrong
    origin.
+2. Prove the deploy gate: push a commit with a deliberate lint error and confirm
+   `deploy.yml` fails **without** deploying, then revert. This is the D15
+   substitute and the plan requires it to be demonstrated.
 3. Run the functional smoke test above.
 4. `src/lib/config-status.ts:16` still links the banner to the
    `10x-astro-starter` README. Left alone because the plan freezes `src/lib/`.
+5. Optional cleanup: `actions/checkout@v4` and `actions/setup-node@v4` trigger a
+   Node 20 deprecation annotation on every run (current releases are v7). The
+   `site` option is unset in `astro.config.mjs`, so `@astrojs/sitemap` is
+   installed but silently generates nothing.
