@@ -602,14 +602,14 @@ This is the project's first migration, so it also establishes the operational sh
 
 #### Automated
 
-- [x] 4.1 `npx supabase db push --dry-run` lists exactly one migration — `migration list` also showed Remote empty, confirming a clean first application
-- [x] 4.2 `npx supabase db push` completes without error — Remote history now `20260801222109`
-- [x] 4.3 `gen types --linked` matches the committed file — identical apart from a remote-only `__InternalSupabase` PostgREST-version block; table definitions byte-identical
-- [x] 4.4 The `deploy.yml` run is green including the `/api/health` assertion — run `30721715492`, `{"status":"ok","email":"ok"}`
-- [x] 4.5 `GET /buildings` on production redirects to `/auth/signin` when signed out — `/buildings/new` and `POST /api/buildings` too
+- [x] 4.1 `npx supabase db push --dry-run` lists exactly one migration — `migration list` also showed Remote empty, confirming a clean first application — 289c047
+- [x] 4.2 `npx supabase db push` completes without error — Remote history now `20260801222109` — 289c047
+- [x] 4.3 `gen types --linked` matches the committed file — identical apart from a remote-only `__InternalSupabase` PostgREST-version block; table definitions byte-identical — 289c047
+- [x] 4.4 The `deploy.yml` run is green including the `/api/health` assertion — run `30721715492`, `{"status":"ok","email":"ok"}` — 289c047
+- [x] 4.5 `GET /buildings` on production redirects to `/auth/signin` when signed out — `/buildings/new` and `POST /api/buildings` too — 289c047
 
 #### Manual
 
-- [x] 4.6 Full round trip on production: sign in, create a building, see it listed
-- [x] 4.7 Supabase dashboard shows `buildings` with RLS and 8 policies on the production project
-- [x] 4.8 `CLAUDE.md` alone tells a new reader that the data layer exists and how migrations get applied
+- [x] 4.6 Full round trip on production: sign in, create a building, see it listed — 289c047
+- [x] 4.7 Supabase dashboard shows `buildings` with RLS and 8 policies on the production project — 289c047
+- [x] 4.8 `CLAUDE.md` alone tells a new reader that the data layer exists and how migrations get applied — 289c047
