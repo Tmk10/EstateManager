@@ -205,9 +205,16 @@ SYSTEM
 ```
 
 Przeniesione do v2: konta i logowanie właścicieli, obsługa wielu budynków, ekrany CRUD
-rejestru, edycja rejestru, rejestracja self-service administratora, SMS jako kanał
+rejestru, edycja rejestru, ~~rejestracja self-service administratora~~, SMS jako kanał
 dotarcia, zgłaszanie uchwał przez mieszkańca (osobny moduł), rejestracja głosów
 oddanych papierowo.
+
+> DOPRECYZOWANE 2026-08-01 — rejestracja self-service administratora zostaje poza v1,
+> ale nie ma też „okna wdrożeniowego": konta zakłada się **w panelu Supabase**
+> (Authentication → Users → Add user), a aplikacja nie ma ekranu rejestracji. Na czas MVP w bazie istnieje konto
+> `test@test.com` / `Test123!`, którego dane wyświetla ekran logowania. Do v2 przechodzi
+> dodatkowo **model ról** — rola zmieniana również bezpośrednio w bazie.
+> Wiążąca wersja: `context/foundation/prd.md` §Access Control.
 
 ## Timeline acknowledgment
 
@@ -379,8 +386,14 @@ Dwie role: **administrator** i **właściciel**. W MVP nie ma osobnej roli zarz�
 wspólnoty ani roli tylko-do-odczytu (księgowa/audytor) — świadomie odrzucone jako koszt
 macierzy uprawnień, który nie jest potrzebny, żeby głosowanie zadziałało.
 
-**Administrator.** Konto zakładane przy wdrożeniu; w v1 nie ma rejestracji self-service.
+**Administrator.** ~~Konto zakładane przy wdrożeniu; w v1 nie ma rejestracji self-service.~~
 Uwierzytelnianie e-mailem i hasłem. Administrator jest jedyną rolą, która się loguje.
+
+> DOPRECYZOWANE 2026-08-01 — konta zakłada się ręcznie w panelu Supabase, nie „przy
+> wdrożeniu"; aplikacja nie ma ekranu rejestracji ani resetu hasła. W MVP działa konto
+> testowe `test@test.com` / `Test123!`, pokazywane wprost na ekranie logowania. W v1 każdy
+> użytkownik w bazie jest administratorem, model ról wchodzi w v2. Wiążąca wersja:
+> `context/foundation/prd.md` §Access Control.
 
 **Właściciel.** Nie ma konta ani hasła w v1. Dostęp do głosowania odbywa się przez
 indywidualny link otrzymany e-mailem, powiązany z konkretnym lokalem w rejestrze.
@@ -431,7 +444,11 @@ Granice wynikające z decyzji podjętych w fazach 2–5:
 - **Bez pozostałych modułów aplikacji** — rachunki, generowanie bilansu, utrzymanie,
   przeglądy, ubezpieczenia, pielęgnacja ogrodu, sprzątanie, koszty. MVP to moduł
   bazowy (nieruchomości i mieszkańcy) plus moduł głosowania.
-- **Bez rejestracji self-service administratora.** Konto zakładane przy wdrożeniu.
+- **Bez rejestracji self-service administratora.** ~~Konto zakładane przy wdrożeniu.~~
+  DOPRECYZOWANE 2026-08-01 — non-goal zostaje w mocy, zmienia się tylko sposób
+  zakładania konta: ręcznie w panelu Supabase, o dowolnej porze. Uzupełniony przez
+  „bez modelu ról i ekranu zarządzania uprawnieniami" oraz „bez ukrywania danych konta
+  testowego"; wiążąca wersja w `context/foundation/prd.md` §Non-Goals.
 
 Non-goale niefunkcjonalne:
 

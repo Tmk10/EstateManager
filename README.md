@@ -151,6 +151,8 @@ Users can then sign in immediately after sign-up without clicking a confirmation
 
 Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_ROUTES` array there to require authentication.
 
+**Product decision (2026-08-01):** administrator accounts are created **directly in the database, through the Supabase dashboard** — the product has no self-service registration (`context/foundation/prd.md` §Access Control). To add one: Supabase dashboard → **Authentication → Users → Add user**, enter email and password, and tick *Auto Confirm User* so the account can sign in without a confirmation mail. For the MVP the database holds `test@test.com` with password `Test123!`, and `/auth/signin` states both facts on screen. `/auth/signup` and `/auth/confirm-email` are starter leftovers scheduled for removal in roadmap item `F-01`; do not build on them.
+
 ## Health check
 
 `GET /api/health` reports whether the running Worker can actually reach Supabase. It is unauthenticated and deliberately excluded from `PROTECTED_ROUTES` — it has to answer before auth works.

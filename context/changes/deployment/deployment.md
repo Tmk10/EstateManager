@@ -81,13 +81,15 @@ after the fact.
 
 ### What was not verified
 
-- **Functional smoke** — the *authenticated* half is unproven: sign up with a
-  real inbox, click the confirmation link, sign in, load `/dashboard` as a
-  logged-in user, sign out. Email confirmation is on, so this needs a human with
-  a mailbox. Rejection of bad credentials **is** confirmed against cloud
-  Supabase (above); no successful login has ever occurred in production. It will
-  keep failing until the Site URL is set, since confirmation links currently
-  point at the wrong origin.
+- **Functional smoke** — the *authenticated* half is unproven: sign in, load
+  `/dashboard` as a logged-in user, sign out. Rejection of bad credentials
+  **is** confirmed against cloud Supabase (above); no successful login has ever
+  occurred in production. Revised 2026-08-01: the product decision is that
+  administrator accounts are created **in the Supabase dashboard** (Authentication
+  → Users → Add user) and there is no registration (PRD §Access Control), so the
+  smoke test no longer runs through sign-up and email confirmation — it signs in
+  with the MVP account `test@test.com` / `Test123!`, which must be added in the
+  dashboard of the production Supabase project first.
 - **The deploy gate's negative case** — `deploy.yml` deploys on green, proven.
   That a deliberate lint error fails the job **without** deploying is *not*
   proven. This is the entire substitute for the branch protection deferred in
@@ -96,13 +98,16 @@ after the fact.
 
 ### Outstanding
 
-1. **Supabase → Auth → URL Configuration: set Site URL** to
-   `https://estate-manager.estate-manager.workers.dev` (step **B7**). Until this
-   is set, confirmation links in signup emails point at the wrong origin.
-   *Dashboard-only; cannot be done from the repo.*
+1. ~~**Supabase → Auth → URL Configuration: set Site URL** (step **B7**).~~
+   Dropped 2026-08-01: with accounts created by hand in the Supabase dashboard
+   and no registration in the product, nothing sends a confirmation link, so the
+   Site URL no longer gates any flow. Reopen this if a v2 flow (password reset,
+   invitations) starts mailing links.
 2. **Prove the deploy gate.** Push a commit with a deliberate lint error,
    confirm `deploy.yml` fails without deploying, then revert.
-3. **Run the functional smoke test** above. Blocked on (1).
+3. **Run the functional smoke test** above. Needs the MVP account
+   `test@test.com` / `Test123!` added in the cloud Supabase project's dashboard
+   (Authentication → Users → Add user, *Auto Confirm User* ticked).
 4. `src/lib/config-status.ts:16` still links the banner to the
    `10x-astro-starter` README. Left alone because this change freezes `src/lib/`.
 5. Optional cleanup: `actions/checkout@v4` and `actions/setup-node@v4` trigger a
@@ -266,12 +271,14 @@ the D4 / T1 mitigation, and immutable after creation.
 **B6.** Copy the Project URL and the **`anon`** key (Settings → API). Not the
 service-role key.
 **B7.** Auth → URL Configuration: set Site URL to the Worker hostname, once C11
-produces it. **← still outstanding.**
+produces it. **← dropped 2026-08-01, see Outstanding (1).**
 **B8.** Write both values into a local `.dev.vars` (gitignored — confirmed) so
 `npm run dev` runs against real workerd *and* real Supabase.
 
-Email confirmation stays **on** (the production default); the smoke test uses a
-real inbox.
+~~Email confirmation stays **on** (the production default); the smoke test uses a
+real inbox.~~ Superseded 2026-08-01: administrator accounts are created by hand
+in the Supabase dashboard (PRD §Access Control), the product has no registration,
+and the smoke test signs in with the MVP account `test@test.com` / `Test123!`.
 
 ### C. First production deploy
 

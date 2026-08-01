@@ -261,10 +261,37 @@ Dwie role: **administrator** i **właściciel**. W MVP nie ma osobnej roli zarz�
 wspólnoty ani roli tylko-do-odczytu (księgowa/audytor) — świadomie odrzucone jako koszt
 macierzy uprawnień, który nie jest potrzebny, żeby głosowanie zadziałało.
 
-**Administrator.** Konto zakładane przy wdrożeniu; w v1 nie ma samodzielnej rejestracji.
-Uwierzytelnianie e-mailem i hasłem. Administrator jest jedyną rolą, która się loguje.
-Może importować rejestr, tworzyć uchwały, uruchamiać głosowania, rozsyłać linki,
-śledzić bieżący stan i przeglądać zakończone głosowania.
+**Administrator.** Konta administratorów zakłada się **bezpośrednio w bazie danych,
+przez panel Supabase** (Authentication → Users → Add user): osoba prowadząca projekt
+wpisuje adres e-mail i hasło, i to jest cała procedura. Aplikacja nie ma ekranu
+rejestracji ani żadnej innej ścieżki samodzielnego założenia konta — nie w oknie
+wdrożeniowym i nie później. Uwierzytelnianie e-mailem i hasłem;
+administrator jest jedyną rolą, która się loguje. Może importować rejestr, tworzyć
+uchwały, uruchamiać głosowania, rozsyłać linki, śledzić bieżący stan i przeglądać
+zakończone głosowania. Ustalenie z 2026-08-01; jest to wiążąca wersja decyzji o dostępie
+administratora i zastępuje zarówno wcześniejsze „konto zakładane przy wdrożeniu", jak
+i rozważaną tego samego dnia stale dostępną rejestrację self-service z potwierdzeniem
+adresu e-mail.
+
+**Konto testowe MVP.** W bazie istnieje konto `test@test.com` z hasłem `Test123!`,
+założone tą właśnie drogą. Na czas MVP jest to droga wejścia do aplikacji dla wszystkich,
+którzy mają ją obejrzeć. **Ekran logowania wyświetla tę informację wprost** — zarówno to,
+że konta zakłada się w panelu Supabase, jak i dane konta testowego — żeby osoba próbująca
+się zalogować nie szukała nieistniejącej rejestracji.
+
+**Konsekwencja przyjęta świadomie.** Dane konta testowego są jawne na ekranie logowania,
+więc każdy, kto zna adres aplikacji, ma pełny dostęp administratora — łącznie z wglądem
+w rejestr lokali i dane kontaktowe właścicieli. To jest akceptowalne wyłącznie dla PoC
+na danych testowych. Przed wdrożeniem z prawdziwym rejestrem konto testowe musi zniknąć
+razem z komunikatem na ekranie logowania; patrz `## Open Questions` nr 3.
+
+**Role w v1 i w v2.** W v1 nie ma modelu ról: **każdy użytkownik istniejący w bazie jest
+administratorem** i dostaje pełny zakres uprawnień opisany wyżej. Rozróżnienie ról wchodzi
+w v2 — wtedy pojawia się konto zwykłego użytkownika, a podniesienie go do administratora
+odbywa się (tak jak samo zakładanie kont w v1) **bezpośrednio w bazie danych**, bez ekranu
+zarządzania uprawnieniami po stronie aplikacji. Panel Supabase pozostaje przy tym
+narzędziem administracyjnym właściciela projektu, a nie funkcją produktu — nikt spoza
+osoby prowadzącej wdrożenie nie dostaje do niego dostępu.
 
 **Właściciel.** Nie ma konta ani hasła w v1. Dostęp do głosowania odbywa się przez
 indywidualny link otrzymany e-mailem, powiązany z konkretnym lokalem w rejestrze.
@@ -313,7 +340,18 @@ Granice wynikające z decyzji zakresowych:
 - **Bez pozostałych modułów aplikacji** — rachunki, generowanie bilansu, utrzymanie,
   przeglądy, ubezpieczenia, pielęgnacja ogrodu, sprzątanie, koszty. MVP to moduł
   bazowy (nieruchomości i mieszkańcy) plus moduł głosowania.
-- **Bez samodzielnej rejestracji administratora.** Konto zakładane przy wdrożeniu.
+- **Bez samodzielnej rejestracji administratora.** Aplikacja nie ma ekranu rejestracji
+  ani odzyskiwania hasła; konta zakłada się w panelu Supabase
+  (`## Access Control`). Znika przez to cała ścieżka rejestracja → potwierdzenie
+  adresu e-mail → logowanie: potwierdzanie adresu przestaje być wymaganiem
+  produktowym v1, bo nie ma czego potwierdzać.
+- **Bez modelu ról i ekranu zarządzania uprawnieniami.** W v1 każdy użytkownik
+  istniejący w bazie jest administratorem. Role wchodzą w v2 i będą zmieniane
+  bezpośrednio w bazie danych, a nie z poziomu aplikacji.
+- **Bez ukrywania danych konta testowego.** W MVP ekran logowania jawnie podaje
+  `test@test.com` / `Test123!`. Świadomy wybór na rzecz dostępności PoC do obejrzenia;
+  konsekwencja opisana w `## Access Control`, wyjście z tego stanu śledzone
+  jako pytanie nr 3.
 
 Non-goale niefunkcjonalne:
 
@@ -343,3 +381,14 @@ Non-goale niefunkcjonalne:
 2. **Ile trwa domknięcie jednej uchwały dzisiaj (dni/tygodnie)?** — Owner: użytkownik.
    Potrzebne jako punkt odniesienia dla oceny, o ile produkt skraca cykl.
    Nie blokuje budowy MVP.
+3. **Jak wygląda dostęp administratora po zakończeniu PoC, gdy znika konto testowe?** —
+   Owner: użytkownik. Otwarte od 2026-08-01, wraz z decyzją o zakładaniu kont
+   w panelu Supabase i o jawnym koncie testowym `test@test.com` / `Test123!`
+   (`## Access Control`). Ochrona rejestru lokali i danych kontaktowych właścicieli
+   sprowadza się dziś do nieujawniania adresu aplikacji, bo dane logowania są jawne.
+   Narzędzie jest rozstrzygnięte — panel Supabase. Otwarte zostaje: kto ma do niego
+   dostęp, jak prawdziwy administrator dostaje swoje pierwsze hasło (kanałem poza
+   aplikacją) i co się dzieje, gdy je zapomni — skoro aplikacja nie ma resetu hasła,
+   jedynym wyjściem jest ręczna zmiana w panelu.
+   Blokujące dla wdrożenia z prawdziwym rejestrem; nie blokuje budowy MVP
+   ani PoC na danych testowych.
