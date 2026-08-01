@@ -706,11 +706,11 @@ unused.
 
 #### Automated
 
-- [x] 5.1 `npm run lint` passes
-- [x] 5.2 The `F-02` roadmap block no longer says "domenie testowej"
+- [x] 5.1 `npm run lint` passes — 13b1f7b
+- [x] 5.2 The `F-02` roadmap block no longer says "domenie testowej" — 13b1f7b
 
 #### Manual
 
-- [x] 5.3 `CLAUDE.md` no longer says the account is on Workers Free
-- [x] 5.4 README's procedure is followable by someone not present for this change
-- [x] 5.5 `change.md` status is `done` with the residuals listed
+- [x] 5.3 `CLAUDE.md` no longer says the account is on Workers Free — 13b1f7b
+- [x] 5.4 README's procedure is followable by someone not present for this change — 13b1f7b
+- [x] 5.5 `change.md` status is `done` with the residuals listed — 13b1f7b
