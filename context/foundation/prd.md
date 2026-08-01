@@ -1,6 +1,6 @@
 ---
 project: "EstateManager"
-version: 2
+version: 3
 status: draft
 created: 2026-08-01
 updated: 2026-08-01
@@ -134,7 +134,19 @@ elektroniczny wystarczył".
 
 ### Rejestr i dostęp do głosowania
 
-- FR-001: Administrator może zaimportować z pliku listę lokali z metrażem oraz przypisanych do nich właścicieli. Priority: must-have
+- FR-011: Administrator może założyć budynek, podając jego nazwę i adres. Zestaw pól opisujących budynek ma być rozszerzalny — dołożenie kolejnego pola jest zmianą addytywną, a nie przebudową rejestru. Priority: must-have
+  > Numer jest wyższy od FR-001, mimo że wymaganie je poprzedza: numeracja FR jest
+  > stabilna, a FR-001–FR-010 są cytowane w zamkniętych planach i w roadmapie.
+  > Dodane 2026-08-01, gdy `S-01` roadmapy zostało rozbite na założenie budynku
+  > (`S-01`) i import lokali (`S-01b`) — wcześniej PRD nie mówił, skąd bierze się
+  > sam budynek, i milcząco zakładał, że po prostu istnieje.
+  > Socrates: Rozważony kontrargument: „formularz zakładania budynków otwiera
+  > wielobudynkowość, którą `## Non-Goals` wyklucza." Rozstrzygnięcie: kontrargument
+  > odrzucony — non-goal dotyczy *obsługi* portfela nieruchomości (właściciel z lokalami
+  > w kilku budynkach, przełączanie kontekstu, uprawnienia per budynek), a nie sposobu,
+  > w jaki powstaje ten jeden budynek. Zakładanie go formularzem zamiast migracją lub
+  > seedem nie zobowiązuje reszty produktu do niczego. Non-goal zostaje bez zmian.
+- FR-001: Administrator może zaimportować z pliku listę lokali z metrażem oraz przypisanych do nich właścicieli. Import celuje w budynek założony wcześniej (FR-011). Priority: must-have
   > Socrates: Rozważony kontrargument: „import jednorazowy nie wystarczy — lokale zmieniają
   > właścicieli, a bez edycji rejestru dane rozjadą się z rzeczywistością po pierwszej
   > sprzedaży mieszkania." Rozstrzygnięcie: kontrargument uznany, ale świadomie odłożony —
@@ -266,7 +278,7 @@ przez panel Supabase** (Authentication → Users → Add user): osoba prowadząc
 wpisuje adres e-mail i hasło, i to jest cała procedura. Aplikacja nie ma ekranu
 rejestracji ani żadnej innej ścieżki samodzielnego założenia konta — nie w oknie
 wdrożeniowym i nie później. Uwierzytelnianie e-mailem i hasłem;
-administrator jest jedyną rolą, która się loguje. Może importować rejestr, tworzyć
+administrator jest jedyną rolą, która się loguje. Może założyć budynek, importować rejestr, tworzyć
 uchwały, uruchamiać głosowania, rozsyłać linki, śledzić bieżący stan i przeglądać
 zakończone głosowania. Ustalenie z 2026-08-01; jest to wiążąca wersja decyzji o dostępie
 administratora i zastępuje zarówno wcześniejsze „konto zakładane przy wdrożeniu", jak

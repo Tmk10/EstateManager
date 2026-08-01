@@ -4,14 +4,14 @@ version: 2
 status: draft
 created: 2026-08-01
 updated: 2026-08-01
-prd_version: 2
+prd_version: 3
 main_goal: market-feedback
 top_blocker: time
 ---
 
 # Roadmap: EstateManager
 
-> Wyprowadzona z `context/foundation/prd.md` (v2) oraz z automatycznego rozpoznania stanu kodu.
+> Wyprowadzona z `context/foundation/prd.md` (v3) oraz z automatycznego rozpoznania stanu kodu.
 > Dokument edytowany w miejscu; archiwizowany, gdy zostanie zastąpiony.
 > Kawałki poniżej są ułożone w kolejności zależności. Tabela „At a glance" jest indeksem.
 
@@ -44,8 +44,9 @@ potwierdza się albo upada; wszystko inne ma znaczenie tylko wtedy, gdy ten klik
 | ---- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------- | -------- |
 | F-01 | `production-admin-access`   | (fundament) administrator loguje się na produkcji kontem założonym w bazie, ekran logowania mówi skąd je wziąć, a brak sekretu przestaje być cichy | —             | Access Control, Guardrails   | done     |
 | F-02 | `transactional-mail-channel`| (fundament) z Workera wychodzi jedna prawdziwa wiadomość, przez natywny binding Cloudflare, z własnej domeny                | —             | FR-002, FR-004               | done     |
-| S-01 | `building-registry-import`  | administrator importuje z pliku rejestr lokali z metrażem i właścicielami, a wyliczone udziały sumują się do 100%        | F-01          | US-02, FR-001, FR-006        | proposed |
-| S-02 | `resolution-with-voting-links` | administrator tworzy uchwałę, uruchamia nad nią głosowanie i dysponuje indywidualnym linkiem dla każdego lokalu       | S-01          | US-02, FR-003                | proposed |
+| S-01 | `building-create`           | administrator zakłada budynek prostym formularzem (nazwa, adres), a schemat jest przygotowany na dokładanie kolejnych pól | F-01          | US-02, FR-011                | proposed |
+| S-01b| `building-units-import`     | administrator importuje z pliku do istniejącego budynku rejestr lokali z metrażem i właścicielami, a wyliczone udziały sumują się do 100% | S-01          | US-02, FR-001, FR-006        | proposed |
+| S-02 | `resolution-with-voting-links` | administrator tworzy uchwałę, uruchamia nad nią głosowanie i dysponuje indywidualnym linkiem dla każdego lokalu       | S-01b         | US-02, FR-003                | proposed |
 | S-03 | `share-weighted-vote`       | właściciel odczytuje treść uchwały i oddaje z linku ostateczny głos ważony udziałem swojego lokalu                       | S-02          | US-01, FR-005, FR-006        | proposed |
 | S-04 | `voting-link-email-fanout`  | wszyscy właściciele w budynku otrzymują e-mailem swój indywidualny link do głosowania                                    | S-02, F-02    | US-02, FR-002, FR-004        | proposed |
 | S-05 | `live-tally-and-outcome`    | administrator widzi na żywo bilans udziałów i brakującą część do progu, a uchwała sama zostaje podjęta albo upada        | S-03          | US-02, FR-007, FR-008        | proposed |
@@ -59,9 +60,9 @@ równoległych torów.
 
 | Stream | Theme                  | Chain                            | Note                                                                                                                    |
 | ------ | ---------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| A      | Rejestr i uchwała      | `F-01` → `S-01` → `S-02`         | Tor administratora. Wszystko inne z niego wyrasta — bez rejestru i uchwały nie ma czego ani komu wysyłać.               |
+| A      | Rejestr i uchwała      | `F-01` → `S-01` → `S-01b` → `S-02` | Tor administratora. Wszystko inne z niego wyrasta — bez rejestru i uchwały nie ma czego ani komu wysyłać. `S-01` stawia schemat i kontrakt dostępu na jednej małej tabeli, `S-01b` napełnia go rejestrem. |
 | B      | Głos i wynik           | `S-03` → `S-05` → `S-06`         | Dołącza do toru A przy `S-02`. Zawiera gwiazdę przewodnią `S-03` i domyka pętlę aż do śladu audytowego.                 |
-| C      | Kanał pocztowy         | `F-02` → `S-04`                  | `F-02` startuje równolegle do całego toru A; `S-04` dołącza do toru A przy `S-02`. Krótki w kodzie, ale `F-02` niesie ręczne warunki wstępne poza repozytorium: zakup domeny i plan Workers Paid. |
+| C      | Kanał pocztowy         | `F-02` → `S-04`                  | `F-02` zamknięte 2026-08-01 — tor jest bezczynny do `S-02`, przy którym `S-04` dołącza do toru A. Domena i plan Workers Paid są już opłacone, więc `S-04` nie niesie już warunków wstępnych poza repozytorium. |
 
 ## Baseline
 
@@ -111,18 +112,41 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 
 ## Slices
 
-### S-01: Import rejestru budynku
+> **Podział `S-01` (2026-08-01).** Pierwotne `S-01: Import rejestru budynku` (`building-registry-import`)
+> obejmowało jednym kawałkiem założenie budynku i wczytanie do niego lokali. Rozbite na `S-01`
+> i `S-01b`, bo to dwa osobno dowożalne kroki o różnym ciężarze: pierwszy to formularz na dwóch
+> polach, drugi to parsowanie pliku i arytmetyka udziałów. Numeracja `S-02`–`S-06` **celowo
+> nietknięta** — `S-03` i `S-04` są cytowane w zamkniętych planach, w `CLAUDE.md` i w komentarzach
+> w kodzie (`src/lib/email.ts`, `src/pages/api/health.ts`), więc przenumerowanie unieważniłoby
+> zapisy, których nie wolno edytować wstecz. Stąd `S-01b`, a nie przesunięcie całej listy.
 
-- **Outcome:** administrator importuje z pliku listę lokali z metrażem oraz przypisanymi do nich właścicielami i widzi rejestr swojego budynku, w którym wyliczone z metrażu udziały sumują się do 100%.
-- **Change ID:** `building-registry-import`
-- **PRD refs:** US-02, FR-001, FR-006
+### S-01: Założenie budynku
+
+- **Outcome:** administrator zakłada budynek prostym formularzem — nazwa i adres — i widzi go zapisanego; zestaw pól jest tak dobrany, żeby dołożenie kolejnego (NIP wspólnoty, rok budowy, numer księgi) było jedną migracją i jednym polem formularza, bez przebudowy tabeli ani ścieżki zapisu.
+- **Change ID:** `building-create`
+- **PRD refs:** US-02, FR-011
 - **Prerequisites:** F-01
-- **Parallel with:** F-02
+- **Parallel with:** —  (F-02 zamknięte)
+- **Blockers:** —
+- **Unknowns:**
+  - Czy nazwa budynku ma być unikalna, i co się dzieje przy próbie założenia drugiego budynku o tej samej nazwie i adresie? — Owner: użytkownik. Block: no.
+  - PRZYJĘTE ZAŁOŻENIE 2026-08-01: formularz **zakłada** budynki, ale produkt nadal pracuje na jednym — `## Non-Goals` PRD („bez obsługi wielu budynków") pozostaje w mocy i nic poniżej `S-01b` nie obsługuje portfela. Formularz jest tu sposobem, w jaki ten jeden budynek powstaje — zamiast migracji albo seeda — a nie zapowiedzią wielobudynkowości. Do potwierdzenia przez użytkownika, gdyby intencja była inna. — Owner: użytkownik. Block: no.
+- **Risk:** Pierwszy kawałek, który zakłada tabele — a warstwa danych jest dziś pusta, więc to **tutaj**, przy dwóch polach, a nie później przy pełnym rejestrze, powstaje kontrakt bezpieczeństwa dla całego produktu: każda tabela z włączonym zabezpieczeniem na poziomie wiersza, po jednej polityce na operację i rolę, z rolą anonimową włącznie — bo właściciel głosuje bez sesji. To jest właściwy powód, dla którego ten kawałek stoi osobno: ustawienie wzorca na najmniejszej możliwej tabeli jest tańsze i łatwiejsze do sprawdzenia niż dopisywanie go do rejestru, który już ma dane. Tu też pada pierwsze prawdziwe uruchomienie `supabase/seed.sql`, który od `F-01` leży nieuruchomiony (Docker był wtedy niedostępny). Wymaganie rozszerzalności jest sprawdzalne, nie deklaratywne: kolumny opisowe budynku nienazwane w `FR-011` mają być dokładane bez migracji zmieniającej istniejące wiersze.
+- **Status:** proposed
+
+### S-01b: Import lokali do istniejącego budynku
+
+- **Outcome:** administrator wybiera założony wcześniej budynek, importuje z pliku listę lokali z metrażem oraz przypisanymi do nich właścicielami i widzi rejestr, w którym wyliczone z metrażu udziały sumują się do 100%.
+- **Change ID:** `building-units-import`
+- **PRD refs:** US-02, FR-001, FR-006
+- **Prerequisites:** S-01 — import celuje w **istniejący** budynek, więc bez `S-01` nie ma do czego importować
+- **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:**
   - W jakim formacie zarządca posiada dziś listę lokali (arkusz, CSV, wydruk z innego systemu) i czy da się ustalić jeden format wejściowy? — Owner: użytkownik. Block: no.
   - Jak zachować się przy sumie udziałów różnej od 100% po zaokrągleniach — odrzucić import czy przyjąć z ostrzeżeniem? Zaokrąglenia rozstrzygną uchwałę przy wyniku bliskim progu (kontrargument odnotowany przy FR-006). — Owner: użytkownik. Block: no.
-- **Risk:** Pierwszy kawałek, który zakłada tabele — a warstwa danych jest dziś pusta, więc to tutaj powstaje kontrakt bezpieczeństwa dla całego produktu: każda tabela z włączonym zabezpieczeniem na poziomie wiersza, po jednej polityce na operację i rolę, każda ograniczona zakresem budynku, z rolą anonimową włącznie — bo właściciel głosuje bez sesji. Wprowadzenie tego kontraktu tutaj, a nie później, jest tańsze niż dopisywanie go do istniejących tabel. Bariera PRD „dane właścicieli nie wychodzą poza budynek" jest egzekwowana właśnie w tym miejscu, nie w interfejsie.
+  - Co się dzieje przy powtórnym imporcie do budynku, który ma już lokale — odrzucenie, zastąpienie czy dopisanie? Rejestr jest w v1 statyczny (`## Non-Goals`), więc najprostszą odpowiedzią jest odrzucenie, ale nie jest ona rozstrzygnięta. — Owner: użytkownik. Block: no.
+- **Risk:** Tu mieszka cała trudność pierwotnego `S-01`: parsowanie pliku o nieustalonym formacie i arytmetyka udziałów, od której zależy poprawność każdego późniejszego rozstrzygnięcia uchwały. Kontrakt bezpieczeństwa jest już postawiony przez `S-01`, więc ten kawałek go **stosuje**, a nie wymyśla — tabele lokali i właścicieli dziedziczą wzorzec ograniczenia zakresem budynku. Bariera PRD „dane właścicieli nie wychodzą poza budynek" jest egzekwowana właśnie tutaj, na poziomie polityk dostępu, nie w interfejsie: to pierwszy moment, w którym w bazie pojawiają się cudze dane kontaktowe.
 - **Status:** proposed
 
 ### S-02: Uchwała i indywidualne linki do głosowania
@@ -130,7 +154,7 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 - **Outcome:** administrator tworzy uchwałę, uruchamia nad nią głosowanie i od tego momentu każdemu lokalowi w budynku odpowiada indywidualny link, który administrator może odczytać i przekazać.
 - **Change ID:** `resolution-with-voting-links`
 - **PRD refs:** US-02, FR-003
-- **Prerequisites:** S-01
+- **Prerequisites:** S-01b — link powstaje per lokal, więc potrzebny jest zaimportowany rejestr, a nie sam budynek
 - **Parallel with:** F-02
 - **Blockers:** —
 - **Unknowns:**
@@ -196,10 +220,11 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 
 | Roadmap ID | Change ID                      | Suggested issue title                                                     | Ready for `/10x-plan` | Notes                                                                 |
 | ---------- | ------------------------------ | ------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------- |
-| F-01       | `production-admin-access`      | Doprowadzić dostęp administratora na produkcji do stanu sprawdzalnego      | yes                   | Uruchom `/10x-plan production-admin-access`                           |
+| F-01       | `production-admin-access`      | Doprowadzić dostęp administratora na produkcji do stanu sprawdzalnego      | zrobione              | Zamknięte 2026-08-01. Logowanie administratora potwierdzone na produkcji |
 | F-02       | `transactional-mail-channel`   | Podłączyć Cloudflare Email Service i wysłać pierwszą wiadomość z Workera   | zrobione              | Zamknięte 2026-08-01. Domena `estatemanager.dev`, plan Workers Paid, pierwsza wysyłka z produkcji potwierdzona |
-| S-01       | `building-registry-import`     | Import rejestru lokali i właścicieli budynku                               | no                    | Wymaga `F-01`                                                          |
-| S-02       | `resolution-with-voting-links` | Utworzenie uchwały i wygenerowanie indywidualnych linków                   | no                    | Wymaga `S-01`                                                          |
+| S-01       | `building-create`              | Założenie budynku formularzem (nazwa, adres)                               | yes                   | `F-01` zamknięte, więc odblokowane. Uruchom `/10x-new building-create`, potem `/10x-plan building-create` |
+| S-01b      | `building-units-import`        | Import lokali i właścicieli do istniejącego budynku                        | no                    | Wymaga `S-01`                                                          |
+| S-02       | `resolution-with-voting-links` | Utworzenie uchwały i wygenerowanie indywidualnych linków                   | no                    | Wymaga `S-01b`                                                         |
 | S-03       | `share-weighted-vote`          | Oddanie ważonego udziałem głosu z indywidualnego linku                     | no                    | Wymaga `S-02`. Gwiazda przewodnia                                      |
 | S-04       | `voting-link-email-fanout`     | Rozesłanie indywidualnych linków do głosowania e-mailem                    | no                    | Wymaga `S-02` oraz `F-02`                                              |
 | S-05       | `live-tally-and-outcome`       | Bilans udziałów na żywo i automatyczne rozstrzygnięcie uchwały             | no                    | Wymaga `S-03`                                                          |
