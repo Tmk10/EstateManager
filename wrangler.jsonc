@@ -20,4 +20,16 @@
 			"id": "1a914a1c1f00405794482cea29c6bfd3"
 		}
 	],
+	// Locked to the product's single sending identity: a send from any other
+	// address fails at the binding rather than quietly reaching owners from a
+	// wrong From. A local send needs the remote flag added here temporarily —
+	// it sends real mail from wrangler dev and must never be committed.
+	"send_email": [
+		{
+			"name": "EMAIL",
+			"allowed_sender_addresses": [
+				"glosowanie@estatemanager.dev"
+			]
+		}
+	],
 }

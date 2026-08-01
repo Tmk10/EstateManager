@@ -646,30 +646,30 @@ unused.
 
 #### Automated
 
-- [x] 1.1 `npx wrangler email sending list` lists the domain
-- [x] 1.2 `npx wrangler email sending dns get <domain>` shows SPF and DKIM records
-- [x] 1.3 `npx wrangler email sending send …` exits 0
+- [x] 1.1 `npx wrangler email sending list` lists the domain — 38dbc91
+- [x] 1.2 `npx wrangler email sending dns get <domain>` shows SPF and DKIM records — 38dbc91
+- [x] 1.3 `npx wrangler email sending send …` exits 0 — 38dbc91
 
 #### Manual
 
-- [x] 1.4 The Cloudflare account is on the Workers Paid plan
-- [x] 1.5 The CLI message arrives in the inbox (any folder)
-- [x] 1.6 The account's daily sending limit is recorded in `change.md`, with a note on whether it is ≥ 100
+- [x] 1.4 The Cloudflare account is on the Workers Paid plan — 38dbc91
+- [x] 1.5 The CLI message arrives in the inbox (any folder) — 38dbc91
+- [x] 1.6 The account's daily sending limit is recorded in `change.md`, with a note on whether it is ≥ 100 — 38dbc91
 
 ### Phase 2: Binding, generated types, and the mail helper
 
 #### Automated
 
-- [ ] 2.1 `npx wrangler types` succeeds and writes `worker-configuration.d.ts`
-- [ ] 2.2 `npx astro sync` succeeds
-- [ ] 2.3 `npm run lint` passes
-- [ ] 2.4 `npm run build` passes
-- [ ] 2.5 `git diff wrangler.jsonc` shows no `"remote": true`
+- [x] 2.1 `npx wrangler types` succeeds and writes `worker-configuration.d.ts`
+- [x] 2.2 `npx astro sync` succeeds
+- [x] 2.3 `npm run lint` passes
+- [x] 2.4 `npm run build` passes
+- [x] 2.5 `git diff wrangler.jsonc` shows no `"remote": true`
 
 #### Manual
 
-- [ ] 2.6 `worker-configuration.d.ts` is staged for commit, not ignored
-- [ ] 2.7 `EMAIL` appears in the generated environment interface
+- [x] 2.6 `worker-configuration.d.ts` is staged for commit, not ignored
+- [x] 2.7 `EMAIL` appears in the generated environment interface
 
 ### Phase 3: Trigger endpoint and the missing-binding surface
 
