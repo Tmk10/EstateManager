@@ -1,9 +1,9 @@
 ---
 project: "EstateManager"
-version: 3
+version: 4
 status: draft
 created: 2026-08-01
-updated: 2026-08-01
+updated: 2026-08-02
 context_type: greenfield
 product_type: web-app
 target_scale:
@@ -134,7 +134,7 @@ elektroniczny wystarczył".
 
 ### Rejestr i dostęp do głosowania
 
-- FR-011: Administrator może założyć budynek, podając jego nazwę i adres. Zestaw pól opisujących budynek ma być rozszerzalny — dołożenie kolejnego pola jest zmianą addytywną, a nie przebudową rejestru. Priority: must-have
+- FR-011: Administrator może założyć budynek, podając jego nazwę oraz adres rozbity na dwa pola: miejscowość i ulicę z numerem. Zestaw pól opisujących budynek ma być rozszerzalny — dołożenie kolejnego pola jest zmianą addytywną, a nie przebudową rejestru. Priority: must-have
   > Numer jest wyższy od FR-001, mimo że wymaganie je poprzedza: numeracja FR jest
   > stabilna, a FR-001–FR-010 są cytowane w zamkniętych planach i w roadmapie.
   > Dodane 2026-08-01, gdy `S-01` roadmapy zostało rozbite na założenie budynku
@@ -146,6 +146,10 @@ elektroniczny wystarczył".
   > w kilku budynkach, przełączanie kontekstu, uprawnienia per budynek), a nie sposobu,
   > w jaki powstaje ten jeden budynek. Zakładanie go formularzem zamiast migracją lub
   > seedem nie zobowiązuje reszty produktu do niczego. Non-goal zostaje bez zmian.
+  > Zmiana 2026-08-02: adres rozbity z jednego pola na miejscowość i ulicę z numerem —
+  > jedno pole tekstowe „adres" jest nieprzeszukiwalne i nieporównywalne, a rozbicie
+  > wykonane teraz, na pustej tabeli, jest jedną kolumną więcej; wykonane później
+  > byłoby migracją danych z parsowaniem wolnego tekstu.
 - FR-001: Administrator może zaimportować z pliku listę lokali z metrażem oraz przypisanych do nich właścicieli. Import celuje w budynek założony wcześniej (FR-011). Priority: must-have
   > Socrates: Rozważony kontrargument: „import jednorazowy nie wystarczy — lokale zmieniają
   > właścicieli, a bez edycji rejestru dane rozjadą się z rzeczywistością po pierwszej

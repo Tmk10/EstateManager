@@ -1,17 +1,17 @@
 ---
 project: "EstateManager"
-version: 2
+version: 3
 status: draft
 created: 2026-08-01
-updated: 2026-08-01
-prd_version: 3
+updated: 2026-08-02
+prd_version: 4
 main_goal: market-feedback
 top_blocker: time
 ---
 
 # Roadmap: EstateManager
 
-> Wyprowadzona z `context/foundation/prd.md` (v3) oraz z automatycznego rozpoznania stanu kodu.
+> Wyprowadzona z `context/foundation/prd.md` (v4) oraz z automatycznego rozpoznania stanu kodu.
 > Dokument edytowany w miejscu; archiwizowany, gdy zostanie zastąpiony.
 > Kawałki poniżej są ułożone w kolejności zależności. Tabela „At a glance" jest indeksem.
 
@@ -44,7 +44,7 @@ potwierdza się albo upada; wszystko inne ma znaczenie tylko wtedy, gdy ten klik
 | ---- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------- | -------- |
 | F-01 | `production-admin-access`   | (fundament) administrator loguje się na produkcji kontem założonym w bazie, ekran logowania mówi skąd je wziąć, a brak sekretu przestaje być cichy | —             | Access Control, Guardrails   | done     |
 | F-02 | `transactional-mail-channel`| (fundament) z Workera wychodzi jedna prawdziwa wiadomość, przez natywny binding Cloudflare, z własnej domeny                | —             | FR-002, FR-004               | done     |
-| S-01 | `building-create`           | administrator zakłada budynek prostym formularzem (nazwa, adres), a schemat jest przygotowany na dokładanie kolejnych pól | F-01          | US-02, FR-011                | proposed |
+| S-01 | `building-create`           | administrator zakłada budynek prostym formularzem (nazwa, miejscowość, ulica z numerem), a schemat jest przygotowany na dokładanie kolejnych pól | F-01          | US-02, FR-011                | proposed |
 | S-01b| `building-units-import`     | administrator importuje z pliku do istniejącego budynku rejestr lokali z metrażem i właścicielami, a wyliczone udziały sumują się do 100% | S-01          | US-02, FR-001, FR-006        | proposed |
 | S-02 | `resolution-with-voting-links` | administrator tworzy uchwałę, uruchamia nad nią głosowanie i dysponuje indywidualnym linkiem dla każdego lokalu       | S-01b         | US-02, FR-003                | proposed |
 | S-03 | `share-weighted-vote`       | właściciel odczytuje treść uchwały i oddaje z linku ostateczny głos ważony udziałem swojego lokalu                       | S-02          | US-01, FR-005, FR-006        | proposed |
@@ -122,7 +122,7 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 
 ### S-01: Założenie budynku
 
-- **Outcome:** administrator zakłada budynek prostym formularzem — nazwa i adres — i widzi go zapisanego; zestaw pól jest tak dobrany, żeby dołożenie kolejnego (NIP wspólnoty, rok budowy, numer księgi) było jedną migracją i jednym polem formularza, bez przebudowy tabeli ani ścieżki zapisu.
+- **Outcome:** administrator zakłada budynek prostym formularzem — nazwa, miejscowość, ulica z numerem — i widzi go zapisanego; zestaw pól jest tak dobrany, żeby dołożenie kolejnego (NIP wspólnoty, rok budowy, numer księgi) było jedną migracją i jednym polem formularza, bez przebudowy tabeli ani ścieżki zapisu.
 - **Change ID:** `building-create`
 - **PRD refs:** US-02, FR-011
 - **Prerequisites:** F-01
@@ -130,6 +130,7 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 - **Blockers:** —
 - **Unknowns:**
   - Czy nazwa budynku ma być unikalna, i co się dzieje przy próbie założenia drugiego budynku o tej samej nazwie i adresie? — Owner: użytkownik. Block: no.
+  - ROZSTRZYGNIĘTE 2026-08-02: adres nie jest jednym polem tekstowym, tylko dwoma — miejscowość oraz ulica z numerem. Powód: pojedyncze pole „adres" jest nieprzeszukiwalne i nieporównywalne, a rozbicie na pustej tabeli kosztuje jedną kolumnę; wykonane później byłoby migracją danych z parsowaniem wolnego tekstu. Unikalność obejmuje wtedy trójkę (nazwa, miejscowość, ulica).
   - PRZYJĘTE ZAŁOŻENIE 2026-08-01: formularz **zakłada** budynki, ale produkt nadal pracuje na jednym — `## Non-Goals` PRD („bez obsługi wielu budynków") pozostaje w mocy i nic poniżej `S-01b` nie obsługuje portfela. Formularz jest tu sposobem, w jaki ten jeden budynek powstaje — zamiast migracji albo seeda — a nie zapowiedzią wielobudynkowości. Do potwierdzenia przez użytkownika, gdyby intencja była inna. — Owner: użytkownik. Block: no.
 - **Risk:** Pierwszy kawałek, który zakłada tabele — a warstwa danych jest dziś pusta, więc to **tutaj**, przy dwóch polach, a nie później przy pełnym rejestrze, powstaje kontrakt bezpieczeństwa dla całego produktu: każda tabela z włączonym zabezpieczeniem na poziomie wiersza, po jednej polityce na operację i rolę, z rolą anonimową włącznie — bo właściciel głosuje bez sesji. To jest właściwy powód, dla którego ten kawałek stoi osobno: ustawienie wzorca na najmniejszej możliwej tabeli jest tańsze i łatwiejsze do sprawdzenia niż dopisywanie go do rejestru, który już ma dane. Tu też pada pierwsze prawdziwe uruchomienie `supabase/seed.sql`, który od `F-01` leży nieuruchomiony (Docker był wtedy niedostępny). Wymaganie rozszerzalności jest sprawdzalne, nie deklaratywne: kolumny opisowe budynku nienazwane w `FR-011` mają być dokładane bez migracji zmieniającej istniejące wiersze.
 - **Status:** proposed
@@ -222,7 +223,7 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 | ---------- | ------------------------------ | ------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------- |
 | F-01       | `production-admin-access`      | Doprowadzić dostęp administratora na produkcji do stanu sprawdzalnego      | zrobione              | Zamknięte 2026-08-01. Logowanie administratora potwierdzone na produkcji |
 | F-02       | `transactional-mail-channel`   | Podłączyć Cloudflare Email Service i wysłać pierwszą wiadomość z Workera   | zrobione              | Zamknięte 2026-08-01. Domena `estatemanager.dev`, plan Workers Paid, pierwsza wysyłka z produkcji potwierdzona |
-| S-01       | `building-create`              | Założenie budynku formularzem (nazwa, adres)                               | yes                   | `F-01` zamknięte, więc odblokowane. Uruchom `/10x-new building-create`, potem `/10x-plan building-create` |
+| S-01       | `building-create`              | Założenie budynku formularzem (nazwa, miejscowość, ulica z numerem)        | yes                   | `F-01` zamknięte, więc odblokowane. Uruchom `/10x-new building-create`, potem `/10x-plan building-create` |
 | S-01b      | `building-units-import`        | Import lokali i właścicieli do istniejącego budynku                        | no                    | Wymaga `S-01`                                                          |
 | S-02       | `resolution-with-voting-links` | Utworzenie uchwały i wygenerowanie indywidualnych linków                   | no                    | Wymaga `S-01b`                                                         |
 | S-03       | `share-weighted-vote`          | Oddanie ważonego udziałem głosu z indywidualnego linku                     | no                    | Wymaga `S-02`. Gwiazda przewodnia                                      |
