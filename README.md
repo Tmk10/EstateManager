@@ -125,6 +125,11 @@ SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_KEY=<anon-key>
 ```
 
+Two constraints on the hosted project, both load-bearing:
+
+- **Region must be EU (Frankfurt / `eu-central-1`).** Worker compute location cannot be pinned below an Enterprise plan, so where the data lives is the only residency lever this architecture has. The region is immutable after project creation — getting it wrong means recreating the project and re-issuing every credential.
+- **Use the `anon` key, never the service-role key.** A service-role key bypasses Row Level Security entirely, on an app whose guardrail is that owners' data never leaves their building.
+
 ### Email confirmation in local development
 
 By default Supabase requires email confirmation before a user can sign in. To skip this during local development:
@@ -146,20 +151,50 @@ Users can then sign in immediately after sign-up without clicking a confirmation
 
 Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_ROUTES` array there to require authentication.
 
+## Health check
+
+`GET /api/health` reports whether the running Worker can actually reach Supabase. It is unauthenticated and deliberately excluded from `PROTECTED_ROUTES` — it has to answer before auth works.
+
+| Response | Meaning |
+| --- | --- |
+| `200 {"status":"ok"}` | Credentials present and Supabase answered its `/auth/v1/health` probe |
+| `503 {"status":"misconfigured","supabase":"missing-credentials"}` | One or both env vars are unset |
+| `503 {"status":"degraded","supabase":"unreachable"}` | Credentials present but Supabase did not answer — covers a **rotated or revoked key**, which a presence check alone would miss |
+
+This exists because both Supabase vars are `optional: true` in `astro.config.mjs`. That is intentional — it lets local dev and preview builds degrade to the config-status banner instead of failing — but it also means a production deploy can go green while the app is non-functional. This route is what makes that condition loud. The endpoint never echoes the URL or the key.
+
 ## Deployment
 
-Target platform is [Cloudflare Workers](https://workers.cloudflare.com/). **The project has not been deployed yet** — there is no git remote, `wrangler` is not authenticated, and no hosted Supabase project exists.
+Production runs on [Cloudflare Workers](https://workers.cloudflare.com/) as the Worker named `estate-manager`.
 
-The first deploy is planned in [`context/changes/deployment/deployment-plan.md`](./context/changes/deployment/deployment-plan.md) and gated on [`deployment-preflight.md`](./context/changes/deployment/deployment-preflight.md). Follow those rather than deploying ad hoc.
+Deployment is automatic: every push to `main` runs `.github/workflows/deploy.yml`, which does `npm ci → astro sync → lint → build` and only then `wrangler deploy`. Any failing step fails the job and nothing ships — that in-job sequence *is* the gate, since branch protection would not cover direct pushes.
 
-Once the plan has been executed, the loop is:
+Manual deploy, rarely needed:
 
 ```bash
 npm run build
 npx wrangler deploy
 ```
 
-Set `SUPABASE_URL` and `SUPABASE_KEY` as Workers secrets via `npx wrangler secret put`.
+Secrets live in the Workers platform, not in the repo and not in the workflow:
+
+```bash
+npx wrangler secret put SUPABASE_URL
+npx wrangler secret put SUPABASE_KEY
+```
+
+They are write-only — there is no read-back, ever. After deploying, confirm `/api/health` returns `200`; a `503` means the secrets did not land.
+
+Rollback:
+
+```bash
+npx wrangler versions list
+npx wrangler rollback <version-id>
+```
+
+This reverts **code only** — database migrations are not covered.
+
+Each deployment is recorded in [`context/foundation/deployment-history.md`](./context/foundation/deployment-history.md).
 
 ## CI
 

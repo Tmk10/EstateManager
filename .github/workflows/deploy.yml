@@ -1,0 +1,41 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+# A queued deploy should not overtake a newer one, but never cancel a deploy
+# that is already talking to Cloudflare.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx astro sync
+      - run: npm run lint
+      - run: npm run build
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
+      # Lint and build run first on purpose. Branch protection with required
+      # checks only applies to pull requests, so on a direct push to main this
+      # in-job ordering is the only gate there is: any failing step above means
+      # wrangler never runs.
+      #
+      # SUPABASE_URL / SUPABASE_KEY are NOT passed here. In production they are
+      # Workers Secrets, set once via `wrangler secret put` and held by the
+      # platform. The env vars above exist only so the build can read them.
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy
