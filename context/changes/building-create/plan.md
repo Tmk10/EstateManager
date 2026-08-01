@@ -569,34 +569,34 @@ This is the project's first migration, so it also establishes the operational sh
 
 #### Automated
 
-- [x] 2.1 `npx supabase db reset` applies the migration and the seed with no error
-- [x] 2.2 `public.buildings` has RLS enabled and exactly 8 policies — verified in `pg_policy` AND through PostgREST (anon select `[]`, anon insert `42501`, authenticated select + insert `201`)
-- [x] 2.3 Inserting a duplicate `(name, city, street)` is rejected by the unique constraint — blank-field check constraints verified too
-- [x] 2.4 seed replayed against the live database: `INSERT 0 0` ×3, building count stays 1
-- [x] 2.5 `src/db/database.types.ts` contains a `buildings` entry under `public.Tables`
-- [x] 2.6 `npx astro sync && npm run lint && npm run build` all pass
+- [x] 2.1 `npx supabase db reset` applies the migration and the seed with no error — 452f837
+- [x] 2.2 `public.buildings` has RLS enabled and exactly 8 policies — verified in `pg_policy` AND through PostgREST (anon select `[]`, anon insert `42501`, authenticated select + insert `201`) — 452f837
+- [x] 2.3 Inserting a duplicate `(name, city, street)` is rejected by the unique constraint — blank-field check constraints verified too — 452f837
+- [x] 2.4 seed replayed against the live database: `INSERT 0 0` ×3, building count stays 1 — 452f837
+- [x] 2.5 `src/db/database.types.ts` contains a `buildings` entry under `public.Tables` — 452f837
+- [x] 2.6 `npx astro sync && npm run lint && npm run build` all pass — 452f837
 
 #### Manual
 
-- [x] 2.7 Studio shows the seeded demo building in the buildings table
-- [x] 2.8 Policy list reads as 4 × `authenticated` + 4 × `anon` with the anon set denying
+- [x] 2.7 Studio shows the seeded demo building in the buildings table — 452f837
+- [x] 2.8 Policy list reads as 4 × `authenticated` + 4 × `anon` with the anon set denying — 452f837
 
 ### Phase 3: The screens
 
 #### Automated
 
-- [ ] 3.1 `npx astro sync && npm run lint && npm run build` all pass
-- [ ] 3.2 `GET /buildings` while signed out redirects to `/auth/signin`
-- [ ] 3.3 `POST /api/buildings` while signed out redirects to `/auth/signin`
-- [ ] 3.4 Signed in, `POST /api/buildings` returns 302 to `/buildings` and the row exists
-- [ ] 3.5 Posting a duplicate name, city and street returns 302 with `?error=` rather than a 500
+- [x] 3.1 `npx astro sync && npm run lint && npm run build` all pass
+- [x] 3.2 `GET /buildings` while signed out redirects to `/auth/signin` — `/buildings/new` too
+- [x] 3.3 `POST /api/buildings` while signed out redirects to `/auth/signin`
+- [x] 3.4 Signed in, `POST /api/buildings` returns 302 to `/buildings` and the row exists
+- [x] 3.5 Posting a duplicate name, city and street returns 302 with `?error=` rather than a 500 — whitespace-only field rejected the same way
 
 #### Manual
 
-- [ ] 3.6 Creating a building in the browser puts it on the `/buildings` list
-- [ ] 3.7 Empty-form submit shows client-side errors and never reaches the server
-- [ ] 3.8 The duplicate message reads as intended Polish
-- [ ] 3.9 The empty state renders sensibly with no buildings in the database
+- [x] 3.6 Creating a building in the browser puts it on the `/buildings` list
+- [x] 3.7 Empty-form submit shows client-side errors and never reaches the server
+- [x] 3.8 The duplicate message reads as intended Polish
+- [x] 3.9 The empty state renders sensibly with no buildings in the database
 
 ### Phase 4: Production and the record
 

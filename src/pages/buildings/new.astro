@@ -1,0 +1,32 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import BuildingForm from "@/components/buildings/BuildingForm";
+
+// The endpoint redirects back here with ?error=<message> rather than returning a JSON
+// body — the shape every form endpoint in this app uses.
+const error = Astro.url.searchParams.get("error");
+---
+
+<Layout title="Nowy budynek">
+  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
+      <h1
+        class="mb-2 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-center text-2xl font-bold text-transparent"
+      >
+        Nowy budynek
+      </h1>
+      <p class="mb-6 text-center text-sm text-blue-100/60">Podaj nazwę wspólnoty oraz jej adres.</p>
+
+      <BuildingForm serverError={error} client:load />
+
+      <p class="mt-6 text-center text-sm">
+        <a
+          href="/buildings"
+          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
+        >
+          Wróć do listy budynków
+        </a>
+      </p>
+    </div>
+  </div>
+</Layout>
