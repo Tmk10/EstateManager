@@ -691,26 +691,26 @@ unused.
 
 #### Automated
 
-- [x] 4.1 The `deploy.yml` run for this push is green, including the health assertion
-- [x] 4.2 Production `/api/health` returns `200` with `"status":"ok"` and `"email":"ok"`
-- [x] 4.3 Production `POST /api/email/test` returns `200` with a `messageId`
-- [x] 4.4 Unauthenticated production `POST /api/email/test` returns `302`
+- [x] 4.1 The `deploy.yml` run for this push is green, including the health assertion — 050ef90
+- [x] 4.2 Production `/api/health` returns `200` with `"status":"ok"` and `"email":"ok"` — 050ef90
+- [x] 4.3 Production `POST /api/email/test` returns `200` with a `messageId` — 050ef90
+- [x] 4.4 Unauthenticated production `POST /api/email/test` returns `302` — 050ef90
 
 #### Manual
 
-- [x] 4.5 The message arrives in the test inbox
-- [x] 4.6 The `messageId` is recorded in `change.md`
-- [x] 4.7 Cloudflare's Email Sending dashboard shows the send
+- [x] 4.5 The message arrives in the test inbox — 050ef90
+- [x] 4.6 The `messageId` is recorded in `change.md` — 050ef90
+- [x] 4.7 Cloudflare's Email Sending dashboard shows the send — 050ef90
 
 ### Phase 5: Documentation and close-out
 
 #### Automated
 
-- [ ] 5.1 `npm run lint` passes
-- [ ] 5.2 The `F-02` roadmap block no longer says "domenie testowej"
+- [x] 5.1 `npm run lint` passes
+- [x] 5.2 The `F-02` roadmap block no longer says "domenie testowej"
 
 #### Manual
 
-- [ ] 5.3 `CLAUDE.md` no longer says the account is on Workers Free
-- [ ] 5.4 README's procedure is followable by someone not present for this change
-- [ ] 5.5 `change.md` status is `done` with the residuals listed
+- [x] 5.3 `CLAUDE.md` no longer says the account is on Workers Free
+- [x] 5.4 README's procedure is followable by someone not present for this change
+- [x] 5.5 `change.md` status is `done` with the residuals listed

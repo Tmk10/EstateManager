@@ -1,7 +1,7 @@
 ---
 change_id: transactional-mail-channel
 title: Connect a transactional mail provider and send the first real message from the Worker
-status: implementing
+status: done
 created: 2026-08-01
 updated: 2026-08-01
 archived_at: null
@@ -148,3 +148,43 @@ reverted) returned `<dSRtADZUdV4FsNbNpfr8lZgpWiZ8oWLwsG5P@estatemanager.dev>`. T
 Since this is a beta API, the date above is what dates the last known-good send if Cloudflare
 changes something underneath us. `POST /api/email/test` stays in the repository precisely so
 the check can be repeated.
+
+## Residuals
+
+Carried out of `F-02` deliberately. None blocks `S-04` from starting.
+
+1. **Whether ~70 sequential `EMAIL.send()` calls fit one Worker invocation is still open.** Not
+   probed here — answering it would have burned most of a day's quota and turned a foundation
+   into load testing. It is `S-04`'s first task, and it is a limit that only shows up in
+   production. Related and unchanged: Cloudflare has no batch endpoint and no idempotency key,
+   so `S-04` needs per-lokal send state in Postgres and must resume rather than restart.
+2. **Cloudflare Email Service is beta**, on the single channel the product thesis depends on.
+   Accepted knowingly. The documented fallback is Resend (`research.md` §7) — if the channel
+   has to be replaced, do not improvise a third option.
+3. **A GDPR processing agreement with Cloudflare is still owed.** Not a blocker for a PoC on
+   test data; it becomes one before a real building's owners are mailed.
+4. **A missing `EMAIL` binding does not fail the deploy.** Decided this session: `/api/health`
+   reports it inside a `200` and the banner shows it, but `deploy.yml`'s `curl --fail` passes
+   regardless. A knowing step down from the Supabase treatment `F-01` built, on the grounds
+   that a beta channel should not block shipping the rest of the app. **Revisit when `S-04`
+   makes the channel load-bearing for a real building.**
+5. **Deliverability is untouched** — which folder the message lands in is out of scope by PRD
+   §Non-Goals (v2). SPF/DKIM/DMARC exist because Cloudflare's onboarding wrote them, not
+   because anything here tuned them.
+6. **No daily send counter.** With the real quota at 200/day, 70 lokale plus a full reminder
+   round still fits; `E_DAILY_LIMIT_EXCEEDED` surfaced to the administrator is enough.
+7. **Error-code handling is one line deep.** `sendTestEmail` catches, logs and returns the
+   code — no retry, no classification table. One send cannot exercise the table, and an
+   unproven mapping in production is worse than none. `S-04` builds it against a real fanout.
+
+## Scope notes
+
+Two things done in this change that the plan did not call for, both small and both flagged at
+the time:
+
+- **`eslint.config.js` now ignores `worker-configuration.d.ts`.** The generated file carries
+  its own `eslint-disable` directives, which this config reports as unused on every run, and
+  it is rewritten wholesale on each regeneration. TypeScript still checks it via `tsconfig`.
+- **The plan's curl recipes were wrong** and were corrected in execution, not in the plan
+  (phase blocks are read-only): every form POST needs `-H "Origin: …"`. See the Phase 3 note
+  above.

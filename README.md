@@ -165,13 +165,87 @@ This dashboard procedure is the **only** way a production account comes into exi
 
 | Response | Meaning |
 | --- | --- |
-| `200 {"status":"ok"}` | Credentials present and Supabase answered its `/auth/v1/health` probe |
+| `200 {"status":"ok","email":"ok"}` | Credentials present, Supabase answered its `/auth/v1/health` probe, and the `EMAIL` binding resolves |
+| `200 {"status":"ok","email":"missing"}` | Supabase is fine but the `EMAIL` binding is absent — the app is up and **cannot send mail**. Informational: this does **not** fail the deploy (see [Transactional email](#transactional-email)) |
 | `503 {"status":"misconfigured","supabase":"missing-credentials"}` | One or both env vars are unset |
 | `503 {"status":"degraded","supabase":"unreachable"}` | Credentials present but Supabase did not answer — covers a **rotated or revoked key**, which a presence check alone would miss |
 
 This exists because both Supabase vars are `optional: true` in `astro.config.mjs`. That is intentional — it lets local dev and preview builds degrade to the config-status banner instead of failing — but it also means a production deploy can go green while the app is non-functional. This route is what makes that condition loud. The endpoint never echoes the URL or the key.
 
 `deploy.yml` now enforces it: after `wrangler deploy` publishes, a final step curls this endpoint and fails the job on anything but `200`, retrying up to 5 times at 5-second intervals so edge propagation or a brief Supabase blip does not redden an otherwise good deploy. Because `503` means *either* "missing credentials" *or* "Supabase unreachable" — the endpoint cannot distinguish them without leaking the URL or key — a red run needs a human to interpret. There is deliberately **no auto-rollback**: the probe cannot tell a bad deploy from a dependency outage, so rollback stays a manual `wrangler rollback` (mind the warning in the deployment runbook about which versions are safe targets).
+
+## Transactional email
+
+Mail is sent through **Cloudflare Email Service** using the native Workers `send_email` binding — there is no API key and no secret to rotate. `src/lib/email.ts` is the only module that imports `cloudflare:workers`; reach the binding through it rather than directly.
+
+> On Astro 6 with `@astrojs/cloudflare` 13, `Astro.locals.runtime.env` **no longer exists**. Bindings come from `import { env } from "cloudflare:workers"`. Tutorials showing the old accessor are wrong for this repo.
+
+### One-time setup (manual, not automated here)
+
+Like the Supabase dashboard procedure above, none of this is scripted. Each step blocks the next.
+
+1. **Workers Paid plan** ($5/mo). Email Sending is unavailable on Workers Free.
+2. **A domain you own, on Cloudflare DNS.** `workers.dev` is not a candidate, and Cloudflare has **no provider test domain** — this project uses `estatemanager.dev`.
+3. **Onboard the domain for sending.** Cloudflare adds the SPF and DKIM records itself for a zone it already hosts; propagation is typically 5–15 minutes.
+
+   ```bash
+   npx wrangler email sending enable <domain>
+   npx wrangler email sending list             # confirm it is listed and enabled
+   npx wrangler email sending dns get <domain> # verify SPF + DKIM landed
+   ```
+
+4. **Do not run `wrangler email routing enable`.** Inbound routing on the root domain makes it receive *all* mail addressed to it. This project only sends.
+
+The daily quota is **200 messages/day**. It is not settable and `wrangler` does not report it — read it in the dashboard under **Compute & AI → Email Service → Email Sending**.
+
+### The binding
+
+`wrangler.jsonc` declares it, locked to the single sending identity so a send from any other address fails at the binding instead of reaching an owner from a wrong `From`:
+
+```jsonc
+"send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["glosowanie@estatemanager.dev"] }]
+```
+
+**After any `wrangler.jsonc` change, regenerate the types and commit them in the same commit:**
+
+```bash
+npx wrangler types && npx astro sync && npm run lint && npm run build
+```
+
+`worker-configuration.d.ts` is committed because CI runs `astro sync` but **never** `wrangler types` — the committed file is CI's only source of binding types. If it drifts, local lint stays green while CI types the binding wrongly.
+
+### Sending a test message
+
+`POST /api/email/test` sends one fixed Polish test message to a recipient you supply. It is protected by `PROTECTED_ROUTES` and stays in the repo as a live smoke test — Email Service is a **beta** API, so re-verifying after a deploy is worth the endpoint.
+
+```bash
+BASE=https://estate-manager.estate-manager.workers.dev
+
+curl -s -c cookies.txt -X POST "$BASE/api/auth/signin" -H "Origin: $BASE" \
+  -d "email=test@test.com" -d "password=Test123!"
+
+curl -s -b cookies.txt -X POST "$BASE/api/email/test" -H "Origin: $BASE" \
+  -d "to=<an inbox you control>"
+# → {"status":"sent","messageId":"<…@estatemanager.dev>"}
+```
+
+> **The `Origin` header is required.** Astro's `security.checkOrigin` is on by default and runs *before* middleware, so a form POST without it returns `403 Cross-site POST form submissions are forbidden` — not the auth redirect you may be testing for. This applies to `/api/auth/signin` too.
+
+Responses: `200 {"status":"sent","messageId":"…"}`, `400 {"status":"error","error":"missing-recipient"}`, `502 {"status":"error","code":"E_…","message":"…"}`.
+
+### Sending from local dev
+
+Add `"remote": true` to the binding and run `npm run dev`:
+
+```jsonc
+"send_email": [{ "name": "EMAIL", "remote": true, "allowed_sender_addresses": ["glosowanie@estatemanager.dev"] }]
+```
+
+**This sends real mail** — use only inboxes you control, and **never commit the flag**. Check `git diff wrangler.jsonc` before committing. Note what a passing local run does and does not prove: it proves the account and domain, not that the *deployed* Worker resolves the binding. Only a production send proves that.
+
+### When the binding is missing
+
+A binding absent from `wrangler.jsonc` is `undefined` at runtime and does **not** throw at deploy time. Two surfaces make that visible: the config-status banner on every page, and `"email":"missing"` in `/api/health`. Neither fails the deploy — `deploy.yml`'s `curl --fail` still passes, deliberately, so a beta channel cannot block shipping the rest of the app. That is a knowing step down from the Supabase treatment, and it should be revisited once mail becomes load-bearing.
 
 ## Deployment
 
