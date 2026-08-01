@@ -95,3 +95,25 @@ day as the fanout (140 messages) now fits too, which the 100/day figure did not 
 `wrangler` does not expose the quota: `wrangler email sending settings <domain>` reports only
 enabled/tag/DKIM selector/return-path. The number is dashboard-only
 (Compute & AI → Email Service → Email Sending).
+
+### Phase 3 — an `Origin` header is required to curl any form endpoint
+
+Not anticipated by the plan, and it corrects the plan's own curl recipes.
+
+Astro's built-in CSRF protection (`security.checkOrigin`, **on by default** and not configured
+in `astro.config.mjs`) rejects every non-GET **form** submission that arrives without an
+`Origin` header, with `403 Cross-site POST form submissions are forbidden`. It runs *before*
+middleware, so the 403 pre-empts the auth gate entirely.
+
+Consequence: `curl -X POST … -d "…"` against `/api/email/test` **or** `/api/auth/signin`
+returns `403`, not the expected `302`/`200`. Every curl recipe in this change needs
+
+```bash
+-H "Origin: <the same origin being called>"
+```
+
+With the header supplied, the auth gate behaves exactly as designed: an unauthenticated
+`POST /api/email/test` returns `302` to `/auth/signin`.
+
+This is not specific to `F-02` — it applies to any form endpoint in this repo, which is why it
+is written into `README.md` rather than left here.

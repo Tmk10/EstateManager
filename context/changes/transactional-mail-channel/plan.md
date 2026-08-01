@@ -660,32 +660,32 @@ unused.
 
 #### Automated
 
-- [x] 2.1 `npx wrangler types` succeeds and writes `worker-configuration.d.ts`
-- [x] 2.2 `npx astro sync` succeeds
-- [x] 2.3 `npm run lint` passes
-- [x] 2.4 `npm run build` passes
-- [x] 2.5 `git diff wrangler.jsonc` shows no `"remote": true`
+- [x] 2.1 `npx wrangler types` succeeds and writes `worker-configuration.d.ts` — 7602c76
+- [x] 2.2 `npx astro sync` succeeds — 7602c76
+- [x] 2.3 `npm run lint` passes — 7602c76
+- [x] 2.4 `npm run build` passes — 7602c76
+- [x] 2.5 `git diff wrangler.jsonc` shows no `"remote": true` — 7602c76
 
 #### Manual
 
-- [x] 2.6 `worker-configuration.d.ts` is staged for commit, not ignored
-- [x] 2.7 `EMAIL` appears in the generated environment interface
+- [x] 2.6 `worker-configuration.d.ts` is staged for commit, not ignored — 7602c76
+- [x] 2.7 `EMAIL` appears in the generated environment interface — 7602c76
 
 ### Phase 3: Trigger endpoint and the missing-binding surface
 
 #### Automated
 
-- [ ] 3.1 `npx astro sync && npm run lint && npm run build` pass
-- [ ] 3.2 Unauthenticated `POST /api/email/test` returns `302` to `/auth/signin`
-- [ ] 3.3 With the binding removed, `/api/health` returns `200` with `"email":"missing"`
-- [ ] 3.4 With the binding restored, `/api/health` returns `200` with `"email":"ok"`
-- [ ] 3.5 `git status` is clean of the temporary binding removal
+- [x] 3.1 `npx astro sync && npm run lint && npm run build` pass
+- [x] 3.2 Unauthenticated `POST /api/email/test` returns `302` to `/auth/signin`
+- [x] 3.3 With the binding removed, `/api/health` returns `200` with `"email":"missing"`
+- [x] 3.4 With the binding restored, `/api/health` returns `200` with `"email":"ok"`
+- [x] 3.5 `git status` is clean of the temporary binding removal
 
 #### Manual
 
-- [ ] 3.6 The config-status banner appears when the binding is absent and disappears when present
-- [ ] 3.7 A local send with `"remote": true` and a signed-in session delivers to the test inbox
-- [ ] 3.8 `"remote": true` is removed again and does not appear in `git diff`
+- [x] 3.6 The config-status banner appears when the binding is absent and disappears when present
+- [x] 3.7 A local send with `"remote": true` and a signed-in session delivers to the test inbox
+- [x] 3.8 `"remote": true` is removed again and does not appear in `git diff`
 
 ### Phase 4: Deploy and prove from production
 

@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { SUPABASE_URL, SUPABASE_KEY } from "astro:env/server";
+import { isEmailConfigured } from "@/lib/email";
 
 /**
  * Liveness + dependency probe. Deliberately unauthenticated and absent from
@@ -46,5 +47,10 @@ export const GET: APIRoute = async () => {
     return json({ status: "degraded", supabase: "unreachable" }, 503);
   }
 
-  return json({ status: "ok" }, 200);
+  // Informational only: deploy.yml curls this route with --fail, and a beta
+  // mail channel should not be able to block shipping the rest of the app.
+  // A missing EMAIL binding is therefore reported inside a 200 rather than
+  // flipping the status code — a deliberate step down from the Supabase
+  // treatment above. Revisit when S-04 makes the channel load-bearing.
+  return json({ status: "ok", email: isEmailConfigured() ? "ok" : "missing" }, 200);
 };

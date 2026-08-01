@@ -1,7 +1,9 @@
 import { defineMiddleware } from "astro:middleware";
 import { createClient } from "@/lib/supabase";
 
-const PROTECTED_ROUTES = ["/dashboard"];
+// Matched with startsWith, so "/api/email" covers /api/email/test and anything
+// added under it later.
+const PROTECTED_ROUTES = ["/dashboard", "/api/email"];
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const supabase = createClient(context.request.headers, context.cookies);
