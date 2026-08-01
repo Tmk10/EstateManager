@@ -60,6 +60,9 @@ The request path is the part worth knowing:
 Everything above is durable; everything below is a snapshot that goes stale. This is deliberately the only place these facts live — update them here, nowhere else.
 
 - **No domain code yet.** The repo is the starter-template scaffold plus auth; nothing from the PRD is implemented.
-- **Old identifiers.** `package.json`, `wrangler.jsonc`, and `supabase/config.toml` still carry the starter template's name instead of `estate-manager`.
-- **Never deployed.** `wrangler` is not authenticated, there is no git remote, and no hosted Supabase project exists. Deployment is gated on `context/changes/deployment/deployment-preflight.md` being fully green — account creation, secret rotation, and destructive infra actions are human-only.
-- **CI is live.** `.github/workflows/ci.yml` runs lint + build on push/PR to `main`, and needs `SUPABASE_URL` / `SUPABASE_KEY` repository secrets.
+- **Deployed and live** at https://estate-manager.estate-manager.workers.dev (Workers Free). Identifiers were renamed to `estate-manager` on 2026-08-01. `/api/health` returns `200 {"status":"ok"}` when the Worker can reach Supabase and `503` when it cannot — check it first when the app misbehaves. Per-deployment records: `context/foundation/deployment-history.md`.
+- **`CLOUDFLARE_API_TOKEN` is not set**, so `.github/workflows/deploy.yml` cannot run yet. Until a human adds it, deploys are manual (`npm run build && npx wrangler deploy`) and the auto-deploy-on-merge loop is **unproven** — including the check that a lint failure blocks the deploy, which is the only gate standing in for branch protection.
+- **Supabase Site URL is still unset** (plan step B7), so confirmation links in signup emails point at the wrong origin. The signup → confirm → sign-in flow has never been exercised against production.
+- **Node.** `.nvmrc` pins 22.14.0 and CI uses node 22; `fnm` is installed for this. If your shell has a different major, run `eval "$(fnm env)" && fnm use` before lint/build.
+- **CI is live.** `.github/workflows/ci.yml` runs lint + build on push/PR to `main`. `SUPABASE_URL` / `SUPABASE_KEY` are set as repository secrets.
+- **Known advisory:** `astro@6.3.1` carries a high-severity reflected XSS (range `<=7.0.9`) with no fix in the 6.x line. Accepted for now — see the residuals table in `deployment-history.md` before upgrading.

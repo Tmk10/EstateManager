@@ -1,0 +1,118 @@
+---
+project: estate-manager
+doc_type: deployment-history
+status: append-only
+companion: context/changes/deployment/deployment-plan.md
+---
+
+# Deployment History
+
+One entry per deployment, newest last. **Append only** — never rewrite a past
+entry to make it look correct in hindsight. `infrastructure.md` is deliberately
+not touched by deployments; it stays the research-and-decision artifact, and its
+value depends on not being retrofitted after the fact.
+
+---
+
+## 2026-08-01 — first production deployment
+
+| | |
+|---|---|
+| **Commit** | `f8d35e10a6a6b0524ff170eb584787aebf1a210f` |
+| **Worker** | `estate-manager` |
+| **URL** | https://estate-manager.estate-manager.workers.dev |
+| **Version ID (current)** | `b86cd1b3-830e-459f-bc80-a2137a492c7c` |
+| **Version ID (previous)** | `d411e297-ac61-476e-b060-bb3ae4df0ca5` — initial deploy, before secrets |
+| **Plan** | [`deployment-plan.md`](../changes/deployment/deployment-plan.md), sections A–D |
+| **Bundle** | 1913 KiB raw / 391 KiB gzip; Worker startup 21 ms |
+| **Cloudflare plan** | Workers **Free** |
+
+### What changed
+
+Executed sections A–D of the deployment plan: identity rename off
+`10x-astro-starter`, the `/api/health` route as the **G6** mitigation,
+`deploy.yml` for auto-deploy-on-merge, and the README / `tech-stack.md`
+corrections.
+
+### Deviations from the plan as written
+
+These are the places execution diverged from the approved document. Recorded
+because the plan is the contract, and silent drift is what makes runbooks rot.
+
+1. **`package-lock.json` was renamed too.** The plan's A1 lists three files. The
+   lockfile carries the package name in two places, and leaving it stale would
+   desync it from `package.json` — which `npm ci` in `deploy.yml` depends on.
+2. **The `SESSION` KV namespace had to be created — the plan never anticipated
+   it.** `@astrojs/cloudflare` enables Astro sessions by default and generates
+   `dist/server/wrangler.json` containing `kv_namespaces: [{ binding: "SESSION" }]`
+   with **no id**. Left alone this resolves through wrangler's interactive
+   provisioning flow, which has no TTY inside GitHub Actions. Namespace
+   `1a914a1c1f00405794482cea29c6bfd3` was created and pinned in `wrangler.jsonc`
+   so that both the manual and CI paths are deterministic.
+3. **C9 was already satisfied.** `wrangler login` had been completed before the
+   session; the pre-flight's own recorded state ("not authenticated") was stale.
+4. **The GitHub remote existed but pointed at a repository that did not.** It
+   was also named `EstateManager` rather than `origin`. Removed and recreated
+   via `gh repo create` — `gh` **is** installed, contrary to what both the plan
+   and the pre-flight assumed.
+5. **Node was v26.0.0 locally against a `.nvmrc` pin of 22.14.0.** `fnm` was
+   installed and 22.14.0 made active, so local verification matches CI's node 22
+   rather than diverging from it.
+6. **`503` bodies carry a `status` field the plan did not specify.** The plan
+   gives `503 { supabase: "unreachable" }`; the implementation emits
+   `{ status: "degraded", supabase: "unreachable" }` for consistency with the
+   other two responses.
+7. **First deploy was made from an uncommitted working tree.** The commit above
+   captures that state after the fact rather than before it. Every subsequent
+   deployment goes through `deploy.yml` from a committed SHA, so this applies to
+   the first deployment only.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `astro sync` + `lint` + `build` (node 22.14.0) | green |
+| Local `/api/health` with `.dev.vars` | `200 {"status":"ok"}` |
+| Local `/api/health` without `.dev.vars` | `503 misconfigured / missing-credentials` |
+| Production `/api/health` **before** secrets | connection failed — TLS cert for a first-ever `*.workers.dev` subdomain was still provisioning |
+| Production `/api/health` after secrets + redeploy | `200 {"status":"ok"}` — proves the Worker reaches Supabase with the anon key |
+| Production `/`, `/auth/signin`, `/auth/signup` | `200` |
+| Production `/dashboard` unauthenticated | `302` → `/auth/signin` |
+| Config-status banner in production | absent — secrets are being read |
+| Rollback available | yes — prior version `d411e297…` |
+
+### Not verified
+
+- **Functional smoke (plan verification step 3)** — sign up with a real inbox,
+  confirm the email, sign in, load `/dashboard`, sign out. Email confirmation is
+  on, so this needs a human with a mailbox. **Outstanding.**
+- **CI/CD loop (plan verification step 5)** — that `deploy.yml` deploys on a
+  green push and, more importantly, *refuses to deploy* on a deliberate lint
+  error. This is the substitute for the deferred branch protection and the plan
+  is explicit that it must be proven rather than assumed. **Outstanding**, and
+  blocked on `CLOUDFLARE_API_TOKEN`.
+- **`wrangler tail --status error`** during the above. **Outstanding.**
+
+### Open residuals
+
+| ID | Item | State |
+|---|---|---|
+| **G6** | Silent credential failure | **mitigated** — `/api/health` |
+| **G13** | No branch protection / required checks | **open** — D15 deferred; the in-job lint→build→deploy ordering is the substitute. Revisit when a second contributor joins or before the first real building is imported |
+| **G14** | No migration history | **open** — matters the moment a real schema exists, because `wrangler rollback` reverts code only |
+| **G15** | No staging environment | **open** |
+| — | **`astro@6.3.1` reflected XSS via unescaped slot name** (high, direct dep, advisory range `<=7.0.9`) | **open, accepted** — no fix exists in the 6.x line; 6.4.8 is still in range and the first fixed release is 7.0.10, a major bump that would also move `@astrojs/cloudflare` past the verified 13.5.0. Low exposure today: no domain code renders user-controlled slot names. Revisit before the first real building is imported |
+| — | Preview URLs public by default | **open** — harmless while no owner data exists; needs Cloudflare Access before any preview points at a real registry |
+| — | Workers Paid ($5/mo) | **not triggered** — trigger is the first real building import |
+
+### Follow-ups for a human
+
+1. Create a Cloudflare API token (*Edit Cloudflare Workers* template) and add it
+   to GitHub as `CLOUDFLARE_API_TOKEN`. Until then `deploy.yml` cannot run.
+2. Supabase → Auth → URL Configuration: set **Site URL** to
+   `https://estate-manager.estate-manager.workers.dev` (plan step **B7**).
+   Until this is set, confirmation links in signup emails point at the wrong
+   origin.
+3. Run the functional smoke test above.
+4. `src/lib/config-status.ts:16` still links the banner to the
+   `10x-astro-starter` README. Left alone because the plan freezes `src/lib/`.
