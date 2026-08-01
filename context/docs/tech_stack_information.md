@@ -1,6 +1,6 @@
 # Stack technologiczny EstateManager — przewodnik
 
-Dokument wprowadzający: czym jest każda technologia w tym projekcie, co daje, co kosztuje i dlaczego znalazła się właśnie tutaj. Decyzje i ich uzasadnienia pochodzą z [`tech-stack.md`](../foundation/tech-stack.md), [`infrastructure.md`](../foundation/infrastructure.md) i [`deployment.md`](../foundation/deployment.md); wersje — z `package.json`.
+Dokument wprowadzający: czym jest każda technologia w tym projekcie, co daje, co kosztuje i dlaczego znalazła się właśnie tutaj. Decyzje i ich uzasadnienia pochodzą z [`tech-stack.md`](../foundation/tech-stack.md), [`infrastructure.md`](../foundation/infrastructure.md) i [`deployment-plan.md`](../changes/deployment/deployment-plan.md); wersje — z `package.json`.
 
 Kontekst produktu, do którego odwołują się uzasadnienia: aplikacja do głosowania nad uchwałami wspólnoty mieszkaniowej, ważonego udziałami. Solo developer, ~5 tygodni po godzinach, priorytet: minimalizacja kosztów.
 
@@ -129,10 +129,10 @@ Hook `pre-commit` (`.husky/pre-commit`) uruchamia `lint-staged`, które puszcza 
 
 ### GitHub Actions
 
-`ci.yml` uruchamia na push i PR do `main`: `npm ci → npx astro sync → npm run lint → npm run build` na Node 22. Planowany `deploy.yml` dokłada na końcu `wrangler-action` (patrz `deployment.md`, krok D14).
+`ci.yml` uruchamia na push i PR do `main`: `npm ci → npx astro sync → npm run lint → npm run build` na Node 22. Planowany `deploy.yml` dokłada na końcu `wrangler-action` (patrz `deployment-plan.md`, krok D14).
 
 **+** `npm ci` instaluje dokładnie to, co w lockfile, więc wdrażany artefakt jest tym, który CI zweryfikowało; sekwencja `lint → build → deploy` w jednym jobie **jest** bramką — nieudany krok przerywa job i deploy nigdy nie startuje.
-**−** Branch protection świadomie odroczono (`deployment.md`, D15), więc czerwony build **nie blokuje** merge'a; wymagane statusy w GitHubie działają wyłącznie na pull requestach, a repo jest jednoosobowe z pushami bezpośrednio na `main`.
+**−** Branch protection świadomie odroczono (`deployment-plan.md`, D15), więc czerwony build **nie blokuje** merge'a; wymagane statusy w GitHubie działają wyłącznie na pull requestach, a repo jest jednoosobowe z pushami bezpośrednio na `main`.
 **→ Dlaczego tutaj:** `tech-stack.md` zapisuje `ci_default_flow: auto-deploy-on-merge`, a merge do `main` został uznany za ten „ludzki akt", którego wymaga macierz zatwierdzeń — żaden agent nie wdraża na produkcję samodzielnie.
 
 ---
@@ -159,4 +159,4 @@ Droga wyjścia jest udokumentowana i tańsza, niż się wydaje: **Render + `@ast
 - **Środowiska staging** — otwarte ryzyko G15.
 - **Dostawcy poczty transakcyjnej** — wybór ograniczony przez platformę (wyłącznie HTTP API, SMTP odpada) i celowo odłożony do implementacji.
 
-> **Uwaga o spójności dokumentów:** `tech-stack.md` wciąż zapisuje `deployment_target: cloudflare-pages`. To wpis nieaktualny — Cloudflare Pages jest w trybie utrzymaniowym, a `wrangler.jsonc` w repo od początku używa poprawnej ścieżki Workers Static Assets. Poprawka wpisu należy do kroku A3 w [`deployment.md`](../foundation/deployment.md). Obowiązującym celem są **Cloudflare Workers**.
+> **Uwaga o spójności dokumentów:** `tech-stack.md` wciąż zapisuje `deployment_target: cloudflare-pages`. To wpis nieaktualny — Cloudflare Pages jest w trybie utrzymaniowym, a `wrangler.jsonc` w repo od początku używa poprawnej ścieżki Workers Static Assets. Poprawka wpisu należy do kroku A3 w [`deployment-plan.md`](../changes/deployment/deployment-plan.md). Obowiązującym celem są **Cloudflare Workers**.

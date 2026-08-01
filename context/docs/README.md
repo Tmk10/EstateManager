@@ -12,7 +12,7 @@ These are lessons about the project, addressed to a person. A doc here answers "
 
 ## What does not
 
-- **Contract documents** — `prd.md`, `tech-stack.md`, `infrastructure.md`, `deployment.md` and anything else that feeds the skill chain lives in `context/foundation/`. Those are inputs to tooling; these are not.
+- **Contract documents** — `prd.md`, `tech-stack.md`, `infrastructure.md` and anything else that feeds the skill chain lives in `context/foundation/`. Those are inputs to tooling; these are not.
 - **Recurring rules for future work** — those go to `context/foundation/lessons.md`, which the planning and review skills read as a prior. A rule an agent must follow is not a doc.
 - **Change-scoped material** — plans, research and reviews tied to one change belong under `context/changes/<change-id>/`.
 

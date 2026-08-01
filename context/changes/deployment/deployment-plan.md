@@ -4,14 +4,17 @@ created_at: 2026-08-01
 doc_type: execution-plan
 status: approved-not-executed
 platform: Cloudflare Workers
-companion: context/foundation/deployment-preflight.md
+companion: context/changes/deployment/deployment-preflight.md
 sources:
   - context/foundation/infrastructure.md
   - context/foundation/tech-stack.md
 placement_note: >
-  foundation/README.md names change-scoped docs an anti-pattern for this
-  directory. Placed here deliberately: this runbook is re-read on every deploy,
-  so it outlives the one change that created it.
+  Moved from context/foundation/ on 2026-08-01. Held here as change-scoped work
+  until the deployment is executed. Note the tension this creates: the runbook
+  is re-read on every deploy, so once executed it outlives the change that
+  created it, and archiving this folder puts it under context/archive/, which is
+  immutable and not routinely read. Promote it back to foundation/ if it becomes
+  a standing runbook rather than a one-time plan.
 ---
 
 # Deployment — EstateManager on Cloudflare Workers
@@ -20,7 +23,7 @@ placement_note: >
 
 ## Context
 
-[`infrastructure.md`](./infrastructure.md) selects **Cloudflare Workers** as the MVP platform (with recorded dissent), and [`tech-stack.md`](./tech-stack.md) records `ci_default_flow: auto-deploy-on-merge`. Neither has been executed: the repo has never been deployed, `wrangler` is not authenticated, there is **no git remote**, no hosted Supabase project, and every identity string still reads `10x-astro-starter`.
+[`infrastructure.md`](../../foundation/infrastructure.md) selects **Cloudflare Workers** as the MVP platform (with recorded dissent), and [`tech-stack.md`](../../foundation/tech-stack.md) records `ci_default_flow: auto-deploy-on-merge`. Neither has been executed: the repo has never been deployed, `wrangler` is not authenticated, there is **no git remote**, no hosted Supabase project, and every identity string still reads `10x-astro-starter`.
 
 This plan takes the repo from "scaffolded, verified locally" to "running in production on Cloudflare Workers, redeployed automatically on merge to `main`". It also lands the highest-severity item from the degradation analysis — **G6**, where a missing or rotated Supabase credential produces a *green deploy of a non-functional app*, because both env vars are declared `optional: true`.
 

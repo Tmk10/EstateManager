@@ -2,17 +2,18 @@
 project: estate-manager
 created_at: 2026-08-01
 doc_type: pre-flight-checklist
-companion: context/foundation/deployment.md
+companion: context/changes/deployment/deployment-plan.md
 status: all-items-open
 placement_note: >
-  foundation/README.md names change-scoped docs an anti-pattern for this
-  directory. Placed here deliberately: this checklist is re-read before every
-  deployment, so it outlives the one change that created it.
+  Moved from context/foundation/ on 2026-08-01, alongside its companion plan.
+  Same tension applies: this checklist is re-read before every deployment, so it
+  outlives the change that created it. Promote it back to foundation/ if it
+  becomes a standing checklist rather than a one-time gate.
 ---
 
 # Deployment Pre-flight
 
-Work through this **before** starting a deployment session. Its companion, [`deployment.md`](./deployment.md), does not begin until every row here is green — that is step 0 of the plan.
+Work through this **before** starting a deployment session. Its companion, [`deployment-plan.md`](./deployment-plan.md), does not begin until every row here is green — that is step 0 of the plan.
 
 All five items are external accounts and credentials the agent cannot create. This is the entire set of things that must exist outside the repo.
 
@@ -32,7 +33,7 @@ All five items are external accounts and credentials the agent cannot create. Th
 
 Ordinary mistakes elsewhere in the deployment cost a re-run. These three do not:
 
-1. **Supabase region is immutable after project creation.** Getting it wrong means recreating the project and re-issuing every credential. EU Frankfurt is not a preference — it is the mitigation for dissent item **D4** in [`infrastructure.md`](./infrastructure.md): Worker compute location cannot be pinned below an Enterprise plan, so where the *data* lives is the only residency lever this architecture has. The RODO question is still PRD Open Question #1.
+1. **Supabase region is immutable after project creation.** Getting it wrong means recreating the project and re-issuing every credential. EU Frankfurt is not a preference — it is the mitigation for dissent item **D4** in [`infrastructure.md`](../../foundation/infrastructure.md): Worker compute location cannot be pinned below an Enterprise plan, so where the *data* lives is the only residency lever this architecture has. The RODO question is still PRD Open Question #1.
 2. **The `anon` key, never the service-role key.** `src/lib/supabase.ts` uses `@supabase/ssr` cookie-based auth. A service-role key deployed to a Worker bypasses Row Level Security entirely, on an app whose guardrail is *"dane właścicieli nie wychodzą poza budynek"*.
 3. **The Worker name becomes the hostname.** `wrangler.jsonc` `name` is both the Worker identity and the `*.workers.dev` subdomain. Renaming after the first deploy creates a *second* Worker rather than moving the first — which is why the rename to `estate-manager` is step A1, before anything is deployed.
 
@@ -44,4 +45,4 @@ Specifically, never guess at: Worker name, Supabase region, key type (`anon` vs 
 
 ## What happens after this is green
 
-Open [`deployment.md`](./deployment.md) and start at step 0. The ordering there is: repo prep (A) → Supabase wiring (B) → first manual deploy (C) → CI/CD auto-deploy (D) → record the outcome (E).
+Open [`deployment-plan.md`](./deployment-plan.md) and start at step 0. The ordering there is: repo prep (A) → Supabase wiring (B) → first manual deploy (C) → CI/CD auto-deploy (D) → record the outcome (E).
