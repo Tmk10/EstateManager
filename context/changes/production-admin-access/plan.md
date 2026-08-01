@@ -664,22 +664,22 @@ Rollback is `wrangler rollback` to a prior version — but note the runbook's wa
 
 #### Automated
 
-- [x] 1.1 `npx astro sync && npm run lint` passes
-- [x] 1.2 `npm run build` passes
-- [x] 1.3 `grep -rn "signup\|confirm-email" src/` returns nothing
-- [x] 1.4 Local `/auth/signup` and `/auth/confirm-email` return `404`
+- [x] 1.1 `npx astro sync && npm run lint` passes — 2287893
+- [x] 1.2 `npm run build` passes — 2287893
+- [x] 1.3 `grep -rn "signup\|confirm-email" src/` returns nothing — 2287893
+- [x] 1.4 Local `/auth/signup` and `/auth/confirm-email` return `404` — 2287893
 
 #### Manual
 
-- [x] 1.5 `/auth/signin` renders with the dashboard-accounts notice intact
-- [x] 1.6 Signed-out Topbar and landing page show one sign-in affordance, no broken link
-- [x] 1.7 Local sign-in lands on `/dashboard`
+- [x] 1.5 `/auth/signin` renders with the dashboard-accounts notice intact — 2287893
+- [x] 1.6 Signed-out Topbar and landing page show one sign-in affordance, no broken link — 2287893
+- [x] 1.7 Local sign-in lands on `/dashboard` — 2287893
 
 ### Phase 2: Assert deploy health in CI
 
 #### Automated
 
-- [ ] 2.1 `npx astro sync && npm run lint` passes
+- [x] 2.1 `npx astro sync && npm run lint` passes
 - [ ] 2.2 `deploy.yml` run completes green with the assertion step present and passing
 - [ ] 2.3 Production `/api/health` returns `200 {"status":"ok"}` after the deploy
 

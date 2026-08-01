@@ -153,6 +153,8 @@ Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_
 
 This exists because both Supabase vars are `optional: true` in `astro.config.mjs`. That is intentional — it lets local dev and preview builds degrade to the config-status banner instead of failing — but it also means a production deploy can go green while the app is non-functional. This route is what makes that condition loud. The endpoint never echoes the URL or the key.
 
+`deploy.yml` now enforces it: after `wrangler deploy` publishes, a final step curls this endpoint and fails the job on anything but `200`, retrying up to 5 times at 5-second intervals so edge propagation or a brief Supabase blip does not redden an otherwise good deploy. Because `503` means *either* "missing credentials" *or* "Supabase unreachable" — the endpoint cannot distinguish them without leaking the URL or key — a red run needs a human to interpret. There is deliberately **no auto-rollback**: the probe cannot tell a bad deploy from a dependency outage, so rollback stays a manual `wrangler rollback` (mind the warning in the deployment runbook about which versions are safe targets).
+
 ## Deployment
 
 Production runs on [Cloudflare Workers](https://workers.cloudflare.com/) as the Worker named `estate-manager`.
