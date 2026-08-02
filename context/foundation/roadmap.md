@@ -45,7 +45,7 @@ potwierdza się albo upada; wszystko inne ma znaczenie tylko wtedy, gdy ten klik
 | F-01 | `production-admin-access`   | (fundament) administrator loguje się na produkcji kontem założonym w bazie, ekran logowania mówi skąd je wziąć, a brak sekretu przestaje być cichy | —             | Access Control, Guardrails   | done     |
 | F-02 | `transactional-mail-channel`| (fundament) z Workera wychodzi jedna prawdziwa wiadomość, przez natywny binding Cloudflare, z własnej domeny                | —             | FR-002, FR-004               | done     |
 | S-01 | `building-create`           | administrator zakłada budynek prostym formularzem (nazwa, miejscowość, ulica z numerem), a schemat jest przygotowany na dokładanie kolejnych pól | F-01          | US-02, FR-011                | done |
-| S-01b| `building-units-import`     | administrator importuje z pliku do istniejącego budynku rejestr lokali z metrażem i właścicielami, a wyliczone udziały sumują się do 100% | S-01          | US-02, FR-001, FR-006        | proposed |
+| S-01b| `building-units-import`     | administrator importuje z pliku do istniejącego budynku rejestr lokali z metrażem i właścicielami, a wyliczone udziały sumują się do 100% | S-01          | US-02, FR-001, FR-006        | done |
 | S-02 | `resolution-with-voting-links` | administrator tworzy uchwałę, uruchamia nad nią głosowanie i dysponuje indywidualnym linkiem dla każdego lokalu       | S-01b         | US-02, FR-003                | proposed |
 | S-03 | `share-weighted-vote`       | właściciel odczytuje treść uchwały i oddaje z linku ostateczny głos ważony udziałem swojego lokalu                       | S-02          | US-01, FR-005, FR-006        | proposed |
 | S-04 | `voting-link-email-fanout`  | wszyscy właściciele w budynku otrzymują e-mailem swój indywidualny link do głosowania                                    | S-02, F-02    | US-02, FR-002, FR-004        | proposed |
@@ -150,7 +150,7 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
   - Jak zachować się przy sumie udziałów różnej od 100% po zaokrągleniach — odrzucić import czy przyjąć z ostrzeżeniem? Zaokrąglenia rozstrzygną uchwałę przy wyniku bliskim progu (kontrargument odnotowany przy FR-006). — Owner: użytkownik. Block: no.
   - Co się dzieje przy powtórnym imporcie do budynku, który ma już lokale — odrzucenie, zastąpienie czy dopisanie? Rejestr jest w v1 statyczny (`## Non-Goals`), więc najprostszą odpowiedzią jest odrzucenie, ale nie jest ona rozstrzygnięta. — Owner: użytkownik. Block: no.
 - **Risk:** Tu mieszka cała trudność pierwotnego `S-01`: parsowanie pliku o nieustalonym formacie i arytmetyka udziałów, od której zależy poprawność każdego późniejszego rozstrzygnięcia uchwały. Kontrakt bezpieczeństwa jest już postawiony przez `S-01`, więc ten kawałek go **stosuje**, a nie wymyśla — tabele lokali i właścicieli dziedziczą wzorzec ograniczenia zakresem budynku. Bariera PRD „dane właścicieli nie wychodzą poza budynek" jest egzekwowana właśnie tutaj, na poziomie polityk dostępu, nie w interfejsie: to pierwszy moment, w którym w bazie pojawiają się cudze dane kontaktowe.
-- **Status:** proposed
+- **Status:** done (2026-08-02)
 
 ### S-02: Uchwała i indywidualne linki do głosowania
 
@@ -226,8 +226,8 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 | F-01       | `production-admin-access`      | Doprowadzić dostęp administratora na produkcji do stanu sprawdzalnego      | zrobione              | Zamknięte 2026-08-01. Logowanie administratora potwierdzone na produkcji |
 | F-02       | `transactional-mail-channel`   | Podłączyć Cloudflare Email Service i wysłać pierwszą wiadomość z Workera   | zrobione              | Zamknięte 2026-08-01. Domena `estatemanager.dev`, plan Workers Paid, pierwsza wysyłka z produkcji potwierdzona |
 | S-01       | `building-create`              | Założenie budynku formularzem (nazwa, miejscowość, ulica z numerem)        | zrobione              | Wdrożone na produkcję 2026-08-02. Zapis: `context/changes/building-create/`                              |
-| S-01b      | `building-units-import`        | Import lokali i właścicieli do istniejącego budynku                        | yes                   | `S-01` zamknięte 2026-08-02, więc odblokowane. Uruchom `/10x-new building-units-import`, potem `/10x-plan building-units-import` |
-| S-02       | `resolution-with-voting-links` | Utworzenie uchwały i wygenerowanie indywidualnych linków                   | no                    | Wymaga `S-01b`                                                         |
+| S-01b      | `building-units-import`        | Import lokali i właścicieli do istniejącego budynku                        | zrobione              | Wdrożone na produkcję 2026-08-02. Zapis: `context/changes/building-units-import/`                        |
+| S-02       | `resolution-with-voting-links` | Utworzenie uchwały i wygenerowanie indywidualnych linków                   | yes                   | `S-01b` zamknięte 2026-08-02, więc odblokowane. Uruchom `/10x-new resolution-with-voting-links`          |
 | S-03       | `share-weighted-vote`          | Oddanie ważonego udziałem głosu z indywidualnego linku                     | no                    | Wymaga `S-02`. Gwiazda przewodnia                                      |
 | S-04       | `voting-link-email-fanout`     | Rozesłanie indywidualnych linków do głosowania e-mailem                    | no                    | Wymaga `S-02` oraz `F-02`                                              |
 | S-05       | `live-tally-and-outcome`       | Bilans udziałów na żywo i automatyczne rozstrzygnięcie uchwały             | no                    | Wymaga `S-03`                                                          |

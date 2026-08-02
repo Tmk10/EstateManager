@@ -787,76 +787,76 @@ earning its keep.
 
 #### Automated
 
-- [x] 1.1 `npx supabase db reset` applies migration and seed with no error — c04b893
-- [x] 1.2 `units` and `owners` each report RLS enabled and exactly 8 policies — c04b893
-- [x] 1.3 A unit referencing an owner from another building is rejected by the composite foreign key — c04b893
-- [x] 1.4 Deferred trigger rejects a share total other than 10000 at commit; an exact multi-row insert succeeds — c04b893
-- [x] 1.5 Direct `update` of `buildings.total_area_m2` away from `sum(units.area_m2)` is rejected with `EM004` — c04b893
-- [x] 1.6 Inserting units without updating `total_area_m2` is rejected with `EM004` — the two writes only pass together — c04b893
-- [x] 1.7 Deleting every unit succeeds when `total_area_m2` is nulled in the same transaction, and fails otherwise — c04b893
-- [x] 1.8 `import_building_units` raises `EM002` on a non-empty registry and `EM001` on an unknown building — c04b893
-- [x] 1.9 Owner deduplication: shared e-mail collapses to one owner, two blank e-mails stay two — c04b893
-- [x] 1.10 After a successful import, `buildings.total_area_m2` equals `sum(units.area_m2)` to the cent — c04b893
-- [x] 1.11 `database.types.ts` contains both tables, `total_area_m2` on `buildings`, and `import_building_units` — c04b893
-- [x] 1.12 `npx astro sync && npm run lint && npm run build` all pass — c04b893
+- [x] 1.1 `npx supabase db reset` applies migration and seed with no error — f0d5bcf
+- [x] 1.2 `units` and `owners` each report RLS enabled and exactly 8 policies — f0d5bcf
+- [x] 1.3 A unit referencing an owner from another building is rejected by the composite foreign key — f0d5bcf
+- [x] 1.4 Deferred trigger rejects a share total other than 10000 at commit; an exact multi-row insert succeeds — f0d5bcf
+- [x] 1.5 Direct `update` of `buildings.total_area_m2` away from `sum(units.area_m2)` is rejected with `EM004` — f0d5bcf
+- [x] 1.6 Inserting units without updating `total_area_m2` is rejected with `EM004` — the two writes only pass together — f0d5bcf
+- [x] 1.7 Deleting every unit succeeds when `total_area_m2` is nulled in the same transaction, and fails otherwise — f0d5bcf
+- [x] 1.8 `import_building_units` raises `EM002` on a non-empty registry and `EM001` on an unknown building — f0d5bcf
+- [x] 1.9 Owner deduplication: shared e-mail collapses to one owner, two blank e-mails stay two — f0d5bcf
+- [x] 1.10 After a successful import, `buildings.total_area_m2` equals `sum(units.area_m2)` to the cent — f0d5bcf
+- [x] 1.11 `database.types.ts` contains both tables, `total_area_m2` on `buildings`, and `import_building_units` — f0d5bcf
+- [x] 1.12 `npx astro sync && npm run lint && npm run build` all pass — f0d5bcf
 
 #### Manual
 
-- [x] 1.13 Studio shows both tables, demo building holding zero units and an empty `total_area_m2` — c04b893
-- [x] 1.14 Policy list reads 4 × `authenticated` + 4 × `anon` per table, anon denying — c04b893
+- [x] 1.13 Studio shows both tables, demo building holding zero units and an empty `total_area_m2` — f0d5bcf
+- [x] 1.14 Policy list reads 4 × `authenticated` + 4 × `anon` per table, anon denying — f0d5bcf
 
 ### Phase 2: CSV parser and share arithmetic
 
 #### Automated
 
-- [x] 2.1 Arithmetic harness passes, including the 1/3 case and the determinism check — 9aa0ab0
-- [x] 2.2 A CSV with five distinct defects produces five errors with correct line numbers — 9aa0ab0
-- [x] 2.3 A Windows-1250 file produces the "save as UTF-8" error rather than mangled names — 9aa0ab0
-- [x] 2.4 Duplicate `numer_lokalu` reports both offending lines — 9aa0ab0
-- [x] 2.5 `npx astro sync && npm run lint && npm run build` all pass — 9aa0ab0
+- [x] 2.1 Arithmetic harness passes, including the 1/3 case and the determinism check — a916cf5
+- [x] 2.2 A CSV with five distinct defects produces five errors with correct line numbers — a916cf5
+- [x] 2.3 A Windows-1250 file produces the "save as UTF-8" error rather than mangled names — a916cf5
+- [x] 2.4 Duplicate `numer_lokalu` reports both offending lines — a916cf5
+- [x] 2.5 `npx astro sync && npm run lint && npm run build` all pass — a916cf5
 
 #### Manual
 
-- [x] 2.6 The largest-remainder distribution and its tie-break are followable from the source — 9aa0ab0
-- [x] 2.7 Polish error messages read as instructions to an administrator, not parser diagnostics — 9aa0ab0
+- [x] 2.6 The largest-remainder distribution and its tie-break are followable from the source — a916cf5
+- [x] 2.7 Polish error messages read as instructions to an administrator, not parser diagnostics — a916cf5
 
 ### Phase 3: The screens
 
 #### Automated
 
-- [x] 3.1 `npx astro sync && npm run lint && npm run build` all pass
-- [x] 3.2 Signed out, all three new paths redirect to `/auth/signin`
-- [x] 3.3 Signed in, a valid CSV returns a preview containing `100,00%`
-- [x] 3.4 Confirm returns 302 to the building; rows exist with `sum(share_bps) = 10000` and `total_area_m2 = sum(area_m2)`
-- [x] 3.5 Re-posting confirm returns 302 with `?error=` (the `EM002` path), not a 500
-- [x] 3.6 A malformed CSV lists every defect and writes nothing
-- [x] 3.7 Template route returns 200, `text/csv`, attachment disposition, BOM, one line equal to `CSV_HEADERS`
-- [x] 3.8 Uploading the untouched template is rejected as "no data rows", not as a header error
-- [x] 3.9 Signed out, the template route redirects to `/auth/signin`
+- [x] 3.1 `npx astro sync && npm run lint && npm run build` all pass — 7ffe9c2
+- [x] 3.2 Signed out, all three new paths redirect to `/auth/signin` — 7ffe9c2
+- [x] 3.3 Signed in, a valid CSV returns a preview containing `100,00%` — 7ffe9c2
+- [x] 3.4 Confirm returns 302 to the building; rows exist with `sum(share_bps) = 10000` and `total_area_m2 = sum(area_m2)` — 7ffe9c2
+- [x] 3.5 Re-posting confirm returns 302 with `?error=` (the `EM002` path), not a 500 — 7ffe9c2
+- [x] 3.6 A malformed CSV lists every defect and writes nothing — 7ffe9c2
+- [x] 3.7 Template route returns 200, `text/csv`, attachment disposition, BOM, one line equal to `CSV_HEADERS` — 7ffe9c2
+- [x] 3.8 Uploading the untouched template is rejected as "no data rows", not as a header error — 7ffe9c2
+- [x] 3.9 Signed out, the template route redirects to `/auth/signin` — 7ffe9c2
 
 #### Manual
 
-- [x] 3.10 Browser round trip: upload → preview → confirm → registry totalling 100,00%
-- [x] 3.11 The total floor area on the preview matches the registry afterwards and the source spreadsheet
-- [x] 3.12 Shared e-mail shows one owner; two blank e-mails show two, each as "brak"
-- [x] 3.13 The error list is understandable without knowledge of the parser
-- [x] 3.14 Empty state and import entry point read sensibly
-- [x] 3.15 The download link is findable on the import page without hunting
-- [x] 3.16 Template opens in Excel with correct Polish headers; filled in and re-uploaded, it previews validly
+- [x] 3.10 Browser round trip: upload → preview → confirm → registry totalling 100,00% — 7ffe9c2
+- [x] 3.11 The total floor area on the preview matches the registry afterwards and the source spreadsheet — 7ffe9c2
+- [x] 3.12 Shared e-mail shows one owner; two blank e-mails show two, each as "brak" — 7ffe9c2
+- [x] 3.13 The error list is understandable without knowledge of the parser — 7ffe9c2
+- [x] 3.14 Empty state and import entry point read sensibly — 7ffe9c2
+- [x] 3.15 The download link is findable on the import page without hunting — 7ffe9c2
+- [x] 3.16 Template opens in Excel with correct Polish headers; filled in and re-uploaded, it previews validly — 7ffe9c2
 
 ### Phase 4: Production and the record
 
 #### Automated
 
-- [ ] 4.1 Branch fast-forwards into `main`; lint and build pass on `main`
-- [ ] 4.2 `npx supabase db push --dry-run` lists exactly one migration
-- [ ] 4.3 `npx supabase db push` completes without error
-- [ ] 4.4 `gen types --linked` matches the committed file apart from the known remote-only block
-- [ ] 4.5 The `deploy.yml` run is green including the `/api/health` assertion
-- [ ] 4.6 Signed out, the production import path redirects to `/auth/signin`
+- [x] 4.1 Branch fast-forwards into `main`; lint and build pass on `main`
+- [x] 4.2 `npx supabase db push --dry-run` lists exactly one migration
+- [x] 4.3 `npx supabase db push` completes without error
+- [x] 4.4 `gen types --linked` matches the committed file apart from the known remote-only block
+- [x] 4.5 The `deploy.yml` run is green including the `/api/health` assertion
+- [x] 4.6 Signed out, the production import path redirects to `/auth/signin`
 
 #### Manual
 
-- [ ] 4.7 Full round trip on production, registry totalling 100,00%
-- [ ] 4.8 Supabase dashboard shows both tables with RLS and 8 policies each
-- [ ] 4.9 `CLAUDE.md` alone explains how shares and the total area are stored, and what enforces both
+- [x] 4.7 Full round trip on production, registry totalling 100,00%
+- [x] 4.8 Supabase dashboard shows both tables with RLS and 8 policies each
+- [x] 4.9 `CLAUDE.md` alone explains how shares and the total area are stored, and what enforces both
