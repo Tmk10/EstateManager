@@ -1,7 +1,7 @@
 ---
 change_id: dashboard-help-section
 title: Help module at its own /help route, in v1 one sentence with the developer's e-mail
-status: implemented
+status: impl_reviewed
 created: 2026-08-02
 updated: 2026-08-02
 archived_at: null
