@@ -1,5 +1,38 @@
 # Resolution with Voting Links Implementation Plan
 
+## Amendment — 2026-08-02, after the Phase 3/4 implementation review
+
+**The administrator never sees a voting link.** Triage of finding F10 in
+`reviews/impl-review-phase-3-4.md` replaced the design below: a token is a bearer credential,
+so rendering all of a building's tokens into an administrator's browser made that browser a
+second copy of every voter's identity. The links are now created and **stored**, and nothing
+reads them back out until `S-04` sends them by e-mail. This slice's deliverable is the links
+existing in the database, not an administrator holding them.
+
+What this supersedes, section by section — the original text is left in place as the record of
+what was planned and why:
+
+- **Overview** and **User Journey step 3**: "readable on screen and passable by hand" and the
+  owner → link table with "the full URL and a copy button" no longer describe the build. The
+  table remains, with a **Status linku** column reading _Wystawiony_ in place of the URL.
+- **Section 6, Copy button** (`src/components/resolutions/CopyLinkButton.tsx`): **removed**.
+  The file is deleted; the slice now ships no `.tsx` and no client island at all, which also
+  disposes of review finding F9.
+- **Success criterion** "the copy button copies the same URL that is displayed as text":
+  **withdrawn**, replaced by _no voting token appears in any HTML response_.
+- **Phase 3 check 3.8** is superseded for the same reason and re-marked below.
+- **New migration**, not in the original plan:
+  `supabase/migrations/20260802214500_restrict_voting_link_token_select.sql` revokes
+  column-level `select (token)` on `public.voting_links` from `authenticated` **and** `anon`,
+  so the rule survives a future `.select()` string that asks for it.
+
+Consequence accepted with the change: `S-02` ships with **no delivery path**. Until `S-04`
+builds the fanout, a link reaches nobody except by reading the database directly. This
+contradicts the reason `roadmap.md` gave for splitting `S-02` from `S-04` — that `S-03` could
+be validated on one manually passed link — and that entry has been corrected. `S-02` is an
+intermediate step toward `S-03` and `S-04` (decision, 2026-08-02); the links existing in the
+database is what it owes them.
+
 ## Overview
 
 Roadmap slice `S-02`. An administrator writes a resolution (uchwała) for a building whose
@@ -786,8 +819,8 @@ forward migration.
 
 #### Automated
 
-- [ ] 1.1 Prettier check passes on `prd.md` and `roadmap.md`
-- [ ] 1.2 Superseded phrasing survives in `prd.md` exactly once, as the non-goal
+- [x] 1.1 Prettier check passes on `prd.md` and `roadmap.md` — 8ae9ba0
+- [x] 1.2 Superseded phrasing survives in `prd.md` exactly once, as the non-goal — 8ae9ba0
 
 #### Manual
 
@@ -799,50 +832,54 @@ forward migration.
 
 #### Automated
 
-- [ ] 2.1 Migration applies to a clean local stack (`npx supabase db reset`)
-- [ ] 2.2 `npm run db:types` regenerates cleanly and includes both new tables
-- [ ] 2.3 `astro sync && lint && build` pass
+- [x] 2.1 Migration applies to a clean local stack (`npx supabase db reset`) — 80cb479
+- [x] 2.2 `npm run db:types` regenerates cleanly and includes both new tables — 80cb479
+- [x] 2.3 `astro sync && lint && build` pass — 80cb479
 
 #### Manual
 
-- [ ] 2.4 `anon` gets `[]` on select and `42501` on insert for both new tables
-- [ ] 2.5 Duplicate resolution number in one building fails `23505`; allowed across buildings
+- [x] 2.4 `anon` gets `[]` on select and `42501` on insert for both new tables — 80cb479
+- [x] 2.5 Duplicate resolution number in one building fails `23505`; allowed across buildings — 80cb479
 
 ### Phase 3: The administrator's path — draft, launch, links
 
 #### Automated
 
-- [ ] 3.1 `astro sync && lint && build` pass
-- [ ] 3.2 `voting-token.ts` executed directly: 43 URL-safe chars, no collisions in a large sample
+- [x] 3.1 `astro sync && lint && build` pass — 6ca7e3d
+- [x] 3.2 `voting-token.ts` executed directly: 43 URL-safe chars, no collisions in a large sample — 6ca7e3d
 
 #### Manual
 
-- [ ] 3.3 Duplicate number rejected with the Polish message; accepted in another building
-- [ ] 3.4 Draft can be corrected and the change persists
-- [ ] 3.5 Launch produces one link per owner with an e-mail; owners without one listed separately
-- [ ] 3.6 Second launch press is a no-op with no error and no duplicate tokens
-- [ ] 3.7 Content is uneditable after launch and `opened_at` is shown
-- [ ] 3.8 Copy button copies the URL displayed as text
-- [ ] 3.9 An owner with two units appears once, with both units and their summed share
-- [ ] 3.10 `resolve_voting_link` as `anon` returns one narrow row for a valid open token
-- [ ] 3.11 Unknown token and draft token both return `[]`, indistinguishably
-- [ ] 3.12 `EM006` on content change after open; `EM007` on `open → draft`
-- [ ] 3.13 Composite foreign key refuses a cross-building link
+- [x] 3.3 Duplicate number rejected with the Polish message; accepted in another building — 6ca7e3d
+- [x] 3.4 Draft can be corrected and the change persists — 6ca7e3d
+- [x] 3.5 Launch produces one link per owner with an e-mail; owners without one listed separately — 6ca7e3d
+- [x] 3.6 Second launch press is a no-op with no error and no duplicate tokens — 6ca7e3d
+- [x] 3.7 Content is uneditable after launch and `opened_at` is shown — 6ca7e3d
+- [~] 3.8 ~~Copy button copies the URL displayed as text~~ — SUPERSEDED by the amendment at the
+      top of this plan. The copy button is gone. Replaced by: **no voting token appears in any
+      HTML response, and `select=token` on `voting_links` is refused by the database for both
+      `authenticated` and `anon`** — verified through PostgREST, `42501 permission denied`,
+      while `select=owner_id` returns `200` and `resolve_voting_link` still resolves for `anon`
+- [x] 3.9 An owner with two units appears once, with both units and their summed share — 6ca7e3d
+- [x] 3.10 `resolve_voting_link` as `anon` returns one narrow row for a valid open token — 6ca7e3d
+- [x] 3.11 Unknown token and draft token both return `[]`, indistinguishably — 6ca7e3d
+- [x] 3.12 `EM006` on content change after open; `EM007` on `open → draft` — 6ca7e3d
+- [x] 3.13 Composite foreign key refuses a cross-building link — 6ca7e3d
 
 ### Phase 4: `/vote/<token>` — the path with no session
 
 #### Automated
 
-- [ ] 4.1 `astro sync && lint && build` pass
-- [ ] 4.2 `grep -c '"/vote"' src/middleware.ts` returns `0` — the path is only in the comment
+- [x] 4.1 `astro sync && lint && build` pass — 4ec1bbf
+- [x] 4.2 `grep -c '"/vote"' src/middleware.ts` returns `0` — the path is only in the comment — 4ec1bbf
 
 #### Manual
 
-- [ ] 4.3 Valid token renders in a private window with no session
-- [ ] 4.4 Made-up, truncated and draft tokens all render the identical neutral page
-- [ ] 4.5 Page source leaks no e-mail, no other owner, no foreign share
-- [ ] 4.6 Page works while signed out — never depends on a session
-- [ ] 4.7 Page contains no outbound links
+- [x] 4.3 Valid token renders in a private window with no session — 4ec1bbf
+- [x] 4.4 Made-up, truncated and draft tokens all render the identical neutral page — 4ec1bbf
+- [x] 4.5 Page source leaks no e-mail, no other owner, no foreign share — 4ec1bbf
+- [x] 4.6 Page works while signed out — never depends on a session — 4ec1bbf
+- [x] 4.7 Page contains no outbound links — 4ec1bbf
 
 ### Phase 5: Production and the record
 

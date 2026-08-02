@@ -1,0 +1,395 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { createClient } from "@/lib/supabase";
+import { formatShareBps } from "@/lib/shares";
+import { formatResolutionDate } from "@/lib/resolutions";
+
+const { id, resolutionId } = Astro.params;
+
+// Middleware has already bounced anonymous visitors (PROTECTED_ROUTES covers "/buildings").
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+const error = Astro.url.searchParams.get("error");
+
+interface OwnerRow {
+  id: string;
+  fullName: string;
+  email: string | null;
+  unitNumbers: string[];
+  shareBps: number;
+  /**
+   * Whether a link exists -- never the link itself. This page reports on the state of the
+   * voting links; it is not a delivery channel for them. See the read below.
+   */
+  hasLink: boolean;
+}
+
+let loadError: string | null = null;
+let building: { id: string; name: string; city: string; street: string } | null = null;
+let resolution: {
+  id: string;
+  number: string;
+  title: string;
+  body: string;
+  status: string;
+  opened_at: string | null;
+} | null = null;
+let ownerRows: OwnerRow[] = [];
+
+if (!supabase) {
+  loadError = "Baza danych nie jest skonfigurowana.";
+} else if (!id || !resolutionId) {
+  loadError = "Nie znaleziono uchwały.";
+} else {
+  const { data: buildingData, error: buildingError } = await supabase
+    .from("buildings")
+    .select("id, name, city, street")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (buildingError) {
+    // 22P02 is invalid_text_representation — the id in the URL is not a uuid at all.
+    loadError = buildingError.code === "22P02" ? "Nie znaleziono budynku." : buildingError.message;
+  } else if (!buildingData) {
+    loadError = "Nie znaleziono budynku.";
+  } else {
+    building = buildingData;
+
+    // Scoped by building_id as well as id: a resolution id belonging to another building is
+    // "not found" here rather than a cross-building read.
+    const { data: resolutionData, error: resolutionError } = await supabase
+      .from("resolutions")
+      .select("id, number, title, body, status, opened_at")
+      .eq("id", resolutionId)
+      .eq("building_id", id)
+      .maybeSingle();
+
+    if (resolutionError) {
+      loadError = resolutionError.code === "22P02" ? "Nie znaleziono uchwały." : resolutionError.message;
+    } else if (!resolutionData) {
+      loadError = "Nie znaleziono uchwały.";
+    } else {
+      resolution = resolutionData;
+
+      if (resolution.status !== "draft") {
+        // Three reads joined in memory rather than one nested select. The registry is at
+        // most ~70 owners and the alternative would be a projection string deep enough that
+        // a wrong column in it would go unnoticed — supabase-js does not type-check the
+        // contents of .select().
+        const [ownersResult, unitsResult, linksResult] = await Promise.all([
+          supabase.from("owners").select("id, full_name, email").eq("building_id", id),
+          supabase.from("units").select("owner_id, unit_number, share_bps").eq("building_id", id),
+          // owner_id only, deliberately: the token is NOT projected here and must not be.
+          // A voting token is a bearer credential -- whoever holds it can act as that owner
+          // -- so the value stays in the database, and the paths that legitimately need it
+          // (S-04's fanout) read it server-side and put it in an e-mail, never in a page.
+          // The accompanying migration revokes column-level `select (token)` from
+          // `authenticated`, so adding it back to this string fails at the database with
+          // 42501 rather than quietly widening what an administrator's browser receives.
+          supabase.from("voting_links").select("owner_id").eq("resolution_id", resolutionId),
+        ]);
+
+        const readError = ownersResult.error ?? unitsResult.error ?? linksResult.error;
+
+        if (readError) {
+          loadError = readError.message;
+        } else {
+          const ownersWithLink = new Set(linksResult.data.map((link) => link.owner_id));
+
+          ownerRows = ownersResult.data.map((owner) => {
+            const units = unitsResult.data.filter((unit) => unit.owner_id === owner.id);
+
+            return {
+              id: owner.id,
+              fullName: owner.full_name,
+              email: owner.email,
+              // Numeric-aware collation, the same treatment the registry table gives unit
+              // numbers: plain text ordering puts "10" between "1" and "2".
+              unitNumbers: units
+                .map((unit) => unit.unit_number)
+                .sort((a, b) => a.localeCompare(b, "pl", { numeric: true })),
+              // Per-owner voting: an owner holding several units votes once, with their
+              // shares summed into a single weight (PRD, 2026-08-02).
+              shareBps: units.reduce((sum, unit) => sum + unit.share_bps, 0),
+              hasLink: ownersWithLink.has(owner.id),
+            };
+          });
+
+          ownerRows.sort((a, b) => a.fullName.localeCompare(b.fullName, "pl", { numeric: true }));
+        }
+      }
+    }
+  }
+}
+
+const isDraft = resolution?.status === "draft";
+const linkedOwners = ownerRows.filter((owner) => owner.hasLink);
+
+// Two different reasons an owner has no link, split because the copy for each says
+// something the administrator would act on differently. Today only the first group can be
+// non-empty -- links are created for exactly the owners with an e-mail, and the open
+// endpoint refuses to flip the status unless the counts agree. The second group is the
+// visible symptom of that guarantee having failed, so it must not be folded into the first:
+// telling an administrator that an owner has no e-mail when the registry says otherwise
+// sends them to correct data that is already correct.
+const ownersWithoutEmail = ownerRows.filter((owner) => !owner.hasLink && owner.email === null);
+const ownersMissingLink = ownerRows.filter((owner) => !owner.hasLink && owner.email !== null);
+
+const openedAtLabel = resolution?.opened_at != null ? formatResolutionDate(resolution.opened_at) : null;
+
+const inputClass =
+  "w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:border-purple-400/50 focus:ring-2 focus:ring-purple-400 focus:outline-none";
+---
+
+<Layout title={resolution ? resolution.title : "Uchwała"}>
+  <div class="bg-cosmic min-h-screen p-4 py-12">
+    <div
+      class="mx-auto w-full max-w-4xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
+    >
+      {
+        loadError ? (
+          <p class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300" role="alert">
+            {loadError}
+          </p>
+        ) : (
+          building &&
+          resolution && (
+            <>
+              <div class="mb-6">
+                <div class="flex flex-wrap items-center gap-3">
+                  <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
+                    Uchwała {resolution.number}
+                  </h1>
+                  <span
+                    class:list={[
+                      "rounded-full px-2.5 py-0.5 text-xs font-medium",
+                      isDraft
+                        ? "border border-white/20 bg-white/10 text-blue-100/70"
+                        : "border border-green-400/40 bg-green-500/10 text-green-200",
+                    ]}
+                  >
+                    {isDraft ? "Wersja robocza" : "Głosowanie otwarte"}
+                  </span>
+                </div>
+                <p class="mt-1 text-sm text-blue-100/60">
+                  {building.name} — {building.street}, {building.city}
+                </p>
+                {openedAtLabel && <p class="mt-1 text-sm text-blue-100/60">Głosowanie otwarte od {openedAtLabel}</p>}
+              </div>
+
+              {error && (
+                <p
+                  class="mb-6 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              )}
+
+              {isDraft ? (
+                <>
+                  <form
+                    method="POST"
+                    action={`/api/buildings/${building.id}/resolutions/${resolution.id}`}
+                    class="space-y-4"
+                  >
+                    <div>
+                      <label for="number" class="mb-1 block text-sm text-blue-100/80">
+                        Numer uchwały
+                      </label>
+                      <input
+                        id="number"
+                        name="number"
+                        type="text"
+                        maxlength="50"
+                        required
+                        value={resolution.number}
+                        class:list={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label for="title" class="mb-1 block text-sm text-blue-100/80">
+                        Tytuł
+                      </label>
+                      <input
+                        id="title"
+                        name="title"
+                        type="text"
+                        maxlength="200"
+                        required
+                        value={resolution.title}
+                        class:list={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label for="body" class="mb-1 block text-sm text-blue-100/80">
+                        Treść uchwały
+                      </label>
+                      {/* set:text rather than children: the template's own indentation and
+                          newlines would otherwise land inside the textarea, and a body
+                          rendered with a blank first line looks like corrupted data. */}
+                      <textarea
+                        id="body"
+                        name="body"
+                        rows="12"
+                        maxlength="20000"
+                        required
+                        class:list={inputClass}
+                        set:text={resolution.body}
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      class="w-full rounded-lg border border-white/20 bg-white/5 px-4 py-2 font-medium text-white transition-colors hover:border-purple-400/50 hover:bg-white/10"
+                    >
+                      Zapisz zmiany
+                    </button>
+                  </form>
+
+                  <div class="mt-8 rounded-xl border border-purple-400/30 bg-purple-500/10 p-4">
+                    <h2 class="text-lg font-semibold">Uruchom głosowanie</h2>
+                    <p class="mt-1 text-sm text-blue-100/80">
+                      Każdy właściciel z adresem e-mail dostanie własny link do głosowania. Od tej chwili treści uchwały
+                      nie da się już zmienić — właściciele głosują nad tym, co widzą pod swoim linkiem.
+                    </p>
+                    <form
+                      method="POST"
+                      action={`/api/buildings/${building.id}/resolutions/${resolution.id}/open`}
+                      class="mt-4"
+                    >
+                      <button
+                        type="submit"
+                        class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
+                      >
+                        Uruchom głosowanie
+                      </button>
+                    </form>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div class="rounded-xl border border-white/10 bg-white/5 p-5">
+                    <h2 class="text-lg font-semibold">{resolution.title}</h2>
+                    {/* Same reason as the draft's textarea: whitespace-pre-wrap would
+                        otherwise render the template's indentation as part of the text. */}
+                    <p class="mt-3 text-sm whitespace-pre-wrap text-blue-100/80" set:text={resolution.body} />
+                  </div>
+
+                  <div class="mt-8 mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 class="text-lg font-semibold">Linki do głosowania</h2>
+                    <p class="text-sm text-blue-100/60">
+                      Właścicieli z linkiem: <span class="font-medium text-white">{linkedOwners.length}</span>
+                    </p>
+                  </div>
+
+                  <p class="mb-4 text-sm text-blue-100/70">
+                    Linki są zapisane w bazie i nie są tutaj pokazywane — link jest jedynym dowodem tożsamości
+                    głosującego, więc trafia wyłącznie do właściciela, na jego adres e-mail.
+                  </p>
+
+                  <div class="overflow-x-auto rounded-xl border border-white/10">
+                    <table class="w-full text-left text-sm">
+                      <thead class="bg-white/5 text-xs tracking-wide text-blue-100/60 uppercase">
+                        <tr>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            Właściciel
+                          </th>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            E-mail
+                          </th>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            Lokale
+                          </th>
+                          <th scope="col" class="px-4 py-3 text-right font-medium">
+                            Udział
+                          </th>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            Status linku
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-white/5">
+                        {linkedOwners.map((owner) => (
+                          <tr>
+                            <td class="px-4 py-3 font-medium">{owner.fullName}</td>
+                            <td class="px-4 py-3">{owner.email}</td>
+                            <td class="px-4 py-3">{owner.unitNumbers.join(", ")}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(owner.shareBps)}</td>
+                            <td class="px-4 py-3">
+                              <span class="rounded-full border border-green-400/40 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-200">
+                                Wystawiony
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {ownersMissingLink.length > 0 && (
+                    <div class="mt-6 rounded-xl border border-red-500/40 bg-red-900/30 p-4" role="alert">
+                      <h3 class="text-sm font-medium text-red-200">Brakuje linków do głosowania</h3>
+                      <p class="mt-1 text-sm text-red-200/90">
+                        Ci właściciele mają adres e-mail w rejestrze, ale nie powstał dla nich link. Naciśnij
+                        <span class="font-medium"> Uruchom głosowanie </span>
+                        jeszcze raz — brakujące linki zostaną wystawione, a te już istniejące pozostaną bez zmian.
+                      </p>
+                      <ul class="mt-3 space-y-1 text-sm text-red-100">
+                        {ownersMissingLink.map((owner) => (
+                          <li>
+                            {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
+                          </li>
+                        ))}
+                      </ul>
+                      <form
+                        method="POST"
+                        action={`/api/buildings/${building.id}/resolutions/${resolution.id}/open`}
+                        class="mt-4"
+                      >
+                        <button
+                          type="submit"
+                          class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500"
+                        >
+                          Uruchom głosowanie
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
+                  {ownersWithoutEmail.length > 0 && (
+                    <div class="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
+                      <h3 class="text-sm font-medium text-amber-100">Właściciele bez linku</h3>
+                      <p class="mt-1 text-sm text-amber-100/80">
+                        Ci właściciele nie mają adresu e-mail w rejestrze, więc nie powstał dla nich link. Ich głos
+                        trzeba zebrać poza aplikacją — ich udziały nadal liczą się do progu większości.
+                      </p>
+                      <ul class="mt-3 space-y-1 text-sm text-amber-100/90">
+                        {ownersWithoutEmail.map((owner) => (
+                          <li>
+                            {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )
+        )
+      }
+
+      <p class="mt-8 text-center text-sm">
+        <a
+          href={building ? `/buildings/${building.id}` : "/buildings"}
+          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
+        >
+          Wróć do budynku
+        </a>
+      </p>
+    </div>
+  </div>
+</Layout>
