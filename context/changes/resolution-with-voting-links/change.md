@@ -43,6 +43,86 @@ Checked against **production** PostgREST afterwards, as `anon`, rather than assu
 The first row is the one worth keeping: the column-level revoke is live on production, so a future
 `.select("…, token")` fails at the database there too, not only locally.
 
+**Deployed 2026-08-02 by merging PR #23** (squash). `ci` green on the PR in 59s; `deploy.yml` green
+in 1m19s including its `/api/health` assertion, which returned `{"status":"ok","email":"ok"}` at
+`20:16:24Z`. Note the standing caveat from `CLAUDE.md`: Workers Builds deploys the same commit
+seconds later, so a green assertion certifies the version live when it ran, not necessarily the one
+serving traffic afterwards.
+
+**The live walkthrough needed a building that did not exist.** Production held one building
+(`Test`) with **no registry**, and a registry import is one-shot per building (`EM002`). Rather than
+spend that building's only import, a second building — `S-02 smoke test`, Testowa 1, Warszawa —
+was created on production and given a three-lokal registry: 50,00 / 30,00 / 20,00 m², shares
+50,00% / 30,00% / 20,00%, with the third owner (`Ewa Bezmailowa`) deliberately carrying **no**
+e-mail address. Nothing was sent to anyone: no fanout exists until `S-04`, and the two addresses are
+`@example.com`. The building is still there, labelled as what it is.
+
+What the live Worker did, all as `curl` against
+`https://estate-manager.estate-manager.workers.dev`:
+
+| step                                              | result on production                                            |
+| ------------------------------------------------- | --------------------------------------------------------------- |
+| create resolution `1/2026`                        | `302` to the resolution page                                     |
+| create the same number again                      | `302` back with `Uchwała o tym numerze już istnieje w tym budynku.` |
+| _Uruchom głosowanie_                              | `302`; status **Głosowanie otwarte**, `opened_at` rendered        |
+| press it a second time                            | `302`, no error, no duplicate links                              |
+| owners with a link                                | 2 — Anna 50,00%, Jan 30,00%, both _Wystawiony_                    |
+| owner without an e-mail                           | Ewa listed in the amber **Właściciele bez linku** panel, 20,00%   |
+| **43-char token strings in the page HTML**        | **none**; `/vote/` appears `0` times                              |
+
+The last row is the one this slice exists to be able to claim, and it is now claimed against
+production rather than against a local stack.
+
+**The unauthenticated path, no session, on production.** Three bad tokens — a 43-character made-up
+one, a five-character truncated one, and `%20` — each returned `200` and **exactly 989 bytes**, the
+identical neutral page (_"Ten link jest niepoprawny albo głosowanie nie zostało jeszcze
+uruchomione."_), `lang="pl"`, zero outbound links. Byte-identical is stronger than the plan asked
+for: there is nothing in a hit-versus-miss comparison to measure. `/vote/../../buildings` is worth
+knowing about — it comes back `302` to `/auth/signin`, because path normalisation resolves it to
+`/buildings` before routing ever sees `/vote`, so it is the protected-route gate answering, not a
+leak. `/buildings` without a session still redirects to `/auth/signin`.
+
+Re-probed as `anon` **after** real rows existed, since an empty table proves less than a populated
+one:
+
+| probe                                | result                              |
+| ------------------------------------ | ----------------------------------- |
+| `resolutions?select=id`              | `[]`                                |
+| `voting_links?select=owner_id`       | `[]`                                |
+| `voting_links?select=token`          | `42501 permission denied for table` |
+| `voting_links?select=*`              | `42501`                             |
+| `owners?select=email`                | `[]`                                |
+| `POST resolutions`                   | `401`                               |
+
+**A real token, read from the database, renders on production.** Both live links were fetched with
+`curl` — no cookies, no session, nothing but the URL — against
+`https://estate-manager.estate-manager.workers.dev/vote/<token>`:
+
+| link | bytes | shows                                                   | does **not** show          |
+| ---- | ----- | ------------------------------------------------------- | -------------------------- |
+| 1    | 1801  | `1/2026`, `S-02 smoke test`, `Anna Testowa`, `50,00`     | `Jan Testowy`, any token   |
+| 2    | 1800  | `1/2026`, `S-02 smoke test`, `Jan Testowy`, `30,00`      | `Anna Testowa`, any token  |
+| bogus | 989  | the neutral page                                         | everything                 |
+
+Each reader sees their own name and their own share and nobody else's, and neither page echoes the
+token back into the HTML — `[A-Za-z0-9_-]{43}` matches **zero** times in both, `/vote/` zero times.
+So a screenshot of the voting page is not a copy of the credential; only the address bar is.
+
+**The zero-rows error model cost an evening, and that is the honest entry.** Before the above, a
+43-character token believed to be genuine rendered the neutral page, and it read as a live defect in
+the flagship flow. It was not: comparing that string against the stored `voting_links.token` values
+byte-for-byte — through `service_role`, the only reader the column grant leaves — showed it matched
+**neither** of the two rows. The resolver had been correct at every step; an unknown token returns
+`[]` by design. What made the diagnosis expensive is exactly the property the slice is built to
+have: a hit and a miss are indistinguishable, so the system cannot tell you "that token is wrong",
+and no amount of staring at the page narrows it down. Ruling out `security definer`, `force row
+level security`, RLS, PostgREST schema cache and project identity all came before the one check
+that settled it in a second. **The lesson for `S-03` and `S-04`: when a link "does not work", the
+first move is to compare the token to the stored value, not to inspect the read path.** Do not add
+a diagnostic that distinguishes the two cases in the response — that is the property, not a bug —
+but an administrator-side view that answers "is this token one of mine?" would be a legitimate
+feature, since the administrator may see their own building's links.
+
 **`status:` stays `impl_reviewed`, not `done`.** Phase 5's contract in `plan.md` says
 `status: done`, but no change in this repository has ever carried that value — `building-create`,
 `building-units-import` and `dashboard-help-section` all shipped to production and all sit at
