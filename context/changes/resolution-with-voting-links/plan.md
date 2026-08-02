@@ -885,12 +885,12 @@ forward migration.
 
 #### Automated
 
-- [ ] 5.1 CI green on the pull request
-- [ ] 5.2 `deploy.yml` green after merge, including the `/api/health` assertion
+- [x] 5.1 CI green on the pull request
+- [x] 5.2 `deploy.yml` green after merge, including the `/api/health` assertion
 
 #### Manual
 
-- [ ] 5.3 Migration applied to production with `db push` **before** the merge
-- [ ] 5.4 Full path walked on the live Worker, including the private-window read
-- [ ] 5.5 Made-up token on production renders the neutral page
-- [ ] 5.6 `change.md`, `roadmap.md` and `CLAUDE.md` updated and mutually consistent
+- [x] 5.3 Migration applied to production with `db push` **before** the merge
+- [x] 5.4 Full path walked on the live Worker, including the private-window read
+- [x] 5.5 Made-up token on production renders the neutral page
+- [x] 5.6 `change.md`, `roadmap.md` and `CLAUDE.md` updated and mutually consistent
