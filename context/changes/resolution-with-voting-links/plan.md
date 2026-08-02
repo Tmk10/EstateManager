@@ -819,8 +819,8 @@ forward migration.
 
 #### Automated
 
-- [x] 1.1 Prettier check passes on `prd.md` and `roadmap.md` — c34888c
-- [x] 1.2 Superseded phrasing survives in `prd.md` exactly once, as the non-goal — c34888c
+- [x] 1.1 Prettier check passes on `prd.md` and `roadmap.md` — 8ae9ba0
+- [x] 1.2 Superseded phrasing survives in `prd.md` exactly once, as the non-goal — 8ae9ba0
 
 #### Manual
 
@@ -832,54 +832,54 @@ forward migration.
 
 #### Automated
 
-- [x] 2.1 Migration applies to a clean local stack (`npx supabase db reset`) — 1e16ab1
-- [x] 2.2 `npm run db:types` regenerates cleanly and includes both new tables — 1e16ab1
-- [x] 2.3 `astro sync && lint && build` pass — 1e16ab1
+- [x] 2.1 Migration applies to a clean local stack (`npx supabase db reset`) — 80cb479
+- [x] 2.2 `npm run db:types` regenerates cleanly and includes both new tables — 80cb479
+- [x] 2.3 `astro sync && lint && build` pass — 80cb479
 
 #### Manual
 
-- [x] 2.4 `anon` gets `[]` on select and `42501` on insert for both new tables — 1e16ab1
-- [x] 2.5 Duplicate resolution number in one building fails `23505`; allowed across buildings — 1e16ab1
+- [x] 2.4 `anon` gets `[]` on select and `42501` on insert for both new tables — 80cb479
+- [x] 2.5 Duplicate resolution number in one building fails `23505`; allowed across buildings — 80cb479
 
 ### Phase 3: The administrator's path — draft, launch, links
 
 #### Automated
 
-- [x] 3.1 `astro sync && lint && build` pass — a1e4439
-- [x] 3.2 `voting-token.ts` executed directly: 43 URL-safe chars, no collisions in a large sample — a1e4439
+- [x] 3.1 `astro sync && lint && build` pass — 6ca7e3d
+- [x] 3.2 `voting-token.ts` executed directly: 43 URL-safe chars, no collisions in a large sample — 6ca7e3d
 
 #### Manual
 
-- [x] 3.3 Duplicate number rejected with the Polish message; accepted in another building — a1e4439
-- [x] 3.4 Draft can be corrected and the change persists — a1e4439
-- [x] 3.5 Launch produces one link per owner with an e-mail; owners without one listed separately — a1e4439
-- [x] 3.6 Second launch press is a no-op with no error and no duplicate tokens — a1e4439
-- [x] 3.7 Content is uneditable after launch and `opened_at` is shown — a1e4439
+- [x] 3.3 Duplicate number rejected with the Polish message; accepted in another building — 6ca7e3d
+- [x] 3.4 Draft can be corrected and the change persists — 6ca7e3d
+- [x] 3.5 Launch produces one link per owner with an e-mail; owners without one listed separately — 6ca7e3d
+- [x] 3.6 Second launch press is a no-op with no error and no duplicate tokens — 6ca7e3d
+- [x] 3.7 Content is uneditable after launch and `opened_at` is shown — 6ca7e3d
 - [~] 3.8 ~~Copy button copies the URL displayed as text~~ — SUPERSEDED by the amendment at the
       top of this plan. The copy button is gone. Replaced by: **no voting token appears in any
       HTML response, and `select=token` on `voting_links` is refused by the database for both
       `authenticated` and `anon`** — verified through PostgREST, `42501 permission denied`,
       while `select=owner_id` returns `200` and `resolve_voting_link` still resolves for `anon`
-- [x] 3.9 An owner with two units appears once, with both units and their summed share — a1e4439
-- [x] 3.10 `resolve_voting_link` as `anon` returns one narrow row for a valid open token — a1e4439
-- [x] 3.11 Unknown token and draft token both return `[]`, indistinguishably — a1e4439
-- [x] 3.12 `EM006` on content change after open; `EM007` on `open → draft` — a1e4439
-- [x] 3.13 Composite foreign key refuses a cross-building link — a1e4439
+- [x] 3.9 An owner with two units appears once, with both units and their summed share — 6ca7e3d
+- [x] 3.10 `resolve_voting_link` as `anon` returns one narrow row for a valid open token — 6ca7e3d
+- [x] 3.11 Unknown token and draft token both return `[]`, indistinguishably — 6ca7e3d
+- [x] 3.12 `EM006` on content change after open; `EM007` on `open → draft` — 6ca7e3d
+- [x] 3.13 Composite foreign key refuses a cross-building link — 6ca7e3d
 
 ### Phase 4: `/vote/<token>` — the path with no session
 
 #### Automated
 
-- [x] 4.1 `astro sync && lint && build` pass — f4c77d7
-- [x] 4.2 `grep -c '"/vote"' src/middleware.ts` returns `0` — the path is only in the comment — f4c77d7
+- [x] 4.1 `astro sync && lint && build` pass — 4ec1bbf
+- [x] 4.2 `grep -c '"/vote"' src/middleware.ts` returns `0` — the path is only in the comment — 4ec1bbf
 
 #### Manual
 
-- [x] 4.3 Valid token renders in a private window with no session — f4c77d7
-- [x] 4.4 Made-up, truncated and draft tokens all render the identical neutral page — f4c77d7
-- [x] 4.5 Page source leaks no e-mail, no other owner, no foreign share — f4c77d7
-- [x] 4.6 Page works while signed out — never depends on a session — f4c77d7
-- [x] 4.7 Page contains no outbound links — f4c77d7
+- [x] 4.3 Valid token renders in a private window with no session — 4ec1bbf
+- [x] 4.4 Made-up, truncated and draft tokens all render the identical neutral page — 4ec1bbf
+- [x] 4.5 Page source leaks no e-mail, no other owner, no foreign share — 4ec1bbf
+- [x] 4.6 Page works while signed out — never depends on a session — 4ec1bbf
+- [x] 4.7 Page contains no outbound links — 4ec1bbf
 
 ### Phase 5: Production and the record
 

@@ -11,6 +11,44 @@ archived_at: null
 
 <!-- Free-form notes for this change: links, ad-hoc context, decisions that don't belong in research/frame/plan. -->
 
+### Phase 5 — production and the record
+
+**The branch was rebased onto `origin/main` before the PR (2026-08-02).** `S-07`
+(`dashboard-help-section`, PRs #21/#22) landed on `main` while this slice was being reviewed, so
+the branch was two commits behind. One conflict, in `src/middleware.ts`: both sides edited
+`PROTECTED_ROUTES` — `S-07` appended `/help`, this slice added the comment explaining why `/vote`
+is **absent**. Resolved by keeping both. The rebase rewrote every commit hash, so the SHAs in the
+`## Progress` section of `plan.md` were rewritten with it: `c34888c → 8ae9ba0`, `1e16ab1 →
+80cb479`, `a1e4439 → 6ca7e3d`, `f4c77d7 → 4ec1bbf`. The pre-rebase hashes exist nowhere reachable
+and are recorded here only so a reader who meets them in an older document can map them.
+
+**Both migrations applied to production before the merge (2026-08-02).** `npx supabase db push`
+against project `swsvohyahbamfonekvaa` applied `20260802181500_create_resolutions_and_voting_links`
+and `20260802214500_restrict_voting_link_token_select`, in that order, and `migration list --linked`
+now shows both in the Remote column. This is the ordering the plan insists on and the reason it
+does: reversed, the merge would have deployed a page calling `resolve_voting_link` before the
+function existed. Forward-only — `wrangler rollback` reverts code, never schema. Residual **G14**
+(no migration history in CI) stays open.
+
+Checked against **production** PostgREST afterwards, as `anon`, rather than assumed from a clean
+`db push`:
+
+| probe                                            | result                              |
+| ------------------------------------------------ | ----------------------------------- |
+| `?select=token` on `voting_links`                 | `401` / `42501 permission denied`    |
+| `?select=owner_id` on `voting_links`              | `200`, `[]` — grant present, RLS denies rows |
+| `rpc/resolve_voting_link` with a made-up token    | `[]` — callable by `anon`, reveals nothing |
+| `?select=id` on `resolutions`                     | `200`, `[]`                          |
+
+The first row is the one worth keeping: the column-level revoke is live on production, so a future
+`.select("…, token")` fails at the database there too, not only locally.
+
+**`status:` stays `impl_reviewed`, not `done`.** Phase 5's contract in `plan.md` says
+`status: done`, but no change in this repository has ever carried that value — `building-create`,
+`building-units-import` and `dashboard-help-section` all shipped to production and all sit at
+`impl_reviewed`, because `/10x-archive` is what stamps a change closed. Following the plan
+literally here would have made this the only change with a status nothing else uses.
+
 ### Triage of `reviews/impl-review-phase-3-4.md`
 
 **F3 — voting tokens are persisted by Workers Logs (2026-08-02).** Recorded rather than fixed.
