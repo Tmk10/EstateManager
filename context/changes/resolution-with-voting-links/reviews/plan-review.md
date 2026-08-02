@@ -5,7 +5,7 @@
 - **Plan**: `context/changes/resolution-with-voting-links/plan.md`
 - **Mode**: Deep
 - **Date**: 2026-08-02
-- **Verdict**: REVISE (3 criticals fixed in place the same day; 5 findings left PENDING)
+- **Verdict**: SOUND after triage (was REVISE) — 5 fixed, 3 skipped, all 8 triaged 2026-08-02
 - **Findings**: 3 critical, 4 warnings, 1 observation
 
 ## Verdicts
@@ -17,6 +17,11 @@
 | Architectural Fitness | PASS    |
 | Blind Spots           | FAIL    |
 | Plan Completeness     | WARNING |
+
+The table records the plan **as reviewed**. After triage (2026-08-02) every dimension is PASS:
+End-State Alignment and Plan Completeness were closed by fixes, Blind Spots by fixes plus one
+knowing skip (`F6` — no product path deletes a building in v1), Lean Execution by the decision
+to keep the resolver's eight-column contract as planned (`F8`).
 
 The architecture survived review intact — schema shape, the single `definer` door, and the
 links-before-status ordering all hold. What failed was the plan's own instrumentation: two
@@ -89,7 +94,10 @@ brief↔plan ✓
   dependency row, so neither is reached. `S-03` is the next slice to be planned, and it would
   be planned from a line contradicting the PRD this change just corrected.
 - **Fix**: Extend Phase 1 §4 to cover `roadmap.md:49` and the `S-03` outcome at `:174`.
-- **Decision**: PENDING
+- **Decision**: FIXED — Phase 1 §4 now names both lines explicitly, bounding the `S-03` edit to
+  its weighting phrase so the unplanned slice is not rewritten. A fifth Phase 1 criterion
+  (`1.5`) makes it verifiable: no slice in `roadmap.md` still describes the link or the weight
+  per unit.
 
 ### F5 — Phase 2's manual verification needs tokens that nothing creates until Phase 3
 
@@ -112,7 +120,12 @@ brief↔plan ✓
   - Tradeoff: The unauthenticated contract goes unverified for a whole phase.
   - Confidence: HIGH.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix B — the four fixture-dependent checks (resolver happy path, its
+  two indistinguishable failures, `EM006`/`EM007`, the composite foreign key) moved to Phase 3
+  as Progress `3.10`–`3.13`, run against rows the real screens created. Phase 2 keeps the two
+  that work on a freshly reset stack. The accepted cost is written into both phases: between
+  the migration landing and Phase 3's screens, the unauthenticated contract is written but
+  unproven, so Phase 3 is not complete until those four pass.
 
 ### F6 — Cascade delete order across `voting_links` is asserted, not verified
 
@@ -134,7 +147,9 @@ brief↔plan ✓
   - Tradeoff: One more fixture (shares Fix A of F5).
   - Confidence: MEDIUM — not run; the dependency order is plausible but unverified.
   - Blind spot: Exactly the point of the finding.
-- **Decision**: PENDING
+- **Decision**: SKIPPED — nothing in the product deletes a building in v1, so the race is
+  unreachable from any screen. It becomes live the moment a delete path is built; whoever
+  builds it owns this check.
 
 ### F7 — Two automated criteria fail on a correct implementation
 
@@ -150,7 +165,10 @@ comment`) is self-contradictory: a grep either matches or does not. (An earlier 
   that the grep needed `-r` was wrong — verified, it recurses as written.)
 - **Fix**: Scope 1.2 to `context/foundation/prd.md` and expect exactly one surviving line (the
   non-goal); restate 4.2 as `grep -c '"/vote"' src/middleware.ts` returning `0`.
-- **Decision**: PENDING
+- **Decision**: FIXED — 1.2 is now `grep -c … context/foundation/prd.md` returning `1`, with
+  the reason `shape-notes.md` is deliberately not searched written into the criterion; 4.2 is
+  `grep -c '"/vote"' src/middleware.ts` returning `0`, with the unquoted comment mention named
+  separately so the check cannot read as self-contradictory again.
 
 ### F8 — The resolver returns two columns the stated end state does not need
 
@@ -174,7 +192,9 @@ comment`) is self-contradictory: a grep either matches or does not. (An earlier 
   - Tradeoff: A `create or replace` on a `definer` function next slice, re-running the whole
     grant/revoke review.
   - Confidence: HIGH.
-- **Decision**: PENDING
+- **Decision**: SKIPPED — the plan already commits to the eight-column contract and both extra
+  columns are the reader's own data. Left as written, including the existing `comment on
+function`; no narrowing, no added justification.
 
 ## Note on authorship
 
