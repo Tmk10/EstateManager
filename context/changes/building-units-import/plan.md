@@ -848,15 +848,15 @@ earning its keep.
 
 #### Automated
 
-- [x] 4.1 Branch fast-forwards into `main`; lint and build pass on `main`
-- [x] 4.2 `npx supabase db push --dry-run` lists exactly one migration
-- [x] 4.3 `npx supabase db push` completes without error
-- [x] 4.4 `gen types --linked` matches the committed file apart from the known remote-only block
-- [x] 4.5 The `deploy.yml` run is green including the `/api/health` assertion
-- [x] 4.6 Signed out, the production import path redirects to `/auth/signin`
+- [x] 4.1 Branch fast-forwards into `main`; lint and build pass on `main` — 28ccf1a
+- [x] 4.2 `npx supabase db push --dry-run` lists exactly one migration — 28ccf1a
+- [x] 4.3 `npx supabase db push` completes without error — 28ccf1a
+- [x] 4.4 `gen types --linked` matches the committed file apart from the known remote-only block — 28ccf1a
+- [x] 4.5 The `deploy.yml` run is green including the `/api/health` assertion — 28ccf1a
+- [x] 4.6 Signed out, the production import path redirects to `/auth/signin` — 28ccf1a
 
 #### Manual
 
-- [x] 4.7 Full round trip on production, registry totalling 100,00%
-- [x] 4.8 Supabase dashboard shows both tables with RLS and 8 policies each
-- [x] 4.9 `CLAUDE.md` alone explains how shares and the total area are stored, and what enforces both
+- [x] 4.7 Full round trip on production, registry totalling 100,00% — 28ccf1a
+- [x] 4.8 Supabase dashboard shows both tables with RLS and 8 policies each — 28ccf1a
+- [x] 4.9 `CLAUDE.md` alone explains how shares and the total area are stored, and what enforces both — 28ccf1a
