@@ -1,7 +1,7 @@
 ---
 change_id: resolution-with-voting-links
 title: Resolution with voting links
-status: plan_reviewed
+status: implementing
 created: 2026-08-02
 updated: 2026-08-02
 archived_at: null

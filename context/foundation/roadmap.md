@@ -46,8 +46,8 @@ potwierdza się albo upada; wszystko inne ma znaczenie tylko wtedy, gdy ten klik
 | F-02  | `transactional-mail-channel`   | (fundament) z Workera wychodzi jedna prawdziwa wiadomość, przez natywny binding Cloudflare, z własnej domeny                                       | —                | FR-002, FR-004                           | done     |
 | S-01  | `building-create`              | administrator zakłada budynek prostym formularzem (nazwa, miejscowość, ulica z numerem), a schemat jest przygotowany na dokładanie kolejnych pól   | F-01             | US-02, FR-011                            | done     |
 | S-01b | `building-units-import`        | administrator importuje z pliku do istniejącego budynku rejestr lokali z metrażem i właścicielami, a wyliczone udziały sumują się do 100%          | S-01             | US-02, FR-001, FR-006                    | done     |
-| S-02  | `resolution-with-voting-links` | administrator tworzy uchwałę, uruchamia nad nią głosowanie i dysponuje indywidualnym linkiem dla każdego lokalu                                    | S-01b            | US-02, FR-003                            | proposed |
-| S-03  | `share-weighted-vote`          | właściciel odczytuje treść uchwały i oddaje z linku ostateczny głos ważony udziałem swojego lokalu                                                 | S-02             | US-01, FR-005, FR-006                    | proposed |
+| S-02  | `resolution-with-voting-links` | administrator tworzy uchwałę, uruchamia nad nią głosowanie i dysponuje indywidualnym linkiem dla każdego właściciela                               | S-01b            | US-02, FR-003                            | proposed |
+| S-03  | `share-weighted-vote`          | właściciel odczytuje treść uchwały i oddaje z linku ostateczny głos ważony sumą udziałów swoich lokali                                             | S-02             | US-01, FR-005, FR-006                    | proposed |
 | S-04  | `voting-link-email-fanout`     | wszyscy właściciele w budynku otrzymują e-mailem swój indywidualny link do głosowania                                                              | S-02, F-02       | US-02, FR-002, FR-004                    | proposed |
 | S-05  | `live-tally-and-outcome`       | administrator widzi na żywo bilans udziałów i brakującą część do progu, a uchwała sama zostaje podjęta albo upada                                  | S-03             | US-02, FR-007, FR-008                    | proposed |
 | S-06  | `finished-votes-archive`       | administrator przegląda zakończone głosowania i odtwarza, które udziały złożyły się na wynik                                                       | S-05             | FR-009, NFR (ślad)                       | proposed |
@@ -158,20 +158,20 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 
 ### S-02: Uchwała i indywidualne linki do głosowania
 
-- **Outcome:** administrator tworzy uchwałę, uruchamia nad nią głosowanie i od tego momentu każdemu lokalowi w budynku odpowiada indywidualny link, który administrator może odczytać i przekazać.
+- **Outcome:** administrator tworzy uchwałę, uruchamia nad nią głosowanie i od tego momentu każdemu właścicielowi w budynku — jeden link na osobę, nie na lokal — odpowiada indywidualny link, który administrator może odczytać i przekazać.
 - **Change ID:** `resolution-with-voting-links`
 - **PRD refs:** US-02, FR-003
-- **Prerequisites:** S-01b — link powstaje per lokal, więc potrzebny jest zaimportowany rejestr, a nie sam budynek
+- **Prerequisites:** S-01b — link powstaje per właściciel, więc potrzebny jest zaimportowany rejestr, a nie sam budynek
 - **Parallel with:** F-02
 - **Blockers:** —
 - **Unknowns:**
-  - Czy link jest wieczny (głosowanie nie ma terminu końcowego, więc nie ma naturalnej daty wygaśnięcia), czy unieważnia się w momencie rozstrzygnięcia uchwały? — Owner: użytkownik. Block: no.
+  - ROZSTRZYGNIĘTE 2026-08-02: link jest **wieczny** i nie unieważnia się przy rozstrzygnięciu uchwały. Powód: `FR-007` nie daje głosowaniu terminu końcowego, więc nie ma naturalnej daty wygaśnięcia, a pytanie „czy nadal można oddać głos" ma już swoją odpowiedź w statusie uchwały — unieważnianie linku byłoby drugim, równoległym mechanizmem mówiącym to samo. Konsekwencja przyjęta świadomie: link pozostaje ważnym adresem także po zakończeniu głosowania i prowadzi wtedy do treści uchwały, a nie do formularza głosu.
 - **Risk:** Wydzielony z rozsyłki celowo — dzięki temu gwiazda przewodnia `S-03` może zostać sprawdzona na jednym ręcznie przekazanym linku, zanim kanał pocztowy będzie gotowy, i nie czeka na `F-02`. Link jest jedynym mechanizmem identyfikującym głosującego (PRD, otwarte pytanie nr 1), więc jego wytworzenie jest miejscem, w którym zapada decyzja o sile bariery „nikt spoza rejestru nie oddaje głosu".
 - **Status:** proposed
 
 ### S-03: Właściciel oddaje ważony głos z linku — **gwiazda przewodnia**
 
-- **Outcome:** właściciel otwiera otrzymany indywidualny link, czyta treść uchwały, oddaje głos „za" albo „przeciw" bez zakładania konta i bez logowania, dostaje potwierdzenie zapisania głosu, a udział jego lokalu jest doliczony do wyniku; głos jest ostateczny.
+- **Outcome:** właściciel otwiera otrzymany indywidualny link, czyta treść uchwały, oddaje głos „za" albo „przeciw" bez zakładania konta i bez logowania, dostaje potwierdzenie zapisania głosu, a suma udziałów jego lokali jest doliczona do wyniku; głos jest ostateczny.
 - **Change ID:** `share-weighted-vote`
 - **PRD refs:** US-01, FR-005, FR-006
 - **Prerequisites:** S-02

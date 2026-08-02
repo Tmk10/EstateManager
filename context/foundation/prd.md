@@ -41,7 +41,7 @@ Odpowiedzią jest aplikacja złożona z modułów, które każdy odbiorca dobier
 z jednym modułem obowiązkowym (**Nieruchomości i mieszkańcy**, de facto baza danych
 o zarządzanych nieruchomościach i ich mieszkańcach) i modułami dodatkowymi dla różnych
 typów spraw. Kluczowe przeformułowanie problemu: skoro blokadą jest nieobecność, a nie
-sprzeciw, produkt nie ma pomagać ludziom *decydować* — ma sprawić, żeby głosy w ogóle
+sprzeciw, produkt nie ma pomagać ludziom _decydować_ — ma sprawić, żeby głosy w ogóle
 zostały oddane.
 
 ## User & Persona
@@ -103,17 +103,19 @@ elektroniczny wystarczył".
 
 ### US-01: Właściciel oddaje głos nad uchwałą
 
-- **Given** właściciel przypisany w rejestrze do lokalu w budynku, w którym trwa
-  głosowanie, i posiadający indywidualny link otrzymany e-mailem
+- **Given** właściciel figurujący w rejestrze budynku, w którym trwa głosowanie,
+  i posiadający indywidualny link otrzymany e-mailem
 - **When** otwiera link
-- **Then** widzi treść uchwały i oddaje głos „za" albo „przeciw", a udział jego lokalu
-  zostaje doliczony do wyniku
+- **Then** widzi treść uchwały i oddaje głos „za" albo „przeciw", a suma udziałów jego
+  lokali zostaje doliczona do wyniku
 
 #### Acceptance Criteria
-- Głos jest ważony udziałem lokalu wyliczonym z metrażu, nie liczony per osoba
+
+- Głos jest ważony udziałem wyliczonym z metrażu — sumą udziałów lokali tego
+  właściciela — a nie liczony per głosująca osoba
 - Oddanie głosu nie wymaga konta, hasła ani logowania
 - Po oddaniu głosu właściciel nie może go zmienić ani wycofać
-- Link jest indywidualny — nie pozwala oddać głosu w imieniu innego lokalu
+- Link jest indywidualny — nie pozwala oddać głosu w imieniu innego właściciela
 - Właściciel otrzymuje potwierdzenie, że jego głos został zapisany
 
 ### US-02: Administrator uruchamia głosowanie nad uchwałą
@@ -125,6 +127,7 @@ elektroniczny wystarczył".
   do progu
 
 #### Acceptance Criteria
+
 - Suma udziałów wszystkich lokali w budynku daje 100%
 - Administrator widzi brakującą liczbę udziałów do przekroczenia progu 50%
 - Uchwała zostaje oznaczona jako podjęta w momencie, w którym suma udziałów „za"
@@ -142,7 +145,7 @@ elektroniczny wystarczył".
   > sam budynek, i milcząco zakładał, że po prostu istnieje.
   > Socrates: Rozważony kontrargument: „formularz zakładania budynków otwiera
   > wielobudynkowość, którą `## Non-Goals` wyklucza." Rozstrzygnięcie: kontrargument
-  > odrzucony — non-goal dotyczy *obsługi* portfela nieruchomości (właściciel z lokalami
+  > odrzucony — non-goal dotyczy _obsługi_ portfela nieruchomości (właściciel z lokalami
   > w kilku budynkach, przełączanie kontekstu, uprawnienia per budynek), a nie sposobu,
   > w jaki powstaje ten jeden budynek. Zakładanie go formularzem zamiast migracją lub
   > seedem nie zobowiązuje reszty produktu do niczego. Non-goal zostaje bez zmian.
@@ -222,8 +225,15 @@ Ustalenia domenowe wiążące powyższe wymagania:
 - Głosowanie **bez terminu końcowego** — trwa, dopóki jeden z progów nie zostanie
   przekroczony. Głosowanie zakończone = podjęte albo upadłe.
 - Głos **ostateczny**, bez możliwości zmiany.
-- **Jeden lokal = jeden głosujący.** Rejestr wskazuje jedną osobę reprezentującą lokal;
-  dysponuje ona całym udziałem lokalu. Współwłasność nie jest modelowana w v1.
+- **Jeden właściciel = jeden głosujący.** Rejestr wskazuje jedną osobę reprezentującą
+  lokal i dysponującą całym jego udziałem. Jeżeli ta sama osoba jest właścicielem kilku
+  lokali, głosuje **raz**, a udziały jej lokali sumują się w jedną wagę głosu.
+  Współwłasność pojedynczego lokalu nie jest modelowana w v1.
+  > Zmiana 2026-08-02: reguła przeniesiona z lokalu na właściciela. Powód: rejestr
+  > przechowuje jeden wiersz na osobę, identyfikowaną adresem e-mail, więc link
+  > wystawiany per lokal wysyłałby tej samej osobie kilka wiadomości i pozwalał jej
+  > oddać kilka głosów. Sposób liczenia wagi się nie zmienia — nadal wynika z metrażu
+  > (FR-006) — zmienia się to, ile lokali stoi za jednym głosem.
 - **Właściciel nie ma konta w v1.** Głosuje z indywidualnego linku otrzymanego e-mailem.
 - **Kanał papierowy działa równolegle, ale poza systemem.** Aplikacja nie rejestruje
   głosów oddanych tradycyjnie — licznik obejmuje wyłącznie kanał elektroniczny.
@@ -347,7 +357,11 @@ Granice wynikające z decyzji zakresowych:
 - **Bez edycji rejestru.** Rejestr jest statyczny — zmiana właściciela wymaga
   interwencji poza aplikacją. Kontrargument uznany i świadomie odłożony.
 - **Bez modelowania współwłasności lokalu.** Jeden lokal = jeden głosujący
-  dysponujący całym udziałem lokalu.
+  dysponujący całym udziałem lokalu. Rozróżnienie, które łatwo pomylić: **jedna osoba
+  z kilkoma lokalami jest obsłużona** — głosuje raz, wagą będącą sumą udziałów swoich
+  lokali (`## Functional Requirements`, ustalenia domenowe); **kilka osób z jednym
+  lokalem nie jest** — rejestr zna wtedy tylko jedną z nich i to ona dysponuje całym
+  udziałem.
 - **Bez rejestrowania głosów oddanych papierowo.** System liczy wyłącznie kanał
   elektroniczny.
 - **Bez SMS jako kanału dotarcia.** Wyłącznie e-mail.

@@ -786,8 +786,8 @@ forward migration.
 
 #### Automated
 
-- [ ] 1.1 Prettier check passes on `prd.md` and `roadmap.md`
-- [ ] 1.2 Superseded phrasing survives in `prd.md` exactly once, as the non-goal
+- [x] 1.1 Prettier check passes on `prd.md` and `roadmap.md`
+- [x] 1.2 Superseded phrasing survives in `prd.md` exactly once, as the non-goal
 
 #### Manual
 
