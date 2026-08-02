@@ -220,12 +220,28 @@ vote may still be cast is answered by the resolution's status, because `FR-007` 
 no end date. The dependency table row for `S-02` and the `Status:` line are updated in
 Phase 5, not here.
 
+Two further per-unit statements live outside `### S-02` and must move with it, or the next
+slice is planned from a line this change just contradicted:
+
+- the `## At a glance` slices table row for `S-02` ("dysponuje indywidualnym linkiem dla
+  **każdego lokalu**") — restate per owner, matching the corrected Outcome
+- the `### S-03` **Outcome** line ("udział **jego lokalu** jest doliczony do wyniku") —
+  becomes the sum of that owner's units' shares. Only the weighting phrase changes; `S-03`'s
+  scope, refs, unknowns and risk paragraph stay as they are, because `S-03` is not being
+  planned here.
+
+Nothing else in `roadmap.md` is touched in this phase.
+
 ### Success Criteria:
 
 #### Automated Verification:
 
 - Prettier is satisfied: `npx prettier --check context/foundation/prd.md context/foundation/roadmap.md`
-- No occurrence of the superseded phrasing remains: `grep -n "Jeden lokal = jeden głosujący" context/foundation/` returns nothing
+- The superseded phrasing survives in exactly one place, the non-goal §3 deliberately keeps:
+  `grep -c "Jeden lokal = jeden głosujący" context/foundation/prd.md` returns `1`, and
+  `grep -n` shows it is the `## Non-Goals` bullet, not the domain rule. `shape-notes.md` is a
+  dated historical record and is not searched: it keeps the phrase, correctly, and Phase 1
+  does not touch it.
 
 #### Manual Verification:
 
@@ -233,6 +249,8 @@ Phase 5, not here.
   the summed weight and does not contradict `FR-006`
 - The distinction between "one person, several units" (supported) and "several people, one
   unit" (not supported) is legible to someone who has not read this plan
+- No slice in `roadmap.md` still describes the link or the vote weight per unit — `S-02`'s
+  table row and Outcome and `S-03`'s Outcome all read per owner
 
 ---
 
@@ -369,18 +387,24 @@ projection strings in Phases 3 and 4 need reading, not just compiling.
 
 #### Manual Verification:
 
+Only the checks that run against a freshly reset stack live here. Everything needing an
+**existing** resolution or voting link is verified in Phase 3 instead — see the note below.
+
 - Through PostgREST as `anon`: `select` on `resolutions` and on `voting_links` returns `[]`;
   `insert` on either returns `42501`
-- Through PostgREST as `anon`: `rpc/resolve_voting_link` with a valid token of an **open**
-  resolution returns exactly one row containing no e-mail address and no other owner's data
-- The same call with (a) a made-up token, (b) a valid token whose resolution is still a
-  draft, returns `[]` in both cases — indistinguishable from each other
-- Updating `title` on an open resolution raises `EM006`; setting an open resolution back to
-  `draft` raises `EM007`; updating the title of a draft succeeds
-- Inserting a `voting_links` row pairing an owner with a resolution from another building
-  fails on the composite foreign key
 - A second resolution with the same `number` in the same building fails with `23505`; the
   same number in a different building succeeds
+
+**Where the rest of the security surface is verified, and why not here.** Four checks — the
+resolver's happy path, its two indistinguishable failure modes, the `EM006` / `EM007` freeze,
+and the composite foreign key refusing a cross-building link — all need a resolution in a
+particular state and a link whose token satisfies `^[A-Za-z0-9_-]{43}$`. Nothing creates
+either until Phase 3. Rather than hand-write throwaway fixture SQL that exercises a path no
+product code takes, they are listed in **Phase 3's** Manual Verification, run against rows the
+real screens created. The cost is accepted knowingly: between the migration landing and Phase
+3's screens working, the unauthenticated contract is written but unproven, so Phase 3 is not
+complete until those four pass. Do not treat Phase 2 as done-and-safe on the two checks above
+alone.
 
 ---
 
@@ -536,6 +560,19 @@ is imported, matching the existing empty-state block that offers the CSV import 
 - The copy button copies the same URL that is displayed as text
 - An owner holding two units appears **once**, with both unit numbers and their summed share
 
+Carried over from Phase 2 (see its Manual Verification note) — the schema-level security
+surface, now runnable because real resolutions and links exist. These are PostgREST probes,
+not UI steps, and Phase 3 is not complete without them:
+
+- Through PostgREST as `anon`: `rpc/resolve_voting_link` with a token copied from an **open**
+  resolution returns exactly one row, containing no e-mail address and no other owner's data
+- The same call with (a) a made-up token, (b) a token whose resolution is still a draft
+  returns `[]` in both cases — indistinguishable from each other
+- Updating `title` on an open resolution raises `EM006`; setting an open resolution back to
+  `draft` raises `EM007`; updating the title of a draft succeeds
+- Inserting a `voting_links` row pairing an owner with a resolution from another building
+  fails on the composite foreign key
+
 ---
 
 ## Phase 4: `/vote/<token>` — the path with no session
@@ -584,7 +621,9 @@ redirect to the sign-in screen. Without the comment, the next person to read thi
 #### Automated Verification:
 
 - Type-aware lint and build pass: `npx astro sync && npm run lint && npm run build`
-- `grep -n '"/vote"' src/middleware.ts` returns nothing but the explanatory comment
+- `/vote` is not a protected route: `grep -c '"/vote"' src/middleware.ts` returns `0` — the
+  path appears in the file only as the unquoted `/vote` inside the explanatory comment, which
+  `grep -n '/vote' src/middleware.ts` shows and which is the point of the check
 
 #### Manual Verification:
 
@@ -678,6 +717,9 @@ and manual steps. Never report that tests passed.
 
 ### PostgREST probes (the security surface):
 
+Only the first runs in Phase 2. The rest need a resolution and a link that exist, so they run
+in **Phase 3** against rows the real screens created — Phase 2's Manual Verification says why.
+
 - `anon` reads and writes on `resolutions` and `voting_links` → `[]` and `42501`
 - `rpc/resolve_voting_link` as `anon`: valid open token → exactly one row; unknown token →
   `[]`; draft token → `[]`
@@ -745,12 +787,13 @@ forward migration.
 #### Automated
 
 - [ ] 1.1 Prettier check passes on `prd.md` and `roadmap.md`
-- [ ] 1.2 Superseded phrasing "Jeden lokal = jeden głosujący" no longer present
+- [ ] 1.2 Superseded phrasing survives in `prd.md` exactly once, as the non-goal
 
 #### Manual
 
 - [ ] 1.3 Per-owner rule is unambiguous about summed weight and consistent with FR-006
 - [ ] 1.4 "One person, several units" vs "several people, one unit" distinction is legible
+- [ ] 1.5 No slice in `roadmap.md` still describes the link or the weight per unit
 
 ### Phase 2: Schema and the unauthenticated access contract
 
@@ -763,11 +806,7 @@ forward migration.
 #### Manual
 
 - [ ] 2.4 `anon` gets `[]` on select and `42501` on insert for both new tables
-- [ ] 2.5 `resolve_voting_link` as `anon` returns one narrow row for a valid open token
-- [ ] 2.6 Unknown token and draft token both return `[]`, indistinguishably
-- [ ] 2.7 `EM006` on content change after open; `EM007` on `open → draft`
-- [ ] 2.8 Composite foreign key refuses a cross-building link
-- [ ] 2.9 Duplicate resolution number in one building fails `23505`; allowed across buildings
+- [ ] 2.5 Duplicate resolution number in one building fails `23505`; allowed across buildings
 
 ### Phase 3: The administrator's path — draft, launch, links
 
@@ -785,13 +824,17 @@ forward migration.
 - [ ] 3.7 Content is uneditable after launch and `opened_at` is shown
 - [ ] 3.8 Copy button copies the URL displayed as text
 - [ ] 3.9 An owner with two units appears once, with both units and their summed share
+- [ ] 3.10 `resolve_voting_link` as `anon` returns one narrow row for a valid open token
+- [ ] 3.11 Unknown token and draft token both return `[]`, indistinguishably
+- [ ] 3.12 `EM006` on content change after open; `EM007` on `open → draft`
+- [ ] 3.13 Composite foreign key refuses a cross-building link
 
 ### Phase 4: `/vote/<token>` — the path with no session
 
 #### Automated
 
 - [ ] 4.1 `astro sync && lint && build` pass
-- [ ] 4.2 `/vote` absent from `PROTECTED_ROUTES`, present only as an explanatory comment
+- [ ] 4.2 `grep -c '"/vote"' src/middleware.ts` returns `0` — the path is only in the comment
 
 #### Manual
 
