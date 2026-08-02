@@ -132,10 +132,13 @@ Both entries below were open items on 2026-08-01 and were closed the same day by
    [What was verified later](#what-was-verified-later-by-f-01).
 4. `src/lib/config-status.ts:16` still links the banner to the
    `10x-astro-starter` README. Left alone because this change freezes `src/lib/`.
-5. Optional cleanup: `actions/checkout@v4` and `actions/setup-node@v4` trigger a
-   Node 20 deprecation annotation on every run. The `site` option is unset in
-   `astro.config.mjs`, so `@astrojs/sitemap` is installed but silently generates
-   nothing.
+5. ~~Optional cleanup: `actions/checkout@v4` and `actions/setup-node@v4` trigger
+   a Node 20 deprecation annotation on every run.~~ Closed 2026-08-02: both
+   workflows moved to `actions/checkout@v7`, `actions/setup-node@v7` and
+   `cloudflare/wrangler-action@v4`, all of which declare `node24`, so the runner
+   no longer force-substitutes a Node version. The `site` option is still unset
+   in `astro.config.mjs`, so `@astrojs/sitemap` is installed but silently
+   generates nothing.
 
 ### Open residuals
 
