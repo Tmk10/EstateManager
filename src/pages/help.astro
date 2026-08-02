@@ -1,0 +1,43 @@
+---
+import Layout from "@/layouts/Layout.astro";
+
+// Middleware has already bounced anonymous visitors (PROTECTED_ROUTES), so reaching
+// this line means there is a signed-in administrator. The module is deliberately
+// closed to anonymous visitors — an owner voting from a per-unit link (S-02) does
+// not see it and contacts the manager instead.
+//
+// v1 is one sentence on purpose. Further content (FAQ, instrukcja importu, opis
+// progu 50%) belongs in this page as another block; navigation belongs to S-09.
+const DEVELOPER_EMAIL = "tomek.maq@gmail.com";
+---
+
+<Layout title="Pomoc">
+  <div class="bg-cosmic min-h-screen p-4 py-12">
+    <div
+      class="mx-auto w-full max-w-2xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
+    >
+      <h1 class="mb-6 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
+        Pomoc
+      </h1>
+
+      <p class="text-blue-100/80">
+        W przypadku problemów skontaktuj się z deweloperem:
+        <a
+          href={`mailto:${DEVELOPER_EMAIL}`}
+          class="text-purple-300 underline-offset-4 transition-colors hover:text-purple-100 hover:underline"
+        >
+          {DEVELOPER_EMAIL}
+        </a>
+      </p>
+
+      <p class="mt-8 text-center text-sm">
+        <a
+          href="/dashboard"
+          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
+        >
+          Wróć do panelu
+        </a>
+      </p>
+    </div>
+  </div>
+</Layout>
