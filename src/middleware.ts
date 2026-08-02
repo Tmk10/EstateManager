@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase";
 //
 // This array is the ONLY auth gate in the app: a new page is public until its path
 // appears here.
-const PROTECTED_ROUTES = ["/dashboard", "/api/email", "/buildings", "/api/buildings"];
+const PROTECTED_ROUTES = ["/dashboard", "/api/email", "/buildings", "/api/buildings", "/help"];
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const supabase = createClient(context.request.headers, context.cookies);
