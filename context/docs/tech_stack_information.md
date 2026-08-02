@@ -132,7 +132,7 @@ Hook `pre-commit` (`.husky/pre-commit`) uruchamia `lint-staged`, które puszcza 
 `ci.yml` uruchamia na push i PR do `main`: `npm ci → npx astro sync → npm run lint → npm run build` na Node 22. `deploy.yml` powtarza tę samą sekwencję na push do `main` i dokłada na końcu `wrangler-action` (patrz `deployment.md`, krok D14).
 
 **+** `npm ci` instaluje dokładnie to, co w lockfile, więc wdrażany artefakt jest tym, który CI zweryfikowało; sekwencja `lint → build → deploy` w jednym jobie **jest** bramką — nieudany krok przerywa job i deploy nigdy nie startuje.
-**−** Branch protection świadomie odroczono (`deployment.md`, D15), więc czerwony build **nie blokuje** merge'a; wymagane statusy w GitHubie działają wyłącznie na pull requestach, a repo jest jednoosobowe z pushami bezpośrednio na `main`.
+**−** Branch protection wciąż nie jest włączone (`deployment.md`, D15 — odroczone, gdy repo działało na bezpośrednich pushach), więc czerwony build **nie blokuje** merge'a. Od 2026-08-02 obowiązuje przepływ gałąź + PR (patrz `CLAUDE.md`, §Hard rules), więc wymagane statusy na pull requestach mają się wreszcie o co zaczepić — D15 warto domknąć.
 **→ Dlaczego tutaj:** `tech-stack.md` zapisuje `ci_default_flow: auto-deploy-on-merge`, a merge do `main` został uznany za ten „ludzki akt", którego wymaga macierz zatwierdzeń — żaden agent nie wdraża na produkcję samodzielnie.
 
 ---
