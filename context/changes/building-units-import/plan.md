@@ -787,38 +787,38 @@ earning its keep.
 
 #### Automated
 
-- [x] 1.1 `npx supabase db reset` applies migration and seed with no error
-- [x] 1.2 `units` and `owners` each report RLS enabled and exactly 8 policies
-- [x] 1.3 A unit referencing an owner from another building is rejected by the composite foreign key
-- [x] 1.4 Deferred trigger rejects a share total other than 10000 at commit; an exact multi-row insert succeeds
-- [x] 1.5 Direct `update` of `buildings.total_area_m2` away from `sum(units.area_m2)` is rejected with `EM004`
-- [x] 1.6 Inserting units without updating `total_area_m2` is rejected with `EM004` — the two writes only pass together
-- [x] 1.7 Deleting every unit succeeds when `total_area_m2` is nulled in the same transaction, and fails otherwise
-- [x] 1.8 `import_building_units` raises `EM002` on a non-empty registry and `EM001` on an unknown building
-- [x] 1.9 Owner deduplication: shared e-mail collapses to one owner, two blank e-mails stay two
-- [x] 1.10 After a successful import, `buildings.total_area_m2` equals `sum(units.area_m2)` to the cent
-- [x] 1.11 `database.types.ts` contains both tables, `total_area_m2` on `buildings`, and `import_building_units`
-- [x] 1.12 `npx astro sync && npm run lint && npm run build` all pass
+- [x] 1.1 `npx supabase db reset` applies migration and seed with no error — c04b893
+- [x] 1.2 `units` and `owners` each report RLS enabled and exactly 8 policies — c04b893
+- [x] 1.3 A unit referencing an owner from another building is rejected by the composite foreign key — c04b893
+- [x] 1.4 Deferred trigger rejects a share total other than 10000 at commit; an exact multi-row insert succeeds — c04b893
+- [x] 1.5 Direct `update` of `buildings.total_area_m2` away from `sum(units.area_m2)` is rejected with `EM004` — c04b893
+- [x] 1.6 Inserting units without updating `total_area_m2` is rejected with `EM004` — the two writes only pass together — c04b893
+- [x] 1.7 Deleting every unit succeeds when `total_area_m2` is nulled in the same transaction, and fails otherwise — c04b893
+- [x] 1.8 `import_building_units` raises `EM002` on a non-empty registry and `EM001` on an unknown building — c04b893
+- [x] 1.9 Owner deduplication: shared e-mail collapses to one owner, two blank e-mails stay two — c04b893
+- [x] 1.10 After a successful import, `buildings.total_area_m2` equals `sum(units.area_m2)` to the cent — c04b893
+- [x] 1.11 `database.types.ts` contains both tables, `total_area_m2` on `buildings`, and `import_building_units` — c04b893
+- [x] 1.12 `npx astro sync && npm run lint && npm run build` all pass — c04b893
 
 #### Manual
 
-- [x] 1.13 Studio shows both tables, demo building holding zero units and an empty `total_area_m2`
-- [x] 1.14 Policy list reads 4 × `authenticated` + 4 × `anon` per table, anon denying
+- [x] 1.13 Studio shows both tables, demo building holding zero units and an empty `total_area_m2` — c04b893
+- [x] 1.14 Policy list reads 4 × `authenticated` + 4 × `anon` per table, anon denying — c04b893
 
 ### Phase 2: CSV parser and share arithmetic
 
 #### Automated
 
-- [ ] 2.1 Arithmetic harness passes, including the 1/3 case and the determinism check
-- [ ] 2.2 A CSV with five distinct defects produces five errors with correct line numbers
-- [ ] 2.3 A Windows-1250 file produces the "save as UTF-8" error rather than mangled names
-- [ ] 2.4 Duplicate `numer_lokalu` reports both offending lines
-- [ ] 2.5 `npx astro sync && npm run lint && npm run build` all pass
+- [x] 2.1 Arithmetic harness passes, including the 1/3 case and the determinism check
+- [x] 2.2 A CSV with five distinct defects produces five errors with correct line numbers
+- [x] 2.3 A Windows-1250 file produces the "save as UTF-8" error rather than mangled names
+- [x] 2.4 Duplicate `numer_lokalu` reports both offending lines
+- [x] 2.5 `npx astro sync && npm run lint && npm run build` all pass
 
 #### Manual
 
-- [ ] 2.6 The largest-remainder distribution and its tie-break are followable from the source
-- [ ] 2.7 Polish error messages read as instructions to an administrator, not parser diagnostics
+- [x] 2.6 The largest-remainder distribution and its tie-break are followable from the source
+- [x] 2.7 Polish error messages read as instructions to an administrator, not parser diagnostics
 
 ### Phase 3: The screens
 
