@@ -786,8 +786,8 @@ forward migration.
 
 #### Automated
 
-- [x] 1.1 Prettier check passes on `prd.md` and `roadmap.md`
-- [x] 1.2 Superseded phrasing survives in `prd.md` exactly once, as the non-goal
+- [x] 1.1 Prettier check passes on `prd.md` and `roadmap.md` — c34888c
+- [x] 1.2 Superseded phrasing survives in `prd.md` exactly once, as the non-goal — c34888c
 
 #### Manual
 
@@ -799,14 +799,14 @@ forward migration.
 
 #### Automated
 
-- [ ] 2.1 Migration applies to a clean local stack (`npx supabase db reset`)
-- [ ] 2.2 `npm run db:types` regenerates cleanly and includes both new tables
-- [ ] 2.3 `astro sync && lint && build` pass
+- [x] 2.1 Migration applies to a clean local stack (`npx supabase db reset`)
+- [x] 2.2 `npm run db:types` regenerates cleanly and includes both new tables
+- [x] 2.3 `astro sync && lint && build` pass
 
 #### Manual
 
-- [ ] 2.4 `anon` gets `[]` on select and `42501` on insert for both new tables
-- [ ] 2.5 Duplicate resolution number in one building fails `23505`; allowed across buildings
+- [x] 2.4 `anon` gets `[]` on select and `42501` on insert for both new tables
+- [x] 2.5 Duplicate resolution number in one building fails `23505`; allowed across buildings
 
 ### Phase 3: The administrator's path — draft, launch, links
 

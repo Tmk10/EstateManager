@@ -68,6 +68,47 @@ export type Database = {
           },
         ]
       }
+      resolutions: {
+        Row: {
+          body: string
+          building_id: string
+          created_at: string
+          id: string
+          number: string
+          opened_at: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          body: string
+          building_id: string
+          created_at?: string
+          id?: string
+          number: string
+          opened_at?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          body?: string
+          building_id?: string
+          created_at?: string
+          id?: string
+          number?: string
+          opened_at?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resolutions_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       units: {
         Row: {
           area_m2: number
@@ -113,6 +154,48 @@ export type Database = {
           },
         ]
       }
+      voting_links: {
+        Row: {
+          building_id: string
+          created_at: string
+          id: string
+          owner_id: string
+          resolution_id: string
+          token: string
+        }
+        Insert: {
+          building_id: string
+          created_at?: string
+          id?: string
+          owner_id: string
+          resolution_id: string
+          token: string
+        }
+        Update: {
+          building_id?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          resolution_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voting_links_owner_same_building_fkey"
+            columns: ["owner_id", "building_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id", "building_id"]
+          },
+          {
+            foreignKeyName: "voting_links_resolution_same_building_fkey"
+            columns: ["resolution_id", "building_id"]
+            isOneToOne: false
+            referencedRelation: "resolutions"
+            referencedColumns: ["id", "building_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -129,6 +212,19 @@ export type Database = {
       import_building_units: {
         Args: { p_building_id: string; p_rows: Json }
         Returns: number
+      }
+      resolve_voting_link: {
+        Args: { p_token: string }
+        Returns: {
+          building_name: string
+          owner_full_name: string
+          owner_share_bps: number
+          owner_unit_numbers: string[]
+          resolution_body: string
+          resolution_number: string
+          resolution_status: string
+          resolution_title: string
+        }[]
       }
     }
     Enums: {
