@@ -22,11 +22,26 @@ Triage ran in the worktree `.claude/worktrees/building-create-review-fixes`
 (branch `worktree-building-create-review-fixes`), per the branching rule updated in
 `CLAUDE.md` on the same day.
 
-**Open action — F6 is not live.** `supabase/migrations/20260802063954_buildings_case_insensitive_unique.sql`
-is applied and exercised on the **local** stack only. Production still enforces the
-exact-text constraint until someone runs `npx supabase db push` from a linked checkout
-(residual G14 — nothing in CI applies migrations). No code depends on the change, so the
-usual migration-before-code ordering is not at stake here.
+**F6 is live on production (2026-08-02).**
+`supabase/migrations/20260802063954_buildings_case_insensitive_unique.sql` was applied by
+hand with `npx supabase db push` against the linked project `swsvohyahbamfonekvaa` —
+nothing in CI applies migrations (residual G14 stays open). The dry-run listed exactly
+one migration; neither `--include-all` nor `--include-seed` was used. `migration list`
+now shows `20260802063954` on both Local and Remote.
+
+Verified the only way that proves anything about the remote schema without direct psql
+access: `npx supabase db diff --linked --schema public` builds a shadow database from the
+migrations and compares it to production — it reports **"No schema changes found"**, so
+the dropped constraint and the new index are both really there. `gen types --linked`
+differs from the committed file only by the remote-only `__InternalSupabase`
+PostgREST-version block and a trailing newline; table definitions are byte-identical,
+the same benign difference Phase 4 recorded. `/api/health` and the signed-out
+`/buildings` redirect were re-checked after the push and are unchanged.
+
+Not done: no functional duplicate-entry test was run against production, because that
+would mean writing rows into the live buildings table. The behaviour was proven on the
+local stack instead (case variant rejected `23505`, different city still inserts), and
+the schema diff proves production carries the same index.
 
 Verification performed on the fix:
 
