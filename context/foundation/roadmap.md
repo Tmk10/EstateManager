@@ -1,6 +1,6 @@
 ---
 project: "EstateManager"
-version: 3
+version: 4
 status: draft
 created: 2026-08-01
 updated: 2026-08-02
@@ -51,6 +51,9 @@ potwierdza się albo upada; wszystko inne ma znaczenie tylko wtedy, gdy ten klik
 | S-04 | `voting-link-email-fanout`  | wszyscy właściciele w budynku otrzymują e-mailem swój indywidualny link do głosowania                                    | S-02, F-02    | US-02, FR-002, FR-004        | proposed |
 | S-05 | `live-tally-and-outcome`    | administrator widzi na żywo bilans udziałów i brakującą część do progu, a uchwała sama zostaje podjęta albo upada        | S-03          | US-02, FR-007, FR-008        | proposed |
 | S-06 | `finished-votes-archive`    | administrator przegląda zakończone głosowania i odtwarza, które udziały złożyły się na wynik                             | S-05          | FR-009, NFR (ślad)           | proposed |
+| S-07 | `dashboard-help-section`    | administrator znajduje w panelu sekcję „Pomoc" i wie, do kogo zgłosić problem — w v1 wyłącznie dane kontaktowe dewelopera | F-01          | — (poza PRD, patrz Unknowns) | proposed |
+| S-08 | `landing-page-identity`     | osoba wchodząca na stronę startową widzi nazwę aplikacji i krótki opis, co ta aplikacja robi — zamiast strony startera    | —             | Vision, US-02                | proposed |
+| S-09 | `multi-module-ui`           | administrator porusza się po interfejsie, który pokazuje aplikację jako zestaw modułów, a nie jako jeden ekran z listą budynków | S-05, S-07, S-08 | Vision (moduł bazowy + moduł głosowania) | proposed |
 
 ## Streams
 
@@ -63,6 +66,7 @@ równoległych torów.
 | A      | Rejestr i uchwała      | `F-01` → `S-01` → `S-01b` → `S-02` | Tor administratora. Wszystko inne z niego wyrasta — bez rejestru i uchwały nie ma czego ani komu wysyłać. `S-01` stawia schemat i kontrakt dostępu na jednej małej tabeli, `S-01b` napełnia go rejestrem. |
 | B      | Głos i wynik           | `S-03` → `S-05` → `S-06`         | Dołącza do toru A przy `S-02`. Zawiera gwiazdę przewodnią `S-03` i domyka pętlę aż do śladu audytowego.                 |
 | C      | Kanał pocztowy         | `F-02` → `S-04`                  | `F-02` zamknięte 2026-08-01 — tor jest bezczynny do `S-02`, przy którym `S-04` dołącza do toru A. Domena i plan Workers Paid są już opłacone, więc `S-04` nie niesie już warunków wstępnych poza repozytorium. |
+| D      | Prezentacja i pomoc    | `S-08` → `S-07` → `S-09`         | Tor dodany 2026-08-02. Nie dotyka domeny ani schematu, więc biegnie **równolegle do wszystkiego** i nie blokuje niczego w torach A–C. `S-08` i `S-07` są rozłączne i można je zrobić w dowolnej kolejności; `S-09` domyka tor i celowo stoi na końcu całej roadmapy, bo dopiero po `S-05` istnieje więcej niż jeden moduł do pokazania. |
 
 ## Baseline
 
@@ -219,6 +223,50 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 - **Risk:** Bariera „każdy głos jest policzalny i ma ustalony ślad" jest wymaganiem trwałym, nie ekranem — jeśli zapis śladu nie powstanie razem z pierwszymi głosami w `S-03` i `S-05`, ten kawałek nie będzie miał czego pokazać dla uchwał już rozstrzygniętych. Osobno: `infrastructure.md` §D5 i §G3 wskazują, że platforma nie pomaga tu w niczym — retencja logów wynosi 3 dni, więc cały ślad musi mieszkać w bazie, a tabela śladu jest najszybciej rosnącą i najrzadziej indeksowaną tabelą schematu.
 - **Status:** proposed
 
+### S-07: Sekcja „Pomoc" w panelu administratora
+
+- **Outcome:** administrator widzi w panelu sekcję „Pomoc" i wie, do kogo zgłosić problem — w v1 sekcja zawiera **wyłącznie dane kontaktowe dewelopera**, ale jest osadzona tak, żeby dołożenie kolejnych treści (FAQ, instrukcja importu, opis progu 50%, zgłoszenie błędu) było dopisaniem bloku, a nie przebudową nawigacji.
+- **Change ID:** `dashboard-help-section`
+- **PRD refs:** — brak. To pierwszy element roadmapy, który nie wywodzi się z żadnego wymagania PRD; wchodzi jako decyzja produktowa podjęta 2026-08-02. Patrz Unknowns.
+- **Prerequisites:** F-01 (panel istnieje i jest za logowaniem)
+- **Parallel with:** wszystko — nie dotyka schematu, domeny ani ścieżki zapisu
+- **Blockers:** —
+- **Unknowns:**
+  - Jakie konkretnie dane kontaktowe mają się tam znaleźć — sam adres e-mail, czy imię i nazwisko, telefon, godziny odpowiadania? Roadmapa celowo tego nie zgaduje, bo to dane osobowe konkretnej osoby i wpisanie ich „na oko" oznaczałoby opublikowanie czegoś, czego nikt nie zatwierdził. — Owner: użytkownik. Block: **tak** — bez tej odpowiedzi kawałek nie ma treści do pokazania.
+  - Czy „Pomoc" ma być widoczna tylko dla zalogowanego administratora, czy również ze strony startowej? W v1 jedynym użytkownikiem z kontem jest administrator, ale właściciel głosujący z linku **nie ma sesji** i to on najpewniej utknie. — Owner: użytkownik. Block: no (v1 domyślnie w panelu; ścieżka właściciela powstaje dopiero w `S-03`).
+  - Czy sekcja to osobna trasa (`/help`), czy blok na `/dashboard`? Osobna trasa wymaga dopisania do `PROTECTED_ROUTES` w `src/middleware.ts` — inaczej nie jest chroniona, co jest w tym repozytorium udokumentowaną pułapką. — Owner: zespół. Block: no.
+- **Risk:** Kawałek jest technicznie trywialny i właśnie dlatego łatwo go zrobić źle w jedyny sposób, który boli: opublikować cudze dane kontaktowe bez zgody, na publicznej domenie, w repozytorium, które jest publiczne na GitHubie. Dane trafią do historii gita nawet po późniejszym usunięciu. Drugie, mniejsze ryzyko: „Pomoc" bywa miejscem, w którym ląduje dokumentacja produktu pisana w kodzie zamiast w `context/` — jeśli treść zacznie rosnąć, powinna mieszkać w jednym miejscu, a nie w dwóch rozjeżdżających się.
+- **Status:** proposed
+
+### S-08: Strona startowa przedstawiająca aplikację
+
+- **Outcome:** osoba wchodząca na `/` widzi nazwę aplikacji i krótki opis tego, co ona robi — zamiast strony startera. Dziś `src/pages/index.astro` renderuje `src/components/Welcome.astro`, czyli nietknięty ekran „**10x Astro Starter**" z angielskim podpisem *„A production-ready starter with authentication, modern tooling, and a cosmic developer experience"*. To jedyny publiczny ekran produktu i mówi obecnie o czymś innym niż produkt.
+- **Change ID:** `landing-page-identity`
+- **PRD refs:** `## Vision` (moduł bazowy plus moduł głosowania; blokadą jest nieobecność, nie sprzeciw), US-02
+- **Prerequisites:** — (trasa publiczna, nie wymaga niczego z toru A)
+- **Parallel with:** wszystko
+- **Blockers:** —
+- **Unknowns:**
+  - Jaka jest **nazwa produktu widoczna dla użytkownika**? W repozytorium „EstateManager" jest identyfikatorem technicznym (nazwa Workera, nazwa projektu), a cała warstwa produktowa jest po polsku. Czy na stronie startowej stoi „EstateManager", czy nazwa polska? — Owner: użytkownik. Block: **tak** — to dosłownie treść, którą ten kawałek ma wyświetlić.
+  - Czy strona startowa ma prowadzić do logowania, czy tylko opisywać? Właściciel głosujący **nigdy tu nie trafia** — wchodzi z linku e-mailowego prosto na uchwałę — więc jedynym odbiorcą tej strony jest administrator albo osoba oceniająca produkt. — Owner: użytkownik. Block: no.
+  - Czy zostaje kosmiczna stylistyka startera (`bg-cosmic`, gradienty, pole gwiazd), czy strona dostaje własny kierunek wizualny? Odpowiedź przesądza, czy `S-09` zastanie spójny język wizualny, czy dwa. — Owner: użytkownik. Block: no (ale odpowiedź „zostaje" trzeba podjąć świadomie, a nie przez zaniechanie).
+- **Risk:** Najtańszy kawałek na tej roadmapie i jednocześnie jedyny, który widzi ktoś spoza projektu, zanim cokolwiek kliknie — dziś komunikuje, że to czyjś starter. Ryzyko merytoryczne jest zerowe, ryzyko zakresowe realne: „strona startowa" to miejsce, w którym łatwo dorobić sekcje funkcji, cennik i stopkę, czyli zbudować landing marketingowy zamiast opisu na dwa zdania. Zakres świadomie ograniczony do nazwy i krótkiego opisu; wszystko ponad to jest osobną decyzją.
+- **Status:** proposed
+
+### S-09: UI dostosowany do aplikacji wielomodułowej
+
+- **Outcome:** administrator porusza się po interfejsie, który przedstawia aplikację jako **zestaw modułów** — dziś moduł bazowy (budynki, lokale, właściciele), moduł głosowania (uchwały, wyniki) i pomoc — zamiast jednego panelu z listą odnośników. Nawigacja, nagłówki i układ są wspólne dla wszystkich modułów, więc dołożenie kolejnego jest wpisem w jedno miejsce, a nie kolejnym ekranem doklejonym obok.
+- **Change ID:** `multi-module-ui`
+- **PRD refs:** `## Vision` (MVP to moduł bazowy plus moduł głosowania — podział na moduły jest tezą produktu, nie pomysłem na wygląd)
+- **Prerequisites:** S-05, S-07, S-08
+- **Parallel with:** — celowo ostatni element roadmapy
+- **Blockers:** —
+- **Unknowns:**
+  - Które moduły mają się pojawić w nawigacji? PRD `## Non-Goals` **parkuje pozostałe moduły** (rachunki, bilans, utrzymanie, przeglądy, ubezpieczenia, ogród, sprzątanie, koszty). Nawigacja pokazująca je jako wyszarzone „wkrótce" obiecuje użytkownikowi produkt, którego nie ma i który nie jest zaplanowany. — Owner: użytkownik. Block: no, ale przesądza o połowie zakresu.
+  - Czy to przebudowa nawigacji, czy również systemu wizualnego (typografia, kolory, komponenty `shadcn/ui`)? Pierwsze to kilka plików, drugie to każdy istniejący ekran. — Owner: użytkownik. Block: no.
+- **Risk:** To jedyny kawałek na roadmapie, który dotyka **wszystkich wcześniejszych ekranów naraz**, i dlatego stoi na końcu: zrobiony wcześniej, byłby przebudowywany po każdym kolejnym kawałku. Główne ryzyko jest zakresowe i wprost sprzeczne z `## Non-Goals` — „interfejs wielomodułowy" to zaproszenie do zaprojektowania architektury informacji dla modułów, które są zaparkowane. Granica, którą trzeba trzymać: v1 układa UI tak, żeby **przyjął** kolejne moduły, i nie pokazuje ani jednego, którego nie ma. Ryzyko drugie: przebudowa nawigacji dotyka `src/middleware.ts` i tablicy `PROTECTED_ROUTES`, która jest w tym projekcie **jedyną bramką autoryzacji** — nowa trasa nie jest chroniona, dopóki nie zostanie tam dopisana, a regresja w tym miejscu jest niewidoczna na ekranie.
+- **Status:** proposed
+
 ## Backlog Handoff
 
 | Roadmap ID | Change ID                      | Suggested issue title                                                     | Ready for `/10x-plan` | Notes                                                                 |
@@ -232,6 +280,9 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 | S-04       | `voting-link-email-fanout`     | Rozesłanie indywidualnych linków do głosowania e-mailem                    | no                    | Wymaga `S-02` oraz `F-02`                                              |
 | S-05       | `live-tally-and-outcome`       | Bilans udziałów na żywo i automatyczne rozstrzygnięcie uchwały             | no                    | Wymaga `S-03`                                                          |
 | S-06       | `finished-votes-archive`       | Przegląd zakończonych głosowań ze śladem wyniku                            | no                    | Wymaga `S-05`                                                          |
+| S-07       | `dashboard-help-section`       | Sekcja „Pomoc" w panelu, w v1 z danymi kontaktowymi dewelopera             | no                    | Technicznie odblokowane (`F-01` zamknięte), ale **brakuje treści**: trzeba podać, jakie dane kontaktowe opublikować |
+| S-08       | `landing-page-identity`        | Strona startowa z nazwą aplikacji i krótkim opisem zamiast strony startera  | no                    | Bez zależności w kodzie, ale **brakuje treści**: trzeba przesądzić nazwę widoczną dla użytkownika i opis |
+| S-09       | `multi-module-ui`              | Interfejs przedstawiający aplikację jako zestaw modułów                     | no                    | Wymaga `S-05`, `S-07`, `S-08`. Ostatni element roadmapy — dotyka wszystkich wcześniejszych ekranów |
 
 ## Open Roadmap Questions
 
@@ -258,7 +309,7 @@ Granice zakresu przeniesione z `## Non-Goals` PRD — świadome, nie do przypadk
 - **Rejestrowanie głosów oddanych papierowo** — Why parked: PRD §Non-Goals; system liczy wyłącznie kanał elektroniczny.
 - **SMS jako kanał dotarcia** — Why parked: PRD §Non-Goals; wyłącznie e-mail.
 - **Zgłaszanie uchwał, usterek i awarii przez mieszkańca** — Why parked: PRD §Non-Goals; w v1 właściciel wyłącznie głosuje.
-- **Pozostałe moduły aplikacji** (rachunki, bilans, utrzymanie, przeglądy, ubezpieczenia, ogród, sprzątanie, koszty) — Why parked: PRD §Non-Goals; MVP to moduł bazowy plus moduł głosowania.
+- **Pozostałe moduły aplikacji** (rachunki, bilans, utrzymanie, przeglądy, ubezpieczenia, ogród, sprzątanie, koszty) — Why parked: PRD §Non-Goals; MVP to moduł bazowy plus moduł głosowania. **Uwaga po dodaniu `S-09` (2026-08-02):** `S-09` układa interfejs tak, żeby aplikacja czytała się jako zestaw modułów — i **nie odparkowuje** niczego z tej listy. Granica jest wiążąca: v1 przygotowuje UI na przyjęcie kolejnych modułów i nie pokazuje ani jednego, którego nie ma, w szczególności nie jako pozycji „wkrótce". Odparkowanie wymaga osobnej decyzji i zmiany w PRD, nie zmiany w nawigacji.
 - **Samodzielna rejestracja administratora** (wraz z potwierdzaniem adresu e-mail i resetem hasła) — Why parked: PRD §Non-Goals; konta zakłada się ręcznie w panelu Supabase, a `F-01` usuwa ze startera to, co po rejestracji zostało.
 - **Model ról i zarządzanie uprawnieniami** — Why parked: PRD §Non-Goals; w v1 każdy użytkownik w bazie jest administratorem. W v2 rola zmienia się bezpośrednio w bazie danych — bez ekranu w aplikacji.
 - **Dostęp administratora bez jawnego konta testowego** (prawdziwe konta zakładane w panelu Supabase, nadawanie i reset haseł) — Why parked: PRD §Non-Goals; w MVP ekran logowania jawnie podaje `test@test.com` / `Test123!`. Śledzone jako PRD §Open Questions nr 3 i blokujące wdrożenie z prawdziwym rejestrem.
