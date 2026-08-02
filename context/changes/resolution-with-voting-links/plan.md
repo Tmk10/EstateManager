@@ -812,37 +812,37 @@ forward migration.
 
 #### Automated
 
-- [x] 3.1 `astro sync && lint && build` pass
-- [x] 3.2 `voting-token.ts` executed directly: 43 URL-safe chars, no collisions in a large sample
+- [x] 3.1 `astro sync && lint && build` pass — a1e4439
+- [x] 3.2 `voting-token.ts` executed directly: 43 URL-safe chars, no collisions in a large sample — a1e4439
 
 #### Manual
 
-- [x] 3.3 Duplicate number rejected with the Polish message; accepted in another building
-- [x] 3.4 Draft can be corrected and the change persists
-- [x] 3.5 Launch produces one link per owner with an e-mail; owners without one listed separately
-- [x] 3.6 Second launch press is a no-op with no error and no duplicate tokens
-- [x] 3.7 Content is uneditable after launch and `opened_at` is shown
-- [x] 3.8 Copy button copies the URL displayed as text
-- [x] 3.9 An owner with two units appears once, with both units and their summed share
-- [x] 3.10 `resolve_voting_link` as `anon` returns one narrow row for a valid open token
-- [x] 3.11 Unknown token and draft token both return `[]`, indistinguishably
-- [x] 3.12 `EM006` on content change after open; `EM007` on `open → draft`
-- [x] 3.13 Composite foreign key refuses a cross-building link
+- [x] 3.3 Duplicate number rejected with the Polish message; accepted in another building — a1e4439
+- [x] 3.4 Draft can be corrected and the change persists — a1e4439
+- [x] 3.5 Launch produces one link per owner with an e-mail; owners without one listed separately — a1e4439
+- [x] 3.6 Second launch press is a no-op with no error and no duplicate tokens — a1e4439
+- [x] 3.7 Content is uneditable after launch and `opened_at` is shown — a1e4439
+- [x] 3.8 Copy button copies the URL displayed as text — a1e4439
+- [x] 3.9 An owner with two units appears once, with both units and their summed share — a1e4439
+- [x] 3.10 `resolve_voting_link` as `anon` returns one narrow row for a valid open token — a1e4439
+- [x] 3.11 Unknown token and draft token both return `[]`, indistinguishably — a1e4439
+- [x] 3.12 `EM006` on content change after open; `EM007` on `open → draft` — a1e4439
+- [x] 3.13 Composite foreign key refuses a cross-building link — a1e4439
 
 ### Phase 4: `/vote/<token>` — the path with no session
 
 #### Automated
 
-- [ ] 4.1 `astro sync && lint && build` pass
-- [ ] 4.2 `grep -c '"/vote"' src/middleware.ts` returns `0` — the path is only in the comment
+- [x] 4.1 `astro sync && lint && build` pass
+- [x] 4.2 `grep -c '"/vote"' src/middleware.ts` returns `0` — the path is only in the comment
 
 #### Manual
 
-- [ ] 4.3 Valid token renders in a private window with no session
-- [ ] 4.4 Made-up, truncated and draft tokens all render the identical neutral page
-- [ ] 4.5 Page source leaks no e-mail, no other owner, no foreign share
-- [ ] 4.6 Page works while signed out — never depends on a session
-- [ ] 4.7 Page contains no outbound links
+- [x] 4.3 Valid token renders in a private window with no session
+- [x] 4.4 Made-up, truncated and draft tokens all render the identical neutral page
+- [x] 4.5 Page source leaks no e-mail, no other owner, no foreign share
+- [x] 4.6 Page works while signed out — never depends on a session
+- [x] 4.7 Page contains no outbound links
 
 ### Phase 5: Production and the record
 

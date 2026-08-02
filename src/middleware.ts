@@ -7,6 +7,14 @@ import { createClient } from "@/lib/supabase";
 //
 // This array is the ONLY auth gate in the app: a new page is public until its path
 // appears here.
+//
+// /vote is deliberately absent, and it is the first route for which that is true. An owner
+// has no account in v1 — PRD `## Access Control`: only administrators authenticate, owners
+// vote through a per-owner link with no session — so adding it here would redirect every
+// voting link to the sign-in screen and break the one flow the product exists for. What
+// protects that route is not this array but public.resolve_voting_link: the token is the
+// credential, the function is SECURITY DEFINER over a fixed narrow row, and anon is denied
+// on every table it reads. Do not "fix" the omission.
 const PROTECTED_ROUTES = ["/dashboard", "/api/email", "/buildings", "/api/buildings", "/help"];
 
 export const onRequest = defineMiddleware(async (context, next) => {

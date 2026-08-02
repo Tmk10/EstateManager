@@ -1,0 +1,130 @@
+---
+import "@/styles/global.css";
+import { createClient } from "@/lib/supabase";
+import { formatShareBps } from "@/lib/shares";
+
+/**
+ * The only route in this application reachable without a session.
+ *
+ * Everything it may show comes from public.resolve_voting_link, whose return list IS the
+ * visibility contract for a caller with no session — no e-mail address, no other owner, no
+ * per-unit area, no vote. This page must never join to anything to widen that list.
+ *
+ * Three properties are load-bearing and easy to break by accident:
+ *
+ *   1. **One answer for every failure.** An unknown token, a truncated token, a token whose
+ *      resolution is still a draft, an RPC error and an unconfigured client all render the
+ *      same neutral page with the same 200. Any branch that lets a reader tell those apart
+ *      turns the token space into something worth probing.
+ *   2. **The token is never echoed into the markup.** It is a bearer secret and, until PRD
+ *      Open Question no. 1 closes, possession of it is the voter's identity.
+ *   3. **No outbound links, anywhere.** A click on one would put the token in a Referer
+ *      header on its way to a third party. This is also why the page does not use
+ *      Layout.astro: the configuration banner it renders carries an external documentation
+ *      link when Supabase is unset, which is exactly the state this page can be in.
+ *
+ * S-03 adds two buttons to this page rather than replacing it.
+ */
+
+const { token } = Astro.params;
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+interface VoteView {
+  buildingName: string;
+  resolutionNumber: string;
+  resolutionTitle: string;
+  resolutionBody: string;
+  ownerFullName: string;
+  ownerUnitNumbers: string[];
+  ownerShareBps: number;
+}
+
+let view: VoteView | null = null;
+
+if (supabase && token) {
+  // No pre-validation of the token's shape. The function is the single decider of what a
+  // token resolves to, and a second opinion here could only ever disagree with it — a
+  // rejected-before-lookup token would answer faster than a looked-up one, which is a
+  // difference a reader can measure.
+  const { data, error } = await supabase.rpc("resolve_voting_link", { p_token: token });
+
+  if (!error && data.length > 0) {
+    const row = data[0];
+    view = {
+      buildingName: row.building_name,
+      resolutionNumber: row.resolution_number,
+      resolutionTitle: row.resolution_title,
+      resolutionBody: row.resolution_body,
+      ownerFullName: row.owner_full_name,
+      ownerUnitNumbers: row.owner_unit_numbers,
+      ownerShareBps: row.owner_share_bps,
+    };
+  }
+}
+---
+
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <title>{view ? `Uchwała ${view.resolutionNumber}` : "Głosowanie"}</title>
+  </head>
+  <body>
+    <div class="bg-cosmic min-h-screen p-4 py-12">
+      <div
+        class="mx-auto w-full max-w-2xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
+      >
+        {
+          view ? (
+            <>
+              <p class="text-sm text-blue-100/60">{view.buildingName}</p>
+              <h1 class="mt-1 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
+                Uchwała {view.resolutionNumber}
+              </h1>
+              <h2 class="mt-2 text-lg font-semibold">{view.resolutionTitle}</h2>
+
+              {/* set:text rather than children: whitespace-pre-wrap would otherwise render
+                  the template's own indentation as part of the resolution. */}
+              <p class="mt-4 text-sm whitespace-pre-wrap text-blue-100/80" set:text={view.resolutionBody} />
+
+              <div class="mt-8 rounded-xl border border-white/10 bg-white/5 p-4">
+                <p class="text-sm text-blue-100/60">Głosujesz jako</p>
+                <p class="mt-1 font-medium">{view.ownerFullName}</p>
+                <p class="mt-1 text-sm text-blue-100/70">
+                  {view.ownerUnitNumbers.length === 1 ? "Lokal" : "Lokale"}: {view.ownerUnitNumbers.join(", ")} · Udział
+                  w głosowaniu: <span class="font-medium text-white">{formatShareBps(view.ownerShareBps)}</span>
+                </p>
+              </div>
+
+              <p class="mt-6 rounded-xl border border-purple-400/30 bg-purple-500/10 px-4 py-3 text-sm text-blue-100/80">
+                Oddawanie głosów nie jest jeszcze dostępne. Zagłosujesz pod tym samym linkiem — zachowaj go.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
+                Nie znaleziono głosowania
+              </h1>
+              <p class="mt-3 text-sm text-blue-100/80">
+                Ten link jest niepoprawny albo głosowanie nie zostało jeszcze uruchomione. Skontaktuj się z zarządcą
+                swojej wspólnoty.
+              </p>
+            </>
+          )
+        }
+      </div>
+    </div>
+  </body>
+</html>
+
+<style>
+  html,
+  body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+  }
+</style>
