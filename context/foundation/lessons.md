@@ -24,3 +24,10 @@
 - **Problem**: Commitowanie prosto na `main` sprawdzało się, dopóki projekt był mały i pracował nad nim jeden agent naraz. Przy większym projekcie i równoległej pracy agentów każdy taki commit ląduje od razu na gałęzi, z której `deploy.yml` deployuje produkcję — bez przeglądu, bez zielonego CI przed faktem i bez punktu, w którym dwie równoległe zmiany dałoby się pogodzić przed wypuszczeniem.
 - **Rule**: Każdy feature i każdy fix dostaje własną gałąź (`feat/<slug>`, `fix/<slug>`, `docs/<slug>`, `chore/<slug>`) odbitą od aktualnego `main` i własny pull request na GitHubie (`gh pr create --base main`). Nie commituj bezpośrednio na `main`. CI (`ci.yml`) uruchamia się na `pull_request` i musi być zielone przed merge'em; merge to `gh pr merge --squash --delete-branch`. Gałąź worktree jest tą gałęzią PR-a. Nie pytaj, której gałęzi użyć — zawsze nowej, odbitej od `main`. Commit, push/otwarcie PR-a i merge to trzy osobne zgody użytkownika; merge jest deployem na produkcję.
 - **Applies to**: all
+
+## Sprawdź `git branch --show-current` przed każdym commitem
+
+- **Context**: Każdy commit w sesji, w której równolegle pracuje inny agent, worktree albo człowiek. Egzekwuje w praktyce [[Każdy feature i fix przez własną gałąź i pull request]] — tamta reguła mówi, na której gałęzi ma powstać commit, ta mówi, jak sprawdzić, że tam powstaje.
+- **Problem**: 2026-08-02 gałąź utworzona na początku sesji przestała być aktywna — checkout wrócił na `main`, gdy wszedł tam commit `f0eff41` (PR #14). Agent sprawdził przed commitem `git status --short`, który nazwy gałęzi nie pokazuje, i dwa commity wylądowały na `main` — czyli na gałęzi, z której `deploy.yml` deployuje produkcję.
+- **Rule**: Bezpośrednio przed każdym `git commit` uruchom `git branch --show-current`. Jeśli wynikiem jest `main`, przerwij i odbij gałąź — nie commituj. Nigdy nie wnioskuj o gałęzi z `git status` ani z tego, że gałąź została utworzona wcześniej w tej samej sesji.
+- **Applies to**: all
