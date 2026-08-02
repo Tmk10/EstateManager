@@ -1,6 +1,5 @@
 ---
 import Layout from "@/layouts/Layout.astro";
-import CopyLinkButton from "@/components/resolutions/CopyLinkButton";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps } from "@/lib/shares";
 import { formatResolutionDate } from "@/lib/resolutions";
@@ -18,7 +17,11 @@ interface OwnerRow {
   email: string | null;
   unitNumbers: string[];
   shareBps: number;
-  token: string | null;
+  /**
+   * Whether a link exists -- never the link itself. This page reports on the state of the
+   * voting links; it is not a delivery channel for them. See the read below.
+   */
+  hasLink: boolean;
 }
 
 let loadError: string | null = null;
@@ -76,7 +79,14 @@ if (!supabase) {
         const [ownersResult, unitsResult, linksResult] = await Promise.all([
           supabase.from("owners").select("id, full_name, email").eq("building_id", id),
           supabase.from("units").select("owner_id, unit_number, share_bps").eq("building_id", id),
-          supabase.from("voting_links").select("owner_id, token").eq("resolution_id", resolutionId),
+          // owner_id only, deliberately: the token is NOT projected here and must not be.
+          // A voting token is a bearer credential -- whoever holds it can act as that owner
+          // -- so the value stays in the database, and the paths that legitimately need it
+          // (S-04's fanout) read it server-side and put it in an e-mail, never in a page.
+          // The accompanying migration revokes column-level `select (token)` from
+          // `authenticated`, so adding it back to this string fails at the database with
+          // 42501 rather than quietly widening what an administrator's browser receives.
+          supabase.from("voting_links").select("owner_id").eq("resolution_id", resolutionId),
         ]);
 
         const readError = ownersResult.error ?? unitsResult.error ?? linksResult.error;
@@ -84,7 +94,7 @@ if (!supabase) {
         if (readError) {
           loadError = readError.message;
         } else {
-          const tokensByOwner = new Map(linksResult.data.map((link) => [link.owner_id, link.token]));
+          const ownersWithLink = new Set(linksResult.data.map((link) => link.owner_id));
 
           ownerRows = ownersResult.data.map((owner) => {
             const units = unitsResult.data.filter((unit) => unit.owner_id === owner.id);
@@ -101,7 +111,7 @@ if (!supabase) {
               // Per-owner voting: an owner holding several units votes once, with their
               // shares summed into a single weight (PRD, 2026-08-02).
               shareBps: units.reduce((sum, unit) => sum + unit.share_bps, 0),
-              token: tokensByOwner.get(owner.id) ?? null,
+              hasLink: ownersWithLink.has(owner.id),
             };
           });
 
@@ -113,13 +123,17 @@ if (!supabase) {
 }
 
 const isDraft = resolution?.status === "draft";
-const linkedOwners = ownerRows.filter((owner) => owner.token !== null);
-const unlinkedOwners = ownerRows.filter((owner) => owner.token === null);
+const linkedOwners = ownerRows.filter((owner) => owner.hasLink);
 
-// Absolute, and built from the request's own origin rather than a hardcoded hostname: the
-// same link has to work on localhost:4321, on the *.workers.dev host, and on whatever
-// domain comes later.
-const linkFor = (token: string) => `${Astro.url.origin}/vote/${token}`;
+// Two different reasons an owner has no link, split because the copy for each says
+// something the administrator would act on differently. Today only the first group can be
+// non-empty -- links are created for exactly the owners with an e-mail, and the open
+// endpoint refuses to flip the status unless the counts agree. The second group is the
+// visible symptom of that guarantee having failed, so it must not be folded into the first:
+// telling an administrator that an owner has no e-mail when the registry says otherwise
+// sends them to correct data that is already correct.
+const ownersWithoutEmail = ownerRows.filter((owner) => !owner.hasLink && owner.email === null);
+const ownersMissingLink = ownerRows.filter((owner) => !owner.hasLink && owner.email !== null);
 
 const openedAtLabel = resolution?.opened_at != null ? formatResolutionDate(resolution.opened_at) : null;
 
@@ -271,6 +285,11 @@ const inputClass =
                     </p>
                   </div>
 
+                  <p class="mb-4 text-sm text-blue-100/70">
+                    Linki są zapisane w bazie i nie są tutaj pokazywane — link jest jedynym dowodem tożsamości
+                    głosującego, więc trafia wyłącznie do właściciela, na jego adres e-mail.
+                  </p>
+
                   <div class="overflow-x-auto rounded-xl border border-white/10">
                     <table class="w-full text-left text-sm">
                       <thead class="bg-white/5 text-xs tracking-wide text-blue-100/60 uppercase">
@@ -288,7 +307,7 @@ const inputClass =
                             Udział
                           </th>
                           <th scope="col" class="px-4 py-3 font-medium">
-                            Link do głosowania
+                            Status linku
                           </th>
                         </tr>
                       </thead>
@@ -300,7 +319,9 @@ const inputClass =
                             <td class="px-4 py-3">{owner.unitNumbers.join(", ")}</td>
                             <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(owner.shareBps)}</td>
                             <td class="px-4 py-3">
-                              {owner.token && <CopyLinkButton url={linkFor(owner.token)} client:load />}
+                              <span class="rounded-full border border-green-400/40 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-200">
+                                Wystawiony
+                              </span>
                             </td>
                           </tr>
                         ))}
@@ -308,7 +329,37 @@ const inputClass =
                     </table>
                   </div>
 
-                  {unlinkedOwners.length > 0 && (
+                  {ownersMissingLink.length > 0 && (
+                    <div class="mt-6 rounded-xl border border-red-500/40 bg-red-900/30 p-4" role="alert">
+                      <h3 class="text-sm font-medium text-red-200">Brakuje linków do głosowania</h3>
+                      <p class="mt-1 text-sm text-red-200/90">
+                        Ci właściciele mają adres e-mail w rejestrze, ale nie powstał dla nich link. Naciśnij
+                        <span class="font-medium"> Uruchom głosowanie </span>
+                        jeszcze raz — brakujące linki zostaną wystawione, a te już istniejące pozostaną bez zmian.
+                      </p>
+                      <ul class="mt-3 space-y-1 text-sm text-red-100">
+                        {ownersMissingLink.map((owner) => (
+                          <li>
+                            {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
+                          </li>
+                        ))}
+                      </ul>
+                      <form
+                        method="POST"
+                        action={`/api/buildings/${building.id}/resolutions/${resolution.id}/open`}
+                        class="mt-4"
+                      >
+                        <button
+                          type="submit"
+                          class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500"
+                        >
+                          Uruchom głosowanie
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
+                  {ownersWithoutEmail.length > 0 && (
                     <div class="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
                       <h3 class="text-sm font-medium text-amber-100">Właściciele bez linku</h3>
                       <p class="mt-1 text-sm text-amber-100/80">
@@ -316,7 +367,7 @@ const inputClass =
                         trzeba zebrać poza aplikacją — ich udziały nadal liczą się do progu większości.
                       </p>
                       <ul class="mt-3 space-y-1 text-sm text-amber-100/90">
-                        {unlinkedOwners.map((owner) => (
+                        {ownersWithoutEmail.map((owner) => (
                           <li>
                             {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
                           </li>

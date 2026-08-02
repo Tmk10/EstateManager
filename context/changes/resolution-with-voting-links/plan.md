@@ -1,5 +1,38 @@
 # Resolution with Voting Links Implementation Plan
 
+## Amendment — 2026-08-02, after the Phase 3/4 implementation review
+
+**The administrator never sees a voting link.** Triage of finding F10 in
+`reviews/impl-review-phase-3-4.md` replaced the design below: a token is a bearer credential,
+so rendering all of a building's tokens into an administrator's browser made that browser a
+second copy of every voter's identity. The links are now created and **stored**, and nothing
+reads them back out until `S-04` sends them by e-mail. This slice's deliverable is the links
+existing in the database, not an administrator holding them.
+
+What this supersedes, section by section — the original text is left in place as the record of
+what was planned and why:
+
+- **Overview** and **User Journey step 3**: "readable on screen and passable by hand" and the
+  owner → link table with "the full URL and a copy button" no longer describe the build. The
+  table remains, with a **Status linku** column reading _Wystawiony_ in place of the URL.
+- **Section 6, Copy button** (`src/components/resolutions/CopyLinkButton.tsx`): **removed**.
+  The file is deleted; the slice now ships no `.tsx` and no client island at all, which also
+  disposes of review finding F9.
+- **Success criterion** "the copy button copies the same URL that is displayed as text":
+  **withdrawn**, replaced by _no voting token appears in any HTML response_.
+- **Phase 3 check 3.8** is superseded for the same reason and re-marked below.
+- **New migration**, not in the original plan:
+  `supabase/migrations/20260802214500_restrict_voting_link_token_select.sql` revokes
+  column-level `select (token)` on `public.voting_links` from `authenticated` **and** `anon`,
+  so the rule survives a future `.select()` string that asks for it.
+
+Consequence accepted with the change: `S-02` ships with **no delivery path**. Until `S-04`
+builds the fanout, a link reaches nobody except by reading the database directly. This
+contradicts the reason `roadmap.md` gave for splitting `S-02` from `S-04` — that `S-03` could
+be validated on one manually passed link — and that entry has been corrected. `S-02` is an
+intermediate step toward `S-03` and `S-04` (decision, 2026-08-02); the links existing in the
+database is what it owes them.
+
 ## Overview
 
 Roadmap slice `S-02`. An administrator writes a resolution (uchwała) for a building whose
@@ -822,7 +855,11 @@ forward migration.
 - [x] 3.5 Launch produces one link per owner with an e-mail; owners without one listed separately — a1e4439
 - [x] 3.6 Second launch press is a no-op with no error and no duplicate tokens — a1e4439
 - [x] 3.7 Content is uneditable after launch and `opened_at` is shown — a1e4439
-- [x] 3.8 Copy button copies the URL displayed as text — a1e4439
+- [~] 3.8 ~~Copy button copies the URL displayed as text~~ — SUPERSEDED by the amendment at the
+      top of this plan. The copy button is gone. Replaced by: **no voting token appears in any
+      HTML response, and `select=token` on `voting_links` is refused by the database for both
+      `authenticated` and `anon`** — verified through PostgREST, `42501 permission denied`,
+      while `select=owner_id` returns `200` and `resolve_voting_link` still resolves for `anon`
 - [x] 3.9 An owner with two units appears once, with both units and their summed share — a1e4439
 - [x] 3.10 `resolve_voting_link` as `anon` returns one narrow row for a valid open token — a1e4439
 - [x] 3.11 Unknown token and draft token both return `[]`, indistinguishably — a1e4439
@@ -833,16 +870,16 @@ forward migration.
 
 #### Automated
 
-- [x] 4.1 `astro sync && lint && build` pass
-- [x] 4.2 `grep -c '"/vote"' src/middleware.ts` returns `0` — the path is only in the comment
+- [x] 4.1 `astro sync && lint && build` pass — f4c77d7
+- [x] 4.2 `grep -c '"/vote"' src/middleware.ts` returns `0` — the path is only in the comment — f4c77d7
 
 #### Manual
 
-- [x] 4.3 Valid token renders in a private window with no session
-- [x] 4.4 Made-up, truncated and draft tokens all render the identical neutral page
-- [x] 4.5 Page source leaks no e-mail, no other owner, no foreign share
-- [x] 4.6 Page works while signed out — never depends on a session
-- [x] 4.7 Page contains no outbound links
+- [x] 4.3 Valid token renders in a private window with no session — f4c77d7
+- [x] 4.4 Made-up, truncated and draft tokens all render the identical neutral page — f4c77d7
+- [x] 4.5 Page source leaks no e-mail, no other owner, no foreign share — f4c77d7
+- [x] 4.6 Page works while signed out — never depends on a session — f4c77d7
+- [x] 4.7 Page contains no outbound links — f4c77d7
 
 ### Phase 5: Production and the record
 

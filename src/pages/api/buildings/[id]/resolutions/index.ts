@@ -26,8 +26,20 @@ export const POST: APIRoute = async (context) => {
     return fail("Baza danych nie jest skonfigurowana.");
   }
 
+  // No owners check here, unlike api/buildings/[id]/units.ts:43-51, which re-parses and
+  // recomputes rather than trust anything the browser posted. The asymmetry is deliberate,
+  // not an omission: what units.ts protects is a registry whose arithmetic must hold, so
+  // trusting the client would let a wrong number reach the database. Here the only thing a
+  // direct POST past new.astro's gate can produce is a DRAFT in a building with no owners --
+  // which is inert. Nothing is sent, no link exists, and nobody can vote; the guarantee that
+  // matters, "open implies a complete set of links", is enforced where the status actually
+  // flips, by open.ts (step 2, "Żaden właściciel w tym budynku nie ma adresu e-mail"). A
+  // second check here would be a second copy of that rule, positioned where it cannot be the
+  // one that decides.
+  //
   // `status` is deliberately absent: it defaults to 'draft' in the schema, and a resolution
-  // that could be created already open would skip the step that writes the voting links.
+  // that could be created already open would skip the step that writes the voting links --
+  // which is what makes the paragraph above hold.
   const { data, error } = await supabase
     .from("resolutions")
     .insert({ building_id: id, number: parsed.values.number, title: parsed.values.title, body: parsed.values.body })

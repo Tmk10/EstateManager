@@ -10,8 +10,15 @@
  *      hash of their e-mail, a counter). 32 random bytes is 256 bits -- unguessable by any
  *      margin that matters to a building of 70 flats.
  *   2. It travels in a URL path. That means the page it lands on must carry no outbound
- *      links (a Referer header would hand the token to a third party), and the token must
- *      never reach a log line or an error message.
+ *      links (a Referer header would hand the token to a third party), and no code in this
+ *      repository may put the token into a log line or an error message.
+ *
+ * That second rule binds our code and stops at the platform. `wrangler.jsonc` enables
+ * Workers Logs, which records each invocation's request URL -- so every token an owner
+ * opens IS persisted, for up to 7 days, readable by anyone with Cloudflare dashboard
+ * access. Do not cite "the token never reaches a log line" as a property of the running
+ * system; it is a property of the source. Removing the token from the URL path is the only
+ * fix that would make the literal claim true, and it is a schema-sized change.
  *
  * Dependency-free on purpose, like src/lib/shares.ts and src/lib/units-csv.ts: with no
  * imports it can be executed directly with `node --experimental-strip-types`, which is the
