@@ -16,6 +16,7 @@ export type Database = {
           id: string
           name: string
           street: string
+          total_area_m2: number | null
         }
         Insert: {
           city: string
@@ -23,6 +24,7 @@ export type Database = {
           id?: string
           name: string
           street: string
+          total_area_m2?: number | null
         }
         Update: {
           city?: string
@@ -30,15 +32,100 @@ export type Database = {
           id?: string
           name?: string
           street?: string
+          total_area_m2?: number | null
         }
         Relationships: []
+      }
+      owners: {
+        Row: {
+          building_id: string
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+        }
+        Insert: {
+          building_id: string
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+        }
+        Update: {
+          building_id?: string
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owners_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      units: {
+        Row: {
+          area_m2: number
+          building_id: string
+          created_at: string
+          id: string
+          owner_id: string
+          share_bps: number
+          unit_number: string
+        }
+        Insert: {
+          area_m2: number
+          building_id: string
+          created_at?: string
+          id?: string
+          owner_id: string
+          share_bps: number
+          unit_number: string
+        }
+        Update: {
+          area_m2?: number
+          building_id?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          share_bps?: number
+          unit_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "units_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "units_owner_same_building_fkey"
+            columns: ["owner_id", "building_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id", "building_id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      assert_building_registry: {
+        Args: { p_building_id: string }
+        Returns: undefined
+      }
+      import_building_units: {
+        Args: { p_building_id: string; p_rows: Json }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
