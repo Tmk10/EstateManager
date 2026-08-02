@@ -19,10 +19,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
+          # See ci.yml: `cache` is named explicitly because setup-node v5+ would
+          # otherwise derive caching from a `packageManager` field we do not set.
           cache: npm
       - run: npm ci
       - run: npx astro sync
@@ -40,7 +42,13 @@ jobs:
       # SUPABASE_URL / SUPABASE_KEY are NOT passed here. In production they are
       # Workers Secrets, set once via `wrangler secret put` and held by the
       # platform. The env vars above exist only so the build can read them.
-      - uses: cloudflare/wrangler-action@v3
+      #
+      # `wranglerVersion` is deliberately unset. The action resolves wrangler
+      # from this repo's lockfile -- run 30742772673 logged `wrangler 4.118.0`,
+      # matching package.json -- so pinning here would only create a second
+      # place to bump. v4's one breaking change is its default version (now
+      # wrangler v4), which is the version we were already getting.
+      - uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy

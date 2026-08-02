@@ -10,10 +10,13 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
+          # Explicit on purpose: setup-node v5 added automatic caching driven by
+          # `packageManager` in package.json, which this repo does not declare.
+          # Naming the cache here keeps the behaviour independent of that field.
           cache: npm
       - run: npm ci
       - run: npx astro sync
