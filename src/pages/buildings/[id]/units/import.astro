@@ -1,0 +1,296 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import UnitsUploadForm from "@/components/buildings/UnitsUploadForm";
+import { createClient } from "@/lib/supabase";
+import { CSV_HEADERS, parseUnitsCsv, type ParseError } from "@/lib/units-csv";
+import { computeShareBps, formatAreaHundredths, formatShareBps, TOTAL_BPS } from "@/lib/shares";
+
+const { id } = Astro.params;
+
+// One page, two states — upload, then preview — using Astro's documented form-handling
+// recipe (Astro.request.method === "POST" plus Astro.request.formData()) rather than a
+// second route. The confirm step is the only thing that needs an API endpoint, because it
+// is the only thing that writes.
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+// A file this big is not a unit registry. 1000 rows of four short fields is well under
+// 100 kB; the limit is here so a mis-selected file is rejected before it is decoded.
+const MAX_FILE_BYTES = 1024 * 1024;
+
+// What browsers actually send for a .csv: text/csv on macOS, application/vnd.ms-excel on
+// a machine with Excel installed, text/plain from some editors, and occasionally nothing
+// at all.
+const ACCEPTED_TYPES = ["text/csv", "application/vnd.ms-excel", "text/plain", ""];
+
+interface PreviewRow {
+  unitNumber: string;
+  areaLabel: string;
+  shareLabel: string;
+  fullName: string;
+  email: string | null;
+}
+
+let loadError: string | null = null;
+let building: { id: string; name: string; city: string; street: string } | null = null;
+let alreadyImported = false;
+
+let uploadError: string | null = Astro.url.searchParams.get("error");
+let parseErrors: ParseError[] = [];
+let previewRows: PreviewRow[] = [];
+let previewCsv = "";
+let previewAreaLabel = "";
+
+if (!supabase) {
+  loadError = "Baza danych nie jest skonfigurowana.";
+} else if (!id) {
+  loadError = "Nie znaleziono budynku.";
+} else {
+  const { data, error: buildingError } = await supabase
+    .from("buildings")
+    .select("id, name, city, street")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (buildingError) {
+    loadError = buildingError.code === "22P02" ? "Nie znaleziono budynku." : buildingError.message;
+  } else if (!data) {
+    loadError = "Nie znaleziono budynku.";
+  } else {
+    building = data;
+
+    // Checked before a file is chosen, not after: re-import is refused by the database
+    // anyway (EM002), but learning that after picking a file and waiting for a preview is
+    // a worse way to find out.
+    const { count, error: countError } = await supabase
+      .from("units")
+      .select("id", { count: "exact", head: true })
+      .eq("building_id", id);
+
+    if (countError) {
+      loadError = countError.message;
+    } else {
+      alreadyImported = (count ?? 0) > 0;
+    }
+  }
+}
+
+if (Astro.request.method === "POST" && building && !alreadyImported) {
+  const form = await Astro.request.formData();
+  const file = form.get("file");
+
+  if (!(file instanceof File) || file.size === 0) {
+    uploadError = "Wybierz plik CSV z listą lokali.";
+  } else if (file.size > MAX_FILE_BYTES) {
+    uploadError = "Plik jest za duży — maksymalny rozmiar to 1 MB.";
+  } else if (!ACCEPTED_TYPES.includes(file.type.split(";")[0].trim().toLowerCase())) {
+    uploadError = "To nie jest plik CSV. Zapisz arkusz jako CSV i spróbuj ponownie.";
+  } else {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const parsed = parseUnitsCsv(bytes);
+
+    if (!parsed.ok) {
+      parseErrors = parsed.errors;
+    } else {
+      const shareBps = computeShareBps(parsed.rows.map((row) => row.areaHundredths));
+
+      if (!Array.isArray(shareBps)) {
+        uploadError = shareBps.error;
+      } else {
+        previewRows = parsed.rows.map((row, index) => ({
+          unitNumber: row.unitNumber,
+          areaLabel: formatAreaHundredths(row.areaHundredths),
+          shareLabel: formatShareBps(shareBps[index]),
+          fullName: row.fullName,
+          email: row.email,
+        }));
+
+        const totalHundredths = parsed.rows.reduce((sum, row) => sum + row.areaHundredths, 0);
+        previewAreaLabel = formatAreaHundredths(totalHundredths);
+
+        // The preview carries the original CSV text, not the computed shares. The confirm
+        // endpoint re-parses and recomputes from exactly these bytes; a decode here is
+        // safe because the parser has already accepted them as UTF-8. TextDecoder drops
+        // the BOM by default, and the parser strips one anyway, so the round trip is
+        // byte-stable either way.
+        previewCsv = new TextDecoder("utf-8").decode(bytes);
+      }
+    }
+  }
+}
+
+const showPreview = previewRows.length > 0;
+---
+
+<Layout title="Wczytaj lokale">
+  <div class="bg-cosmic min-h-screen p-4 py-12">
+    <div
+      class:list={[
+        "mx-auto w-full rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl",
+        showPreview ? "max-w-4xl" : "max-w-xl",
+      ]}
+    >
+      {
+        loadError ? (
+          <p class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300" role="alert">
+            {loadError}
+          </p>
+        ) : (
+          building && (
+            <>
+              <div class="mb-6">
+                <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
+                  Wczytaj lokale
+                </h1>
+                <p class="mt-1 text-sm text-blue-100/60">
+                  {building.name} — {building.street}, {building.city}
+                </p>
+              </div>
+
+              {alreadyImported ? (
+                <div class="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-10 text-center">
+                  <p class="text-blue-100/80">Ten budynek ma już zaimportowany rejestr lokali.</p>
+                  <p class="mt-1 text-sm text-blue-100/50">
+                    Rejestru nie da się wczytać drugi raz — zmiana udziałów w trakcie głosowania przesunęłaby próg
+                    większości.
+                  </p>
+                  <a
+                    href={`/buildings/${building.id}`}
+                    class="mt-5 inline-block rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-purple-500"
+                  >
+                    Zobacz rejestr lokali
+                  </a>
+                </div>
+              ) : showPreview ? (
+                <>
+                  <p class="mb-4 text-sm text-blue-100/80">
+                    Sprawdź dane przed zapisaniem. Udziały zostały wyliczone z metraży — po zapisaniu rejestru nie da
+                    się ich zmienić.
+                  </p>
+
+                  <div class="overflow-x-auto rounded-xl border border-white/10">
+                    <table class="w-full text-left text-sm">
+                      <thead class="bg-white/5 text-xs tracking-wide text-blue-100/60 uppercase">
+                        <tr>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            Nr lokalu
+                          </th>
+                          <th scope="col" class="px-4 py-3 text-right font-medium">
+                            Metraż
+                          </th>
+                          <th scope="col" class="px-4 py-3 text-right font-medium">
+                            Udział
+                          </th>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            Właściciel
+                          </th>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            E-mail
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-white/5">
+                        {previewRows.map((row) => (
+                          <tr>
+                            <td class="px-4 py-3 font-medium">{row.unitNumber}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{row.areaLabel} m²</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{row.shareLabel}</td>
+                            <td class="px-4 py-3">{row.fullName}</td>
+                            <td class="px-4 py-3">{row.email ?? <span class="text-blue-100/40">brak</span>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot class="border-t border-white/10 bg-white/5 font-medium">
+                        <tr>
+                          <td class="px-4 py-3">Razem ({previewRows.length})</td>
+                          <td class="px-4 py-3 text-right tabular-nums">{previewAreaLabel} m²</td>
+                          <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(TOTAL_BPS)}</td>
+                          <td class="px-4 py-3" colspan="2" />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  <form method="POST" action={`/api/buildings/${building.id}/units`} class="mt-6">
+                    <input type="hidden" name="csv" value={previewCsv} />
+                    <button
+                      type="submit"
+                      class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
+                    >
+                      Zapisz rejestr lokali
+                    </button>
+                  </form>
+
+                  <p class="mt-3 text-center text-sm">
+                    <a
+                      href={`/buildings/${building.id}/units/import`}
+                      class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
+                    >
+                      Wybierz inny plik
+                    </a>
+                  </p>
+                </>
+              ) : (
+                <>
+                  {parseErrors.length > 0 && (
+                    <div class="mb-6 rounded-xl border border-red-500/30 bg-red-900/20 p-4" role="alert">
+                      <p class="text-sm font-medium text-red-200">
+                        Plik nie został wczytany. Popraw {parseErrors.length === 1 ? "poniższy błąd" : "poniższe błędy"}{" "}
+                        i spróbuj ponownie:
+                      </p>
+                      <ul class="mt-3 space-y-1.5 text-sm text-red-300">
+                        {parseErrors.map((parseError) => (
+                          <li>
+                            <span class="font-medium text-red-200">Wiersz {parseError.line}:</span> {parseError.message}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div class="mb-6 rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p class="text-sm font-medium text-blue-100/90">Plik musi mieć cztery kolumny:</p>
+                    <ul class="mt-2 space-y-1 text-sm text-blue-100/70">
+                      <li>
+                        <code class="text-blue-200">{CSV_HEADERS[0]}</code> — numer lokalu, np. 12 albo 3A
+                      </li>
+                      <li>
+                        <code class="text-blue-200">{CSV_HEADERS[1]}</code> — powierzchnia w m², przecinek dziesiętny,
+                        np. 52,40
+                      </li>
+                      <li>
+                        <code class="text-blue-200">{CSV_HEADERS[2]}</code> — imię i nazwisko właściciela
+                      </li>
+                      <li>
+                        <code class="text-blue-200">{CSV_HEADERS[3]}</code> — adres e-mail, może zostać pusty
+                      </li>
+                    </ul>
+                    <p class="mt-3 text-sm text-blue-100/70">
+                      Wiersze z tym samym adresem e-mail trafią do jednego właściciela. Udziały wyliczymy z metraży.
+                    </p>
+                    <a
+                      href="/api/buildings/units-template.csv"
+                      class="mt-4 inline-block rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium transition-colors hover:border-purple-400/50 hover:bg-white/10"
+                    >
+                      Pobierz pusty szablon CSV
+                    </a>
+                  </div>
+
+                  <UnitsUploadForm serverError={uploadError} client:load />
+                </>
+              )}
+            </>
+          )
+        )
+      }
+
+      <p class="mt-8 text-center text-sm">
+        <a
+          href={building ? `/buildings/${building.id}` : "/buildings"}
+          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
+        >
+          Wróć do budynku
+        </a>
+      </p>
+    </div>
+  </div>
+</Layout>

@@ -117,6 +117,17 @@ export function formatAreaHundredths(areaHundredths: number): string {
 }
 
 /**
+ * Formats a decimal number of square metres the Polish way, e.g. 52.4 -> "52,40".
+ *
+ * The counterpart to formatAreaHundredths for values read back out of `numeric(8,2)`
+ * columns, which arrive as decimals rather than as the integer hundredths the parser
+ * produces.
+ */
+export function formatSquareMetres(squareMetres: number): string {
+  return squareMetres.toFixed(2).replace(".", ",");
+}
+
+/**
  * Renders an area as the decimal string the import function expects.
  *
  * Built by slicing the integer rather than dividing, so no float ever touches the value

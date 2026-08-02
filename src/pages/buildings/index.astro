@@ -38,11 +38,16 @@ const { data: buildings, error } = supabase
         ) : buildings.length > 0 ? (
           <ul class="space-y-3">
             {buildings.map((building) => (
-              <li class="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-                <p class="font-medium">{building.name}</p>
-                <p class="mt-1 text-sm text-blue-100/60">
-                  {building.street}, {building.city}
-                </p>
+              <li>
+                <a
+                  href={`/buildings/${building.id}`}
+                  class="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition-colors hover:border-purple-400/40 hover:bg-white/10"
+                >
+                  <p class="font-medium">{building.name}</p>
+                  <p class="mt-1 text-sm text-blue-100/60">
+                    {building.street}, {building.city}
+                  </p>
+                </a>
               </li>
             ))}
           </ul>

@@ -809,40 +809,40 @@ earning its keep.
 
 #### Automated
 
-- [x] 2.1 Arithmetic harness passes, including the 1/3 case and the determinism check
-- [x] 2.2 A CSV with five distinct defects produces five errors with correct line numbers
-- [x] 2.3 A Windows-1250 file produces the "save as UTF-8" error rather than mangled names
-- [x] 2.4 Duplicate `numer_lokalu` reports both offending lines
-- [x] 2.5 `npx astro sync && npm run lint && npm run build` all pass
+- [x] 2.1 Arithmetic harness passes, including the 1/3 case and the determinism check — 9aa0ab0
+- [x] 2.2 A CSV with five distinct defects produces five errors with correct line numbers — 9aa0ab0
+- [x] 2.3 A Windows-1250 file produces the "save as UTF-8" error rather than mangled names — 9aa0ab0
+- [x] 2.4 Duplicate `numer_lokalu` reports both offending lines — 9aa0ab0
+- [x] 2.5 `npx astro sync && npm run lint && npm run build` all pass — 9aa0ab0
 
 #### Manual
 
-- [x] 2.6 The largest-remainder distribution and its tie-break are followable from the source
-- [x] 2.7 Polish error messages read as instructions to an administrator, not parser diagnostics
+- [x] 2.6 The largest-remainder distribution and its tie-break are followable from the source — 9aa0ab0
+- [x] 2.7 Polish error messages read as instructions to an administrator, not parser diagnostics — 9aa0ab0
 
 ### Phase 3: The screens
 
 #### Automated
 
-- [ ] 3.1 `npx astro sync && npm run lint && npm run build` all pass
-- [ ] 3.2 Signed out, all three new paths redirect to `/auth/signin`
-- [ ] 3.3 Signed in, a valid CSV returns a preview containing `100,00%`
-- [ ] 3.4 Confirm returns 302 to the building; rows exist with `sum(share_bps) = 10000` and `total_area_m2 = sum(area_m2)`
-- [ ] 3.5 Re-posting confirm returns 302 with `?error=` (the `EM002` path), not a 500
-- [ ] 3.6 A malformed CSV lists every defect and writes nothing
-- [ ] 3.7 Template route returns 200, `text/csv`, attachment disposition, BOM, one line equal to `CSV_HEADERS`
-- [ ] 3.8 Uploading the untouched template is rejected as "no data rows", not as a header error
-- [ ] 3.9 Signed out, the template route redirects to `/auth/signin`
+- [x] 3.1 `npx astro sync && npm run lint && npm run build` all pass
+- [x] 3.2 Signed out, all three new paths redirect to `/auth/signin`
+- [x] 3.3 Signed in, a valid CSV returns a preview containing `100,00%`
+- [x] 3.4 Confirm returns 302 to the building; rows exist with `sum(share_bps) = 10000` and `total_area_m2 = sum(area_m2)`
+- [x] 3.5 Re-posting confirm returns 302 with `?error=` (the `EM002` path), not a 500
+- [x] 3.6 A malformed CSV lists every defect and writes nothing
+- [x] 3.7 Template route returns 200, `text/csv`, attachment disposition, BOM, one line equal to `CSV_HEADERS`
+- [x] 3.8 Uploading the untouched template is rejected as "no data rows", not as a header error
+- [x] 3.9 Signed out, the template route redirects to `/auth/signin`
 
 #### Manual
 
-- [ ] 3.10 Browser round trip: upload → preview → confirm → registry totalling 100,00%
-- [ ] 3.11 The total floor area on the preview matches the registry afterwards and the source spreadsheet
-- [ ] 3.12 Shared e-mail shows one owner; two blank e-mails show two, each as "brak"
-- [ ] 3.13 The error list is understandable without knowledge of the parser
-- [ ] 3.14 Empty state and import entry point read sensibly
-- [ ] 3.15 The download link is findable on the import page without hunting
-- [ ] 3.16 Template opens in Excel with correct Polish headers; filled in and re-uploaded, it previews validly
+- [x] 3.10 Browser round trip: upload → preview → confirm → registry totalling 100,00%
+- [x] 3.11 The total floor area on the preview matches the registry afterwards and the source spreadsheet
+- [x] 3.12 Shared e-mail shows one owner; two blank e-mails show two, each as "brak"
+- [x] 3.13 The error list is understandable without knowledge of the parser
+- [x] 3.14 Empty state and import entry point read sensibly
+- [x] 3.15 The download link is findable on the import page without hunting
+- [x] 3.16 Template opens in Excel with correct Polish headers; filled in and re-uploaded, it previews validly
 
 ### Phase 4: Production and the record
 
