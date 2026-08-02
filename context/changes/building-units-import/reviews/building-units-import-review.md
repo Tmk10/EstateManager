@@ -4,8 +4,10 @@
 - **Plan**: `context/changes/building-units-import/plan.md`
 - **Scope**: Phases 1–4 of 4 (full plan)
 - **Date**: 2026-08-02
-- **Verdict**: REJECTED
+- **Verdict**: REJECTED at review time — **all 10 findings triaged 2026-08-02**; the critical and both high-consequence warnings are fixed and verified, so the tree no longer carries the condition that caused the verdict.
 - **Findings**: 1 critical, 4 warnings, 5 observations
+- **Triage outcome**: 4 fixed in code (F1, F2, F4, F5), 2 fixed as documentation (F9, F10), 1 accepted (F8), 3 skipped (F3, F6, F7)
+- **Ships with**: two new migrations that must be applied to production **before** the code is pushed — `20260802094500_import_units_single_owner_name.sql` and `20260802101500_registry_assertion_security_definer.sql`. Residual G14 still applies: nothing in CI does this.
 
 ## Verdicts
 
@@ -53,7 +55,11 @@ File-level scope is exact: every file in the diff is named in the plan, and ever
   - Tradeoff: The administrator has to notice a name they typed has quietly changed; the silent discard still happens, it is merely visible. Also means the preview table stops being row-per-unit.
   - Confidence: MEDIUM — correct in principle, but relies on the administrator spotting it rather than on the system refusing.
   - Blind spot: Not verified how the preview table would render a unit whose owner name differs from its own row.
-- **Decision**: PENDING
+- **Decision**: FIXED — stricter than either option, at the user's direction: *"allow only single names in csv and database, co-owners will be added in next versions."* One e-mail = one person, enforced in **both** layers.
+  - `src/lib/units-csv.ts` — an `emailOwners` map keyed by the lower-cased address (matching the `lower(…)` the import function and the partial unique index both use); a repeat address with a different name pushes an error naming both lines. Verified: the conflict is reported on the right line naming the first; same-address-same-name still parses; two blank addresses with different names still parse as two people; the conflict is collected alongside other defects rather than short-circuiting them.
+  - `supabase/migrations/20260802094500_import_units_single_owner_name.sql` — `create or replace` on `import_building_units` adding an `EM005` guard before any insert. Verified against the local stack: the conflicting payload raises `EM005` and writes nothing (0 units, 0 owners, `total_area_m2` null); the same-name payload still collapses to 1 owner / 2 units / 10000 bps / 100.00 m².
+  - `src/pages/api/buildings/[id]/units.ts` — `EM005` mapped to Polish.
+  - `npm run db:types` produced no diff (the signature is unchanged); `astro sync && lint && build` all pass.
 
 ### F2 — `assert_building_registry` reads through the caller's RLS, so `S-02` scoping will silently void both invariants
 
@@ -86,7 +92,12 @@ File-level scope is exact: every file in the diff is named in the plan, and ever
   - Tradeoff: Depends entirely on that person reading it. The failure it guards against is silent, so nothing will catch a miss.
   - Confidence: MEDIUM — correct as documentation, but it defers a correctness property to a future author's diligence.
   - Blind spot: Whether `S-02`'s scoping will even touch the units `select` policy, or only add an owner-token path alongside it.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A — `supabase/migrations/20260802101500_registry_assertion_security_definer.sql`.
+  - `assert_building_registry(uuid)` is now `security definer`; the inline `sum(area_m2)` in the import moved into a new `security definer` helper `building_units_area_total(uuid)`. Both keep `set search_path = ''`, write nothing, and have `execute` revoked from `public`/`anon` and granted to `authenticated` only. `import_building_units` stays `security invoker` — its step-1 visibility check *is* the access contract.
+  - Verified against the local stack with `units_select_authenticated` temporarily set to `using (false)`: an import now stores `total_area_m2 = 100.00` where pre-fix it silently stored `NULL`; a blind caller inserting a 4000-bps registry is now refused at commit with `EM003` and leaves 0 rows, where pre-fix it committed. `anon` still receives `EM001` rather than a permission error, so the revoke did not change the access contract. Policy restored to `using (true)` and all test rows removed — confirmed by re-reading `pg_policy` and counting `public.units` (0).
+  - Blind spot from the report now closed: `anon` behaviour was checked, not assumed.
+  - `CLAUDE.md` carries the exemption as its own "Current state" bullet, including how to re-verify it and an explicit "do not fix this back to invoker".
+  - `npm run db:types` picked up `building_units_area_total` (+4 lines); `astro sync && lint && build` all pass.
 
 ### F3 — The confirm endpoint has no upload size guard at all
 
@@ -98,7 +109,7 @@ File-level scope is exact: every file in the diff is named in the plan, and ever
 
   *Failure scenario*: a signed-in administrator POSTs a 60 MB `csv` field to `/api/buildings/<id>/units`. The body is fully buffered, decoded to a JS string, and expanded into a records array — several multiples of 60 MB against the Workers 128 MB isolate limit — producing a `1101`/500 rather than the Polish error this endpoint is written to return. The 1000-row cap never fires.
 - **Fix**: Check `context.request.headers.get("content-length")` before `formData()`, and cap `csv.length` before `parseUnitsCsv`, reusing `MAX_FILE_BYTES` from the import page. Apply the same `content-length` pre-check at `import.astro:78`, where the 1 MB guard likewise runs only after the body is buffered.
-- **Decision**: PENDING
+- **Decision**: SKIPPED — the endpoint is behind `PROTECTED_ROUTES`, so reaching it requires an administrator session, and the failure is a 500 rather than a wrong registry. Left open deliberately; revisit if the import path is ever exposed to a less-trusted caller.
 
 ### F4 — A concurrent import fails with `EM003`, telling the administrator to file a bug
 
@@ -112,7 +123,8 @@ File-level scope is exact: every file in the diff is named in the plan, and ever
 
   *Failure scenario*: two administrators of the same wspólnota confirm imports within the same second. One sees a message instructing them to report a bug that does not exist, and the plan's own reasoning — that `EM003`/`EM004` are unreachable if the arithmetic is right — quietly stops being true.
 - **Fix**: Add `perform 1 from public.buildings where id = p_building_id for update;` immediately before the `EM002` check, making the guarantee explicit and producing the correct message.
-- **Decision**: PENDING
+- **Decision**: FIXED — the row lock was folded into `supabase/migrations/20260802101500_registry_assertion_security_definer.sql`, which already replaces this function for F2, rather than stacking a third replacement of the same body. Both migrations are local-only and unpushed, so the final definition lives in one place.
+  - Verified by racing two real sessions against the local stack: A opens a transaction, imports, holds it 4 s; B starts 1 s later. B now blocks on the lock and fails **`EM002` — "already has a unit registry"** where it previously failed `EM003` — "shares do not total 100%, report this as a bug". Final state is A's registry alone: 2 units, 10000 bps.
 
 ### F5 — An unterminated quote defeats the parser's "report everything at once" contract
 
@@ -131,7 +143,8 @@ File-level scope is exact: every file in the diff is named in the plan, and ever
 
   *Failure scenario*: an administrator whose spreadsheet emitted one unbalanced quote gets a single misleading message about semicolons, fixes a semicolon that was never wrong, re-uploads, and gets the same message again. Line numbers past the stray quote are meaningless.
 - **Fix**: Track `inQuotes` at EOF in `splitRecords` and emit a dedicated Polish error naming `recordStartLine` — the line where the unterminated field began.
-- **Decision**: PENDING
+- **Decision**: FIXED — `splitRecords` now returns `{ records, unterminatedQuoteLine }`, tracking the line the unclosed quote *opened* on (not the record start, which is wrong when the quote opens mid-file). `parseUnitsCsv` returns that single error and stops, matching the precedent the failed-decode path already set: once the rest of the file has been absorbed into one field, no later line number means anything.
+  - Verified: the repro now reports line 2 with a message naming the stray `"` and explaining the `""` escape, instead of one error blaming a missing semicolon. A quote opening on line 3 is named as line 3. No regression on legitimate quoting — embedded `;`, embedded newlines, and `""` escapes all still parse.
 
 ### F6 — `id` is interpolated into redirect targets without `encodeURIComponent`
 
@@ -141,7 +154,7 @@ File-level scope is exact: every file in the diff is named in the plan, and ever
 - **Location**: `src/pages/api/buildings/[id]/units.ts:29` and `:78`
 - **Detail**: `id` comes from `context.params` and goes into both redirect targets raw, while `message` on the same line is correctly encoded. Not an open redirect — both targets start with the literal `/buildings/` prefix, so even `%2F%2Fevil.com` resolves same-origin. But `%3F` or `%23` in the segment truncates the intended target (`/buildings/?x=1/units/import?error=…` lands on `/buildings/`), and `%0d%0a` reaches the `Headers` constructor as a 500 instead of a Polish error.
 - **Fix**: Wrap `id` in `encodeURIComponent`, as `message` already is.
-- **Decision**: PENDING
+- **Decision**: SKIPPED — not an open redirect (both targets carry the literal `/buildings/` prefix), and reaching it requires an administrator session. Recorded in the `plan.md` addendum as knowingly left open.
 
 ### F7 — Raw Postgres `error.message` reaches the UI and the query string
 
@@ -151,7 +164,7 @@ File-level scope is exact: every file in the diff is named in the plan, and ever
 - **Location**: `src/pages/api/buildings/[id]/units.ts:75`; `src/pages/buildings/[id]/index.astro:40,52`; `src/pages/buildings/[id]/units/import.astro:55,70`
 - **Detail**: A non-uuid `[id]` on the API route puts `invalid input syntax for type uuid: "…"` in the address bar. This mirrors the existing convention at `src/pages/api/buildings/index.ts:52`, so it is not new — but it is now on four more surfaces. Note the inconsistency **inside this change**: `[id]/index.astro:40` and `import.astro:55` special-case `22P02` correctly and render "Nie znaleziono budynku."; `units.ts` does not.
 - **Fix**: At minimum add the `22P02` special case to `units.ts` so the three new surfaces agree; a project-wide decision to stop forwarding `error.message` is a separate, larger change.
-- **Decision**: PENDING
+- **Decision**: SKIPPED — it mirrors the convention `src/pages/api/buildings/index.ts` already set, so fixing it here alone would make this endpoint the odd one out. Recorded in the `plan.md` addendum; stopping the forwarding project-wide is its own change.
 
 ### F8 — The preview step handles `POST` inline, forfeiting post-redirect-get
 
@@ -161,7 +174,7 @@ File-level scope is exact: every file in the diff is named in the plan, and ever
 - **Location**: `src/pages/buildings/[id]/units/import.astro:77-119`
 - **Detail**: The upload step handles `POST` in the page rather than through a form-data + redirect endpoint, which is the shape `src/pages/api/buildings/index.ts` + `buildings/new.astro` established and `CLAUDE.md` describes. This is deliberate, documented at lines 10-13, matches Astro's own recipe, and the plan called for it explicitly (`plan.md:535`) — the confirm step *does* follow the endpoint convention. The cost is that the preview is the direct response to a POST, so a reload or a back-navigation prompts form resubmission.
 - **Fix**: None recommended — noted so the deviation is a recorded decision rather than an accident. Revisit only if resubmission prompts turn up in use.
-- **Decision**: PENDING
+- **Decision**: ACCEPTED — deliberate, planned, and matches Astro's own form recipe; the confirm step still follows the endpoint convention. Written into the `plan.md` addendum with its cost stated (reload/back prompts form resubmission).
 
 ### F9 — Three small, documented drifts from the plan's stated contracts
 
@@ -174,7 +187,7 @@ File-level scope is exact: every file in the diff is named in the plan, and ever
   2. `ACCEPTED_TYPES` also contains `""`, so a browser sending no content-type passes the guard. The plan named exactly three types.
   3. "A duplicate reports both lines" is implemented as one error on the second occurrence naming the first line, not two error entries. The information is there; the shape differs.
 - **Fix**: Fold all three into `plan.md` as an addendum so the plan stays usable as ground truth for the next review.
-- **Decision**: PENDING
+- **Decision**: FIXED (documentation) — all three recorded under "Deviations accepted as built" in the `plan.md` addendum. No code change; the `localeCompare` sort is better than what was planned and stays.
 
 ### F10 — Parser validates more than the plan specified; SQL has no length bounds
 
@@ -184,7 +197,7 @@ File-level scope is exact: every file in the diff is named in the plan, and ever
 - **Location**: `src/lib/units-csv.ts:166-191`, `:314-317`; `supabase/migrations/20260802072737_create_units_and_owners.sql:24-102`
 - **Detail**: Two extras beyond the plan, both benign and both commented: unknown and duplicated header columns are rejected (so a file with a fifth column now fails), and a blank line in the *middle* of a file is an error (the plan only said trailing blanks are ignored). Conversely, `unit_number` ≤ 50 and `full_name` ≤ 200 are enforced **only** in the parser — the SQL has not-blank checks but no length bound, so a direct RPC call could store a 1 MB `unit_number`. Authenticated-administrator-only, hence low.
 - **Fix**: Note the two parser extras in the plan addendum alongside F9; optionally add `check (length(unit_number) <= 50)` and `check (length(full_name) <= 200)` in a later migration so the database carries the same bound as the parser.
-- **Decision**: PENDING
+- **Decision**: FIXED (documentation) — recorded under "Validation beyond the plan" in the `plan.md` addendum. The SQL length checks were **not** added: administrator-only write path, and the note says to add them if the registry ever gains a second one.
 
 ## Verified clean
 

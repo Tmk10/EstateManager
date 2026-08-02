@@ -10,12 +10,17 @@ import { areaHundredthsToDecimalString, computeShareBps } from "@/lib/shares";
  * EM003 and EM004 are unreachable if the arithmetic in src/lib/shares.ts and the import
  * function are both right, which is exactly why they say so rather than pretending to be
  * something the administrator did wrong.
+ *
+ * EM005 is the database backstop for a rule src/lib/units-csv.ts already enforces with line
+ * numbers, so reaching it here means the parser and the function disagree -- but it names a
+ * real problem with the file, so it reads as one.
  */
 const ERROR_MESSAGES: Record<string, string | undefined> = {
   EM001: "Nie znaleziono budynku.",
   EM002: "Ten budynek ma już zaimportowany rejestr lokali.",
   EM003: "Suma udziałów nie wynosi 100%. Zgłoś to jako błąd.",
   EM004: "Zapisana powierzchnia budynku nie zgadza się z sumą metraży. Zgłoś to jako błąd.",
+  EM005: "Ten sam adres e-mail występuje w pliku przy różnych osobach. Jeden adres może należeć tylko do jednej osoby.",
 };
 
 export const POST: APIRoute = async (context) => {

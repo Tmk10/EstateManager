@@ -60,12 +60,22 @@ interface RawRecord {
  * Quoted fields may contain the separator, a quote (doubled, `""`), and newlines -- Excel
  * emits all three. Because a quoted field can span lines, a record's reported line is the
  * line it *starts* on, which is the one an administrator will look at.
+ *
+ * Reports an unclosed quote separately from the records. A stray `"` swallows the entire
+ * rest of the file into one field, so every line number after it is meaningless and the
+ * defects it hides cannot be reported -- the same situation as a failed decode, and it gets
+ * the same treatment: say what is actually wrong and stop.
  */
-function splitRecords(text: string): RawRecord[] {
+function splitRecords(text: string): {
+  records: RawRecord[];
+  /** Line the unclosed quoted field opened on, or null when every quote was closed. */
+  unterminatedQuoteLine: number | null;
+} {
   const records: RawRecord[] = [];
   let fields: string[] = [];
   let field = "";
   let inQuotes = false;
+  let quoteOpenLine = 0;
   let line = 1;
   let recordStartLine = 1;
   let index = 0;
@@ -111,6 +121,7 @@ function splitRecords(text: string): RawRecord[] {
 
     if (char === '"') {
       inQuotes = true;
+      quoteOpenLine = line;
       index += 1;
       continue;
     }
@@ -139,7 +150,7 @@ function splitRecords(text: string): RawRecord[] {
     records.push({ line: recordStartLine, fields });
   }
 
-  return records;
+  return { records, unterminatedQuoteLine: inQuotes ? quoteOpenLine : null };
 }
 
 function isBlankRecord(record: RawRecord): boolean {
@@ -261,7 +272,26 @@ export function parseUnitsCsv(bytes: Uint8Array): ParseResult {
     };
   }
 
-  const records = splitRecords(text);
+  const { records, unterminatedQuoteLine } = splitRecords(text);
+
+  // Everything after an unclosed quote was absorbed into one field, so there is nothing
+  // truthful left to say about the rest of the file. Reporting this alone beats reporting
+  // the field-count error it manifests as, which sends the administrator looking for a
+  // missing semicolon on a line whose real defect is a stray quotation mark.
+  if (unterminatedQuoteLine !== null) {
+    return {
+      ok: false,
+      errors: [
+        {
+          line: unterminatedQuoteLine,
+          message:
+            `W wierszu ${unterminatedQuoteLine} jest cudzysłów ("), który nigdzie się nie zamyka — ` +
+            "przez to reszta pliku została wczytana jako jedno pole. " +
+            'Usuń zbędny cudzysłów albo dopisz drugi, zamykający. Cudzysłów wewnątrz tekstu zapisuje się podwójnie ("").',
+        },
+      ],
+    };
+  }
 
   // Trailing blank lines are ignored; a blank line in the middle is reported, because it
   // is usually a row someone deleted the contents of rather than the row itself.
@@ -307,6 +337,13 @@ export function parseUnitsCsv(bytes: Uint8Array): ParseResult {
   const errors: ParseError[] = [];
   const rows: ParsedRow[] = [];
   const unitNumberLines = new Map<string, number>();
+  // One address, one person. import_building_units collapses rows sharing an e-mail into a
+  // single owner and keeps the FIRST name it sees, so a file where the same address carries
+  // two names would store one of them and silently drop the other -- on data the preview
+  // had already shown. Caught here, before anything is written, because re-import is
+  // refused (EM002) and no screen edits a registry once it exists.
+  // Co-ownership -- one unit held by several people -- is a later version (PRD Non-Goals).
+  const emailOwners = new Map<string, { fullName: string; line: number }>();
 
   for (const record of dataRecords) {
     const { line } = record;
@@ -382,6 +419,22 @@ export function parseUnitsCsv(bytes: Uint8Array): ParseResult {
         errors.push({ line, message: `E-mail "${emailRaw}": to nie jest poprawny adres e-mail.` });
       } else {
         email = emailRaw;
+      }
+    }
+
+    // Keyed by the lower-cased address, matching the `lower(...)` the import function and
+    // the partial unique index on owners both use -- so this agrees with what the database
+    // would actually collapse.
+    if (email !== null && fullName !== "") {
+      const key = email.toLowerCase();
+      const first = emailOwners.get(key);
+      if (first === undefined) {
+        emailOwners.set(key, { fullName, line });
+      } else if (first.fullName !== fullName) {
+        errors.push({
+          line,
+          message: `E-mail "${emailRaw}" należy w wierszu ${first.line} do "${first.fullName}". Jeden adres może należeć tylko do jednej osoby — popraw imię i nazwisko albo podaj osobny adres.`,
+        });
       }
     }
 

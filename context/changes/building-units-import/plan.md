@@ -860,3 +860,91 @@ earning its keep.
 - [x] 4.7 Full round trip on production, registry totalling 100,00% — 28ccf1a
 - [x] 4.8 Supabase dashboard shows both tables with RLS and 8 policies each — 28ccf1a
 - [x] 4.9 `CLAUDE.md` alone explains how shares and the total area are stored, and what enforces both — 28ccf1a
+
+---
+
+## Addendum: what was actually built (2026-08-02, from implementation review)
+
+Recorded so this plan stays usable as ground truth for the next review. Everything below is
+a deviation from the contracts written above, found by `/10x-impl-review` and triaged. Each
+one is commented in the code as well; this is the index. Review report:
+`context/changes/building-units-import/reviews/building-units-import-review.md`.
+
+### Deviations accepted as built (F9)
+
+- **Unit ordering is done in JS, not SQL.** Phase 3 specified "ordered by `unit_number`" in
+  the query. `src/pages/buildings/[id]/index.astro` has no `.order()`; it sorts with
+  `localeCompare(…, "pl", { numeric: true })`. This is **better than what was planned** —
+  SQL text ordering puts "10" between "1" and "2", which is wrong for a registry of lokale.
+- **`ACCEPTED_TYPES` also allows an empty content-type.** Phase 3 named exactly three types.
+  The implementation adds `""`, so a browser that sends no content-type for a `.csv` still
+  gets through. Deliberate; commented at `import.astro:20-22`.
+- **A duplicate `numer_lokalu` is one error, not two.** Phase 2 said "a duplicate reports
+  both lines". It reports one error on the second occurrence naming the first line. The
+  information is the same; the shape differs.
+
+### Validation beyond the plan (F10)
+
+- The parser rejects **unknown and duplicated header columns**, so a file carrying a fifth
+  column fails rather than being ignored. Not specified; commented at `units-csv.ts:149-155`.
+- A **blank line in the middle** of a file is an error. The plan only said trailing blanks
+  are ignored.
+- `unit_number` ≤ 50 and `full_name` ≤ 200 are enforced **only in the parser**. The SQL has
+  not-blank checks but no length bound, so a direct RPC call could store a 1 MB
+  `unit_number`. Administrator-only, so left as-is; add `check (length(…))` if the registry
+  ever gains a second write path.
+
+### The upload step handles POST in the page (F8)
+
+`import.astro` handles its own `POST` rather than going through a form-data + redirect
+endpoint, which is the shape `src/pages/api/buildings/index.ts` established. This was
+planned and matches Astro's form recipe, and the **confirm** step does follow the endpoint
+convention. Accepted, with the cost stated: the preview is the direct response to a POST, so
+a reload or back-navigation prompts form resubmission.
+
+### Fixes applied during triage
+
+Two migrations, neither of which existed when Phase 4 shipped. **Both must be applied to
+production by hand before the code that depends on them is pushed** — the order in Phase 4
+change 2 applies again, and residual G14 is still open.
+
+- `supabase/migrations/20260802094500_import_units_single_owner_name.sql` — **one e-mail,
+  one person** (F1, the review's only critical finding). Rows sharing an e-mail collapse to
+  one owner and the first name wins, so two names behind one address silently stored one and
+  dropped the other — data the preview had already displayed, unrecoverable because `EM002`
+  refuses re-import. Now refused in both layers: `src/lib/units-csv.ts` names both offending
+  lines, `import_building_units` raises the new `EM005`. Co-ownership is a later version.
+- `supabase/migrations/20260802101500_registry_assertion_security_definer.sql` — two changes.
+  1. **The registry assertion no longer reads through the caller's RLS** (F2).
+     `assert_building_registry` and the new `building_units_area_total` are `security
+     definer`; `import_building_units` stays `security invoker`, because its step-1
+     visibility check *is* the access contract. Without this, `S-02`'s scoping of the units
+     policies would have voided both invariants silently — demonstrated with the policy set
+     to `using (false)`: an import committed two units at 10000 bps with `total_area_m2`
+     null and raised nothing. **This changes the `S-02` precondition**: the units `select`
+     policy can now be scoped without breaking the invariants. See `CLAUDE.md` for the
+     exemption and how to re-verify it.
+  2. **Concurrent imports take a row lock** (F4). `for update` on the buildings row before
+     the `EM002` check. Two administrators confirming at once were already safe by accident,
+     but the loser failed `EM003` — "shares do not total 100%, report this as a bug" — which
+     is a lie told to someone who hit an ordinary race. The loser now fails `EM002`.
+- `src/lib/units-csv.ts` — **an unclosed quote is reported as itself** (F5). A stray `"` had
+  absorbed the rest of the file into one field and surfaced as a single error blaming a
+  missing semicolon, which defeated the module's whole contract of reporting every defect at
+  once. `splitRecords` now returns the line the quote opened on and the parse stops there,
+  matching the failed-decode precedent.
+
+### Findings left open
+
+- **F3 — the confirm endpoint has no upload size guard.** `formData()` is unguarded on the
+  only path that writes; a large POST is a 500 rather than a Polish error. Skipped: the
+  route is behind `PROTECTED_ROUTES`, so it takes an administrator session to reach, and the
+  failure mode is a crash rather than a wrong registry. Revisit if that path is ever exposed
+  to a less-trusted caller.
+- **F6 — `id` is not `encodeURIComponent`-ed** in the two redirect targets in
+  `src/pages/api/buildings/[id]/units.ts`. Not an open redirect; a crafted segment truncates
+  the target or produces a 500. Skipped.
+- **F7 — raw Postgres `error.message` reaches the UI and the query string.** Mirrors the
+  existing convention in `src/pages/api/buildings/index.ts`, so it is not new, but it is now
+  on four more surfaces — and `units.ts` lacks the `22P02` special case that the two `.astro`
+  pages have. Skipped; stopping the forwarding project-wide is its own change.

@@ -122,6 +122,10 @@ export type Database = {
         Args: { p_building_id: string }
         Returns: undefined
       }
+      building_units_area_total: {
+        Args: { p_building_id: string }
+        Returns: number
+      }
       import_building_units: {
         Args: { p_building_id: string; p_rows: Json }
         Returns: number
