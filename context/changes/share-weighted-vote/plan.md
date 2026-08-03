@@ -565,14 +565,14 @@ unauthenticated read path is missing.
 
 #### Automated
 
-- [x] 3.1 `npx astro sync && npm run lint && npm run build` clean
-- [x] 3.2 The `voting_links` projection still names columns and still excludes `token`
+- [x] 3.1 `npx astro sync && npm run lint && npm run build` clean — b348359
+- [x] 3.2 The `voting_links` projection still names columns and still excludes `token` — b348359
 
 #### Manual
 
-- [x] 3.3 With two of three linked owners voted, the page reads `Zagłosowało 2 z 3 właścicieli`
-- [x] 3.4 The draft branch is unchanged and no token appears anywhere
-- [x] 3.5 The count does not appear before the vote is opened
+- [x] 3.3 With two of three linked owners voted, the page reads `Zagłosowało 2 z 3 właścicieli` — b348359
+- [x] 3.4 The draft branch is unchanged and no token appears anywhere — b348359
+- [x] 3.5 The count does not appear before the vote is opened — b348359
 
 ### Phase 4: Production — migrations, deploy, one real vote
 
