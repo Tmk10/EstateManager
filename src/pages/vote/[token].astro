@@ -2,33 +2,91 @@
 import "@/styles/global.css";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps } from "@/lib/shares";
+import { formatResolutionDate } from "@/lib/resolutions";
 
 /**
  * The only route in this application reachable without a session.
  *
  * Everything it may show comes from public.resolve_voting_link, whose return list IS the
  * visibility contract for a caller with no session — no e-mail address, no other owner, no
- * per-unit area, no vote. This page must never join to anything to widen that list.
+ * per-unit area, no other owner's vote. This page must never join to anything to widen that
+ * list.
  *
  * Three properties are load-bearing and easy to break by accident:
  *
  *   1. **One answer for every failure.** An unknown token, a truncated token, a token whose
  *      resolution is still a draft, an RPC error and an unconfigured client all render the
- *      same neutral page with the same 200. Any branch that lets a reader tell those apart
- *      turns the token space into something worth probing.
- *   2. **The token is never echoed into the markup.** It is a bearer secret and, until PRD
- *      Open Question no. 1 closes, possession of it is the voter's identity.
+ *      same neutral page with the same 200 — and now with the same headers, which are set
+ *      before anything is resolved. Any branch that lets a reader tell those apart turns the
+ *      token space into something worth probing. That includes the `?error=` message, which
+ *      is rendered only in the states this page reaches with a resolved token: the neutral
+ *      branch ignores it entirely, so the vote endpoint may name a write failure without
+ *      naming it to someone holding a token that resolves to nothing.
+ *   2. **The token appears in exactly one attribute, and never as text.** S-03 revised this
+ *      property rather than kept it: casting a vote without JavaScript means posting a form,
+ *      and a form must name where it posts, so the confirm screen carries
+ *      `action="/api/vote/<token>"`. Nothing else does — the two GET forms deliberately have
+ *      no `action`, which submits them to the current URL and keeps the token out of their
+ *      markup. What the property protects is unchanged: the token is a bearer secret and
+ *      possession of it is the voter's identity until PRD Open Question no. 1 closes, so it
+ *      must not travel to anyone who does not already hold it. The reader of this markup is
+ *      exactly that holder. Do not add a second place — no anchor, no hidden field, no text.
  *   3. **No outbound links, anywhere.** A click on one would put the token in a Referer
- *      header on its way to a third party. This is also why the page does not use
- *      Layout.astro: the configuration banner it renders carries an external documentation
- *      link when Supabase is unset, which is exactly the state this page can be in.
+ *      header on its way to a third party. `Referrer-Policy: no-referrer` below is the
+ *      belt to that suspenders, not a replacement for it. This is also why the page does not
+ *      use Layout.astro: the configuration banner it renders carries an external
+ *      documentation link when Supabase is unset, which is exactly the state this page can
+ *      be in.
  *
- * S-03 adds two buttons to this page rather than replacing it.
+ * The vote itself is three states grown out of what S-02 left: buttons → confirm → receipt.
+ * The first step is a GET, so the back button and a double tap are harmless; only the
+ * confirm screen writes.
  */
 
 const { token } = Astro.params;
 
 const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+// Set BEFORE anything is resolved, and unconditionally. A header that differs between a hit
+// and a miss is exactly as observable as a body that does, so these cannot sit inside the
+// branch that knows whether the token resolved. (S-02 implementation review, finding F4:
+// recorded there and skipped, because nothing could yet be lost; added here, because now a
+// cast vote can be.)
+//
+//   no-store   — the receipt names how someone voted; a shared or proxied cache must not
+//                keep it, and neither must the browser's back-forward cache.
+//   noindex    — a token in a crawler's index is a token in a search result.
+//   no-referrer— the token is in this URL, so every outbound request would otherwise carry
+//                it. There are no outbound links, and this holds even if one is added.
+Astro.response.headers.set("Cache-Control", "private, no-store");
+Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+Astro.response.headers.set("Referrer-Policy", "no-referrer");
+
+/** The database's vocabulary (votes_choice_known), which is also cast_vote's. */
+type Choice = "for" | "against";
+
+/**
+ * The `?wybor` value, in Polish because an owner may read it in their address bar, mapped
+ * to the vocabulary the database stores.
+ *
+ * Caller-controlled, so it says nothing about the token: an unrecognised value falls through
+ * to the buttons exactly as a missing one does, rather than erroring. Erroring here would be
+ * the page's only answer that depends on something other than whether the token resolved.
+ */
+function parseChoice(value: string | null): Choice | null {
+  if (value === "za") return "for";
+  if (value === "przeciw") return "against";
+  return null;
+}
+
+function choiceLabel(choice: string): string {
+  if (choice === "for") return "Za";
+  if (choice === "against") return "Przeciw";
+  // Unreachable — votes_choice_known permits nothing else. Returned raw rather than defaulted
+  // to one of the two, so a widened vocabulary shows up as an obviously wrong label instead
+  // of quietly rendering as the wrong vote.
+  return choice;
+}
 
 interface VoteView {
   buildingName: string;
@@ -38,7 +96,28 @@ interface VoteView {
   ownerFullName: string;
   ownerUnitNumbers: string[];
   ownerShareBps: number;
+  /**
+   * The reader's own vote, null until they cast one. The generated types call both of these
+   * plain `string` — the generator reads resolve_voting_link's `returns table` declaration,
+   * not the left join behind it — so they are widened here to what the database can actually
+   * return, and read through truthiness rather than a `=== null` the declared type would
+   * make look impossible.
+   */
+  ownVoteChoice: string | null;
+  ownVotedAt: string | null;
+  /**
+   * The one attribute in this page that carries the token (property 2 above). It lives on
+   * the resolved view on purpose: a page with no resolution has no form to post, so the
+   * token has nowhere to leak into the neutral markup.
+   */
+  castAction: string;
 }
+
+type VoteState =
+  | { kind: "receipt"; choice: string; votedAt: string }
+  | { kind: "confirm"; choice: Choice }
+  | { kind: "buttons" }
+  | { kind: "neutral" };
 
 let view: VoteView | null = null;
 
@@ -59,9 +138,44 @@ if (supabase && token) {
       ownerFullName: row.owner_full_name,
       ownerUnitNumbers: row.owner_unit_numbers,
       ownerShareBps: row.owner_share_bps,
+      ownVoteChoice: row.own_vote_choice,
+      ownVotedAt: row.own_voted_at,
+      castAction: `/api/vote/${encodeURIComponent(token)}`,
     };
   }
 }
+
+const pendingChoice = parseChoice(Astro.url.searchParams.get("wybor"));
+
+/**
+ * Both vote columns are required for the receipt, not just the choice: they come from one
+ * left-joined row whose `created_at` is `not null`, so they are set together or not at all.
+ * Requiring both means a half-populated row falls through to the buttons rather than
+ * rendering a receipt with no date — and pressing them again is harmless, since cast_vote
+ * returns the vote already stored.
+ */
+let state: VoteState = { kind: "neutral" };
+
+if (view) {
+  if (view.ownVoteChoice && view.ownVotedAt) {
+    state = { kind: "receipt", choice: view.ownVoteChoice, votedAt: view.ownVotedAt };
+  } else if (pendingChoice) {
+    state = { kind: "confirm", choice: pendingChoice };
+  } else {
+    state = { kind: "buttons" };
+  }
+}
+
+// Rendered only inside the resolved branch (property 1). The endpoint sets it when the read
+// path worked and the write did not, which is the one failure that can be named here.
+const error = Astro.url.searchParams.get("error");
+
+const primaryButtonClass =
+  "w-full rounded-lg bg-purple-600 px-4 py-3 font-medium text-white transition-colors hover:bg-purple-500";
+// Both choices share it, deliberately: a Za styled more invitingly than a Przeciw is the
+// interface putting a thumb on a vote.
+const choiceButtonClass =
+  "w-full rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-lg font-semibold text-white transition-colors hover:border-purple-400/50 hover:bg-white/10";
 ---
 
 <!doctype html>
@@ -91,7 +205,9 @@ if (supabase && token) {
               <p class="mt-4 text-sm whitespace-pre-wrap text-blue-100/80" set:text={view.resolutionBody} />
 
               <div class="mt-8 rounded-xl border border-white/10 bg-white/5 p-4">
-                <p class="text-sm text-blue-100/60">Głosujesz jako</p>
+                <p class="text-sm text-blue-100/60">
+                  {state.kind === "receipt" ? "Głos oddany przez" : "Głosujesz jako"}
+                </p>
                 <p class="mt-1 font-medium">{view.ownerFullName}</p>
                 <p class="mt-1 text-sm text-blue-100/70">
                   {view.ownerUnitNumbers.length === 1 ? "Lokal" : "Lokale"}: {view.ownerUnitNumbers.join(", ")} · Udział
@@ -99,9 +215,79 @@ if (supabase && token) {
                 </p>
               </div>
 
-              <p class="mt-6 rounded-xl border border-purple-400/30 bg-purple-500/10 px-4 py-3 text-sm text-blue-100/80">
-                Oddawanie głosów nie jest jeszcze dostępne. Zagłosujesz pod tym samym linkiem — zachowaj go.
-              </p>
+              {error && (
+                <p
+                  class="mt-6 rounded-xl border border-red-500/30 bg-red-900/30 px-4 py-3 text-sm text-red-300"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              )}
+
+              {state.kind === "receipt" && (
+                <div class="mt-6 rounded-xl border border-green-400/40 bg-green-500/10 p-4">
+                  <h2 class="text-lg font-semibold text-green-100">Twój głos został zapisany</h2>
+                  <p class="mt-2 text-sm text-blue-100/90">
+                    Zagłosowano: <span class="text-lg font-semibold text-white">{choiceLabel(state.choice)}</span>
+                  </p>
+                  <p class="mt-1 text-sm text-blue-100/70">Zapisano {formatResolutionDate(state.votedAt)}</p>
+                  <p class="mt-3 text-sm text-blue-100/80">
+                    Głosu nie można zmienić ani wycofać. Zachowaj ten link — pod nim zawsze zobaczysz to potwierdzenie.
+                  </p>
+                </div>
+              )}
+
+              {state.kind === "confirm" && (
+                <div class="mt-6 rounded-xl border border-amber-400/40 bg-amber-500/10 p-4">
+                  <h2 class="text-lg font-semibold text-amber-100">Potwierdź swój głos</h2>
+                  <p class="mt-2 text-sm text-blue-100/90">
+                    Zamierzasz zagłosować:{" "}
+                    <span class="text-lg font-semibold text-white">{choiceLabel(state.choice)}</span>
+                  </p>
+                  <p class="mt-3 text-sm text-amber-100/90">
+                    Głos jest ostateczny. Po zapisaniu nie można go zmienić ani wycofać.
+                  </p>
+
+                  <form method="POST" action={view.castAction} class="mt-4">
+                    <input type="hidden" name="choice" value={state.choice} />
+                    <button type="submit" class:list={primaryButtonClass}>
+                      Oddaję głos — potwierdzam
+                    </button>
+                  </form>
+
+                  {/* No action, so it submits to the current URL with an empty form data set:
+                      that drops ?wybor and lands back on the buttons. An anchor would do the
+                      same thing at the cost of putting the token in an href (property 2). */}
+                  <form method="get" class="mt-3">
+                    <button
+                      type="submit"
+                      class="w-full rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:border-purple-400/50 hover:bg-white/10"
+                    >
+                      Wróć do wyboru
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {state.kind === "buttons" && (
+                <div class="mt-6">
+                  <p class="text-sm text-blue-100/80">
+                    Zagłosuj nad uchwałą. Twój głos waży tyle, ile wynosi udział Twoich lokali — poprosimy jeszcze o
+                    potwierdzenie, zanim go zapiszemy.
+                  </p>
+
+                  {/* No action: submits to the current URL, so ?wybor is the only thing that
+                      changes and the token never enters this markup. */}
+                  <form method="get" class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <button type="submit" name="wybor" value="za" class:list={choiceButtonClass}>
+                      Za
+                    </button>
+                    <button type="submit" name="wybor" value="przeciw" class:list={choiceButtonClass}>
+                      Przeciw
+                    </button>
+                  </form>
+                </div>
+              )}
             </>
           ) : (
             <>

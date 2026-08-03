@@ -15,6 +15,13 @@ import { createClient } from "@/lib/supabase";
 // protects that route is not this array but public.resolve_voting_link: the token is the
 // credential, the function is SECURITY DEFINER over a fixed narrow row, and anon is denied
 // on every table it reads. Do not "fix" the omission.
+//
+// /api/vote is absent for the same reason, and S-03 added it knowing that. Because matching
+// is startsWith, listing it here would bounce every cast vote to /auth/signin -- the owner
+// has no account to sign in with, so the flow would not merely be gated, it would be
+// impossible. Its protection is the same shape: the token is the credential and
+// public.cast_vote is the only door, SECURITY DEFINER over one narrow row, answering an
+// unknown token exactly as it answers a real one.
 const PROTECTED_ROUTES = ["/dashboard", "/api/email", "/buildings", "/api/buildings", "/help"];
 
 export const onRequest = defineMiddleware(async (context, next) => {
