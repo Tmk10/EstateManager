@@ -578,14 +578,14 @@ unauthenticated read path is missing.
 
 #### Automated
 
-- [ ] 4.1 CI green on the pull request
-- [ ] 4.2 `deploy.yml` green after merge, including the `/api/health` assertion
+- [x] 4.1 CI green on the pull request — 8cd12cb
+- [x] 4.2 `deploy.yml` green after merge, including the `/api/health` assertion — 8cd12cb
 
 #### Manual
 
-- [ ] 4.3 Migrations applied to production before the merge, read back from the schema
-- [ ] 4.4 One real vote cast through the live Worker, end to end, in a browser
-- [ ] 4.5 The receipt renders on production and survives a reload
-- [ ] 4.6 Production response headers carry all three values
-- [ ] 4.7 The serving version confirmed against the Workers Builds race
-- [ ] 4.8 CLAUDE.md "Current state" and `change.md` updated
+- [x] 4.3 Migrations applied to production before the merge, read back from the schema — 8cd12cb
+- [x] 4.4 One real vote cast through the live Worker, end to end, in a browser — 8cd12cb
+- [x] 4.5 The receipt renders on production and survives a reload — 8cd12cb
+- [x] 4.6 Production response headers carry all three values — 8cd12cb
+- [x] 4.7 The serving version confirmed against the Workers Builds race — 8cd12cb
+- [x] 4.8 CLAUDE.md "Current state" and `change.md` updated — 8cd12cb
