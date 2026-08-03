@@ -546,20 +546,20 @@ unauthenticated read path is missing.
 
 #### Automated
 
-- [ ] 2.1 `npx astro sync && npm run lint && npm run build` clean
-- [ ] 2.2 `grep -c '"/api/vote"' src/middleware.ts` → `0`
-- [ ] 2.3 No `console.` and no token interpolation in the new files
+- [x] 2.1 `npx astro sync && npm run lint && npm run build` clean
+- [x] 2.2 `grep -c '"/api/vote"' src/middleware.ts` → `0`
+- [x] 2.3 No `console.` and no token interpolation in the new files
 
 #### Manual
 
-- [ ] 2.4 Full local path: buttons → confirm → receipt with the right choice, date and weight
-- [ ] 2.5 Receipt persists across a reload and a fresh browser profile
-- [ ] 2.6 Second owner votes the other way; both weights match the registry
-- [ ] 2.7 Every neutral case renders identically with `200`, for every `?wybor` value
-- [ ] 2.8 All three headers present and identical between resolving and non-resolving tokens
-- [ ] 2.9 `curl` without `Origin` → `403`; with `Origin` and an unknown token → neutral page, no error parameter
-- [ ] 2.10 Forged `choice` refused without revealing whether the token exists
-- [ ] 2.11 The whole path works with JavaScript disabled
+- [x] 2.4 Full local path: buttons → confirm → receipt with the right choice, date and weight
+- [x] 2.5 Receipt persists across a reload and a fresh browser profile
+- [x] 2.6 Second owner votes the other way; both weights match the registry
+- [x] 2.7 Every neutral case renders identically with `200`, for every `?wybor` value
+- [x] 2.8 All three headers present and identical between resolving and non-resolving tokens
+- [x] 2.9 `curl` without `Origin` → `403`; with `Origin` and an unknown token → neutral page, no error parameter
+- [x] 2.10 Forged `choice` refused without revealing whether the token exists
+- [x] 2.11 The whole path works with JavaScript disabled
 
 ### Phase 3: The administrator's vote count
 
