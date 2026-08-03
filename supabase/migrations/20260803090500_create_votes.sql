@@ -129,6 +129,14 @@ alter table public.votes enable row level security;
 -- to any of this. That is not a loophole in the deny -- it is the point: the write path is
 -- exactly one named, reviewable function, and these policies are what makes it exactly one.
 --
+-- These policies are NOT the whole of that guarantee, and reading them as such is how the
+-- gap the previous migration closes was nearly shipped. They stop a DIRECT write to this
+-- table; they say nothing about who holds a token. An administrator who can mint or replace
+-- a row in public.voting_links can have cast_vote write a vote for any owner, without ever
+-- touching this table -- which is exactly what EM012 and EM013 in
+-- 20260803090000_harden_voting_links_and_resolutions.sql exist to prevent. The two
+-- migrations are one guarantee; neither holds alone.
+--
 -- select is `true` for `authenticated` (S-05 reads the tally, S-03 counts the voters) and
 -- `false` for `anon`, which stays explicit rather than implicit for the same reason it does
 -- everywhere else: a denial that is written down survives a refactor that a missing policy

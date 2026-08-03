@@ -527,20 +527,20 @@ unauthenticated read path is missing.
 
 #### Automated
 
-- [x] 1.1 Both migrations apply cleanly against a reset local stack
-- [x] 1.2 `npm run db:types` produces a diff containing `cast_vote` and the two new `resolve_voting_link` columns
-- [x] 1.3 Type checking and linting pass
-- [x] 1.4 Build passes
+- [x] 1.1 Both migrations apply cleanly against a reset local stack — 186af7a
+- [x] 1.2 `npm run db:types` produces a diff containing `cast_vote` and the two new `resolve_voting_link` columns — 186af7a
+- [x] 1.3 Type checking and linting pass — 186af7a
+- [x] 1.4 Build passes — 186af7a
 
 #### Manual
 
-- [x] 1.5 `update voting_links` raises `EM008` on frozen columns and succeeds otherwise
-- [x] 1.6 `delete from resolutions` raises `EM009` when open, succeeds when draft
-- [x] 1.7 `update votes` and `delete from votes` both raise `EM010`
-- [x] 1.8 `cast_vote` returns zero rows for unknown, truncated and draft-resolution tokens, indistinguishably
-- [x] 1.9 `cast_vote` twice returns the same stored choice and leaves one row
-- [x] 1.10 PostgREST: `anon` select `[]` / insert `42501`; `authenticated` select rows / insert `42501`
-- [x] 1.11 `resolve_voting_link` unchanged for unknown tokens, returns the reader's own vote once cast
+- [x] 1.5 `update voting_links` raises `EM008` on frozen columns and succeeds otherwise — 186af7a
+- [x] 1.6 `delete from resolutions` raises `EM009` when open, succeeds when draft — 186af7a
+- [x] 1.7 `update votes` and `delete from votes` both raise `EM010` — 186af7a
+- [x] 1.8 `cast_vote` returns zero rows for unknown, truncated and draft-resolution tokens, indistinguishably — 186af7a
+- [x] 1.9 `cast_vote` twice returns the same stored choice and leaves one row — 186af7a
+- [x] 1.10 PostgREST: `anon` select `[]` / insert `42501`; `authenticated` select rows / insert `42501` — 186af7a
+- [x] 1.11 `resolve_voting_link` unchanged for unknown tokens, returns the reader's own vote once cast — 186af7a
 
 ### Phase 2: The voting path — page and endpoint
 
