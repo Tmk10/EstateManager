@@ -80,5 +80,7 @@ export const POST: APIRoute = async (context) => {
     return fail(message ?? `Nie udało się zapisać rejestru lokali: ${error.message}`);
   }
 
-  return context.redirect(`/buildings/${id}`);
+  // The registry module, not the building's module index — the administrator lands on the thing
+  // they just created. `/buildings/<id>` stopped being the registry when it became that index.
+  return context.redirect(`/buildings/${id}/units`);
 };

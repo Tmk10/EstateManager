@@ -154,7 +154,7 @@ const showPreview = previewRows.length > 0;
                     większości.
                   </p>
                   <a
-                    href={`/buildings/${building.id}`}
+                    href={`/buildings/${building.id}/units`}
                     class="mt-5 inline-block rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-purple-500"
                   >
                     Zobacz rejestr lokali
@@ -285,10 +285,10 @@ const showPreview = previewRows.length > 0;
 
       <p class="mt-8 text-center text-sm">
         <a
-          href={building ? `/buildings/${building.id}` : "/buildings"}
+          href={building ? `/buildings/${building.id}/units` : "/buildings"}
           class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
         >
-          Wróć do budynku
+          Wróć do rejestru lokali
         </a>
       </p>
     </div>

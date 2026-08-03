@@ -58,7 +58,7 @@ sprawdza się dopiero przy `S-04`, gdy link trafia e-mailem do ludzi, którzy o 
 | S-06  | `finished-votes-archive`       | administrator otwiera zakończoną uchwałę z tej samej listy i odtwarza, które udziały złożyły się na wynik                                                                                    | S-05             | FR-009, NFR (ślad)                       | proposed |
 | S-07  | `dashboard-help-section`       | zalogowany administrator wchodzi do modułu „Pomoc" pod trasą `/help` i wie, do kogo zgłosić problem — w v1 wyłącznie adres e-mail dewelopera                                                 | F-01             | — (poza PRD, patrz Unknowns)             | done     |
 | S-08  | `landing-page-identity`        | osoba wchodząca na stronę startową widzi nazwę aplikacji i krótki opis, co ta aplikacja robi — zamiast strony startera                                                                       | —                | Vision, US-02                            | proposed |
-| S-09  | `multi-module-ui`              | administrator porusza się po interfejsie z modułami na dwóch poziomach — moduły aplikacji na pulpicie głównym, moduły budynku na pulpicie budynku — a nie po jednym ekranie z listą budynków | S-05, S-07, S-08 | Vision (moduł bazowy + moduł głosowania) | proposed |
+| S-09  | `multi-module-ui`              | administrator porusza się po interfejsie z modułami na dwóch poziomach — moduły aplikacji na pulpicie głównym, moduły budynku na pulpicie budynku — a nie po jednym ekranie z listą budynków | S-05, S-07, S-08 | Vision (moduł bazowy + moduł głosowania) | poziom 2 zrobiony, poziom 1 proposed |
 
 ## Streams
 
@@ -225,7 +225,7 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
   - USTALONE 2026-08-03 przez `S-03`: `votes_select_authenticated` jest `using (true)`, tak samo jak `voting_links_*_authenticated`. Po `S-05` oznacza to, że każde konto administratora odczytuje bilans każdego budynku — dla jednego konta bez znaczenia, dla drugiego to twardy warunek modelu ról v2. — Owner: użytkownik. Block: no (dla jednego konta).
   - OTWARTE, przeniesione z `S-02`: `opened_at` zapisuje zegar Workera, nie bazy, bo supabase-js wysyła wartości, a nie wyrażenia SQL. `S-05` nie może odejmować go od znacznika generowanego przez bazę bez wcześniejszego rozstrzygnięcia, którego zegara używa. — Owner: zespół. Block: no.
   - **ROZSTRZYGNIĘTE 2026-08-03: jedna lista, nie dwie.** Uchwały trwające i zakończone stoją razem, odróżnia je plakietka statusu (_Wersja robocza_ / _Głosowanie otwarte_ / _Podjęta_ / _Upadła_), a nie osobny ekran. Powód: „zakończone" to stan uchwały, a nie inny byt — administrator szukający uchwały nie wie z góry, czy zdążyła się rozstrzygnąć, więc rozdzielenie widoków każe mu zgadywać, w którym patrzeć. Konsekwencja dla `S-06`: ten kawałek **nie buduje już listy** i kurczy się do samego śladu.
-  - **ROZSTRZYGNIĘTE 2026-08-03: lista dostaje własną trasę** — `/buildings/<id>/resolutions` — zamiast zostać sekcją na stronie budynku, gdzie mieszka dzisiaj. Nie jest to kosmetyka: `S-09` zamienia `/buildings/<id>` w **spis modułów budynku**, więc lista uchwał jest treścią modułu, a nie treścią jego spisu. Zrobiona teraz kosztuje jeden plik i jeden wpis w `PROTECTED_ROUTES`; zrobiona jako sekcja i przeniesiona przy `S-09` kosztuje przeprowadzkę plus regresję w **jedynej bramce autoryzacji** tej aplikacji, której nie widać na ekranie. Strona budynku zachowuje skrót do modułu (kilka ostatnich uchwał albo sam odnośnik) — o jego kształcie przesądza `S-09`, nie ten kawałek. — Owner: użytkownik (zaakceptowane 2026-08-03). Block: no.
+  - **ROZSTRZYGNIĘTE 2026-08-03: lista dostaje własną trasę** — `/buildings/<id>/resolutions` — zamiast zostać sekcją na stronie budynku, gdzie mieszka dzisiaj. Nie jest to kosmetyka: `S-09` zamienia `/buildings/<id>` w **spis modułów budynku**, więc lista uchwał jest treścią modułu, a nie treścią jego spisu. Zrobiona teraz kosztuje jeden plik i jeden wpis w `PROTECTED_ROUTES`; zrobiona jako sekcja i przeniesiona przy `S-09` kosztuje przeprowadzkę plus regresję w **jedynej bramce autoryzacji** tej aplikacji, której nie widać na ekranie. Strona budynku zachowuje skrót do modułu (kilka ostatnich uchwał albo sam odnośnik) — o jego kształcie przesądza `S-09`, nie ten kawałek. — Owner: użytkownik (zaakceptowane 2026-08-03). Block: no. **DOWIEZIONE — przez `S-05`, mimo że `S-09` napisał to samo wcześniej:** trasa `/buildings/<id>/resolutions` istnieje wraz z listą, plakietką statusu i przyciskiem „Nowa uchwała". Oba kawałki założyły ten plik niezależnie — `S-09` poziom 2 na gałęzi 2026-08-03, `S-05` na `main` 2026-08-05 — i przy scalaniu **została wersja `S-05`**, bo tylko ona zna `decided_at` i plakietkę *Podjęta* / *Upadła*. `S-09` dołożył do niej nagłówek modułu i zabezpieczenie na pusty rejestr. Skrót na stronie budynku przyjął postać karty modułu z licznikiem („Uchwał: N · otwartych głosowań: M"), bo strona budynku stała się spisem modułów wcześniej, niż zakładała kolejność roadmapy.
 - **Risk:** To jedyna reguła w produkcie, która musi być dowodliwie poprawna — próg liczony jest od wszystkich udziałów w nieruchomości, a nie od oddanych, więc pomyłka w mianowniku przesuwa wynik uchwały. `infrastructure.md` §D9 odnotowuje, że runtime nie utrzymuje połączeń do bazy, więc transakcyjne domknięcie progu jest ograniczeniem narzuconym przez platformę dokładnie na tym fragmencie logiki. Osobno: §G1 wskazuje, że koszt renderowania bilansu rośnie z ilością danych, a nie z ruchem — ten widok jest pierwszym miejscem, w którym to się ujawni.
 - **Status:** proposed
 
@@ -294,7 +294,43 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
   - **ROZSTRZYGNIĘTE 2026-08-03: pomoc stoi w jednym rzędzie z pozostałymi modułami poziomu 1**, a nie w stopce ani w nagłówku. Spis poziomu 1 zawiera więc dziś dwie pozycje: budynki i pomoc. Zgodne z ustaleniem `S-07`, że „moduł" znaczy tu **nawigacyjnie** — własne miejsce obecne zawsze, nie pozycja z oferty handlowej — i z faktem, że `/help` już dziś jest osobną trasą za logowaniem, a nie blokiem na cudzym ekranie. Konsekwencja dla `S-09`: spis modułów poziomu 1 nie jest listą nieruchomości z doklejoną pomocą, tylko jednorodnym spisem, w którym „budynki" i „pomoc" są tego samego rodzaju pozycją; odnośnik „Pomoc" dowieziony przy `S-07` na `/dashboard` jest jego zalążkiem i przy `S-09` wchodzi do wspólnego układu zamiast zostać osobnym linkiem obok.
   - Czy to przebudowa nawigacji, czy również systemu wizualnego (typografia, kolory, komponenty `shadcn/ui`)? Pierwsze to kilka plików, drugie to każdy istniejący ekran. — Owner: użytkownik. Block: no.
 - **Risk:** To jedyny kawałek na roadmapie, który dotyka **wszystkich wcześniejszych ekranów naraz**, i dlatego stoi na końcu: zrobiony wcześniej, byłby przebudowywany po każdym kolejnym kawałku. Główne ryzyko jest zakresowe i wprost sprzeczne z `## Non-Goals` — „interfejs wielomodułowy" to zaproszenie do zaprojektowania architektury informacji dla modułów, które są zaparkowane. Granica, którą trzeba trzymać: v1 układa UI tak, żeby **przyjął** kolejne moduły, i nie pokazuje ani jednego, którego nie ma. Ryzyko drugie: przebudowa nawigacji dotyka `src/middleware.ts` i tablicy `PROTECTED_ROUTES`, która jest w tym projekcie **jedyną bramką autoryzacji** — nowa trasa nie jest chroniona, dopóki nie zostanie tam dopisana, a regresja w tym miejscu jest niewidoczna na ekranie.
-- **Status:** proposed
+- **Status:** poziom 2 zrobiony (2026-08-03), poziom 1 nadal `proposed`
+- **Zrealizowane (poziom 2, 2026-08-03):** `/buildings/<id>` przestało być ekranem z rejestrem i
+  jest **spisem modułów tego budynku**. Rejestr mieszka pod `/buildings/<id>/units`, uchwały pod
+  `/buildings/<id>/resolutions`. Powstał `src/lib/building-modules.ts` — **rejestr modułów**, czyli
+  to, na czym stoi kryterium gotowości tego kawałka: dołożenie kolejnego modułu jest wpisem w tę
+  tablicę plus trasą, a nie edycją znaczników strony budynku. Kontekst „jestem w budynku X" niesie
+  `src/components/buildings/BuildingHeader.astro` (okruszki `Budynki / <nazwa>`, tożsamość budynku,
+  pasek modułów z zaznaczonym bieżącym) — to jest właściwa treść kawałka, kafelki są tylko jego
+  widokiem na spisie. Zapis: `context/changes/multi-module-ui/`.
+  - **Wzięte poza kolejnością, na polecenie właściciela produktu — i koszt się zmaterializował.**
+    Kawałek napisano 2026-08-03, gdy `S-05` był niezrobiony, ale **wszedł na `main` dopiero
+    2026-08-05, już po `S-05`** (PR #31). Zapowiadany koszt („`S-05` dołoży plakietki *Podjęta* /
+    *Upadła* oraz bilans udziałów") nie przyszedł jako rozszerzenie, tylko jako **konflikt scalania
+    na trzech plikach**, bo oba kawałki dotknęły tych samych ekranów niezależnie od siebie. To jest
+    dokładnie ryzyko, przez które roadmapa stawiała `S-09` na końcu — zapisane tutaj, bo poziom 1
+    wciąż stoi przed tym samym wyborem. `S-08` nadal niezrobiony; ten kawałek świadomie nie tworzy
+    nowego języka wizualnego, tylko powtarza słownictwo kart z `/buildings` i `/dashboard`.
+  - **Trasę `/buildings/<id>/resolutions` założył ostatecznie `S-05`, nie ten kawałek.** Oba
+    kawałki napisały ten plik osobno (konflikt `add/add`); przy scalaniu **wygrała wersja
+    `S-05`** — plakietka *Podjęta* / *Upadła*, `decided_at` i `describeResolutionStatus` — a z tego
+    kawałka doszedł do niej nagłówek modułu (`BuildingHeader`) oraz zabezpieczenie na pusty rejestr.
+    Wcześniejsza wersja tego wpisu twierdziła odwrotnie („`S-05` ją dziedziczy"); nieprawda,
+    poprawione przy scalaniu 2026-08-05. Bez zmian zostaje druga połowa kosztu, którą zapowiadał
+    wpis `S-05`: „jeden wpis w `PROTECTED_ROUTES`" okazał się zerowy, bo tablica dopasowuje przez
+    `startsWith` i zawiera już `"/buildings"`, więc obie trasy są chronione z chwilą powstania.
+  - **Zmiana zachowania warta odnotowania:** moduł głosowania jest na spisie także wtedy, gdy
+    rejestr lokali jest pusty. Wcześniej sekcja uchwał była ukrywana do czasu importu, czyli
+    struktura produktu znikała razem z jej treścią. Teraz karta zostaje i mówi, co jest pierwsze.
+  - **Czego NIE zweryfikowano:** `npx astro sync`, `npm run lint` (exit 0) i `npm run build`
+    (Complete) przeszły, ale **przejścia po stronach ani próba anonimowego wejścia na obie nowe
+    trasy nie zostały wykonane**. Ochrona tras jest w tym projekcie dokładnie tą rzeczą, której
+    `S-07` kazał dowodzić żądaniem, a nie odczytem z kodu — bo strona niechroniona wygląda
+    identycznie jak chroniona. To zostaje do zrobienia **przed** PR-em, wraz z próbami
+    kontrolnymi (`/dashboard` → `302`, `/` → `200`), bez których samo `302` niczego nie dowodzi.
+  - **Poziom 1 (`/dashboard`) bez zmian** — spis modułów aplikacji (budynki, pomoc) w jednorodnym
+    układzie wciąż czeka. Dopóki nie powstanie, wspólny układ obu poziomów istnieje tylko na
+    drugim z nich.
 
 ## Backlog Handoff
 
@@ -311,7 +347,7 @@ użytkownika). Fundamenty poniżej zakładają obecność tych elementów i **ni
 | S-06       | `finished-votes-archive`       | Ślad wyniku na stronie zakończonej uchwały                                 | no                    | Wymaga `S-05`. Zakres zawężony 2026-08-03: listy nie buduje (dowozi ją `S-05`), zostaje sam ślad. Change ID celowo bez zmiany                                                                                                  |
 | S-07       | `dashboard-help-section`       | Moduł „Pomoc" pod trasą `/help`, w v1 z adresem e-mail dewelopera          | zrobione              | Wdrożone na produkcję 2026-08-02 (PR #21). Zapis: `context/changes/dashboard-help-section/`                                                                                                                                    |
 | S-08       | `landing-page-identity`        | Strona startowa z nazwą aplikacji i krótkim opisem zamiast strony startera | no                    | Bez zależności w kodzie, ale **brakuje treści**: trzeba przesądzić nazwę widoczną dla użytkownika i opis                                                                                                                       |
-| S-09       | `multi-module-ui`              | Moduły na dwóch poziomach: pulpit główny i pulpit budynku                  | no                    | Wymaga `S-05`, `S-07`, `S-08`. Ostatni element roadmapy — dotyka wszystkich wcześniejszych ekranów. Architektura informacji ustalona 2026-08-03, patrz **Outcome** i **Unknowns** przy `S-09`                                  |
+| S-09       | `multi-module-ui`              | Moduły poziomu 1 na pulpicie głównym (poziom 2 zrobiony)                   | yes                   | **Poziom 2 dowieziony 2026-08-03** poza kolejnością, na polecenie właściciela produktu — `/buildings/<id>` jest spisem modułów, rejestr i uchwały mają własne trasy, rejestr modułów stoi w `src/lib/building-modules.ts`. Zostaje poziom 1: jednorodny spis modułów aplikacji (budynki, pomoc) na `/dashboard`. Zapis: `context/changes/multi-module-ui/` |
 
 ## Open Roadmap Questions
 

@@ -1,34 +1,33 @@
 ---
 import Layout from "@/layouts/Layout.astro";
+import BuildingHeader from "@/components/buildings/BuildingHeader.astro";
 import { createClient } from "@/lib/supabase";
-import { formatShareBps, formatSquareMetres, TOTAL_BPS } from "@/lib/shares";
+import { formatShareBps, formatSquareMetres } from "@/lib/shares";
+import { BUILDING_MODULES, buildingModuleHref } from "@/lib/building-modules";
+
+// The index of this building's modules (roadmap `S-09`, level 2). This page used to *be* the
+// registry; the registry now lives at `/buildings/<id>/units` and the resolutions list at
+// `/buildings/<id>/resolutions`. What stays here is the answer to "what can I do in this
+// building", which is the only thing that has to change when a module is added.
+//
+// Both new routes are already behind the auth gate: PROTECTED_ROUTES in src/middleware.ts
+// matches with startsWith and contains "/buildings". No entry was added — verified by request,
+// not by reading the array, because an unprotected page looks exactly like a protected one.
 
 const { id } = Astro.params;
 
-// Middleware has already bounced anonymous visitors (PROTECTED_ROUTES covers "/buildings"
-// with startsWith). The client can still be null when SUPABASE_URL / SUPABASE_KEY are
-// unset — those are optional: true in astro.config.mjs.
+// The client can be null when SUPABASE_URL / SUPABASE_KEY are unset — those are optional: true
+// in astro.config.mjs.
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 
 const error = Astro.url.searchParams.get("error");
 
 let loadError: string | null = null;
 let building: { id: string; name: string; city: string; street: string; total_area_m2: number | null } | null = null;
-let units: {
-  id: string;
-  unit_number: string;
-  area_m2: number;
-  share_bps: number;
-  full_name: string;
-  email: string | null;
-}[] = [];
-/**
- * A count, not the rows. The list itself lives at /buildings/<id>/resolutions since S-05.
- * This page keeps only the way in, deliberately: S-09 turns it into a list of the building's
- * modules, and a module tile is a name and a number, not a second copy of the module's
- * contents.
- */
+let unitCount = 0;
+let shareTotal = 0;
 let resolutionCount = 0;
+let openResolutionCount = 0;
 
 if (!supabase) {
   loadError = "Baza danych nie jest skonfigurowana.";
@@ -42,62 +41,91 @@ if (!supabase) {
     .maybeSingle();
 
   if (buildingError) {
-    // 22P02 is invalid_text_representation — the id in the URL is not a uuid at all,
-    // which is a wrong address rather than a database problem.
+    // 22P02 is invalid_text_representation — the id in the URL is not a uuid at all, which is a
+    // wrong address rather than a database problem.
     loadError = buildingError.code === "22P02" ? "Nie znaleziono budynku." : buildingError.message;
   } else if (!data) {
     loadError = "Nie znaleziono budynku.";
   } else {
     building = data;
 
+    // Only what the two cards state. The rows themselves belong to the modules — this page has
+    // no table to fill.
     const { data: unitRows, error: unitsError } = await supabase
       .from("units")
-      .select("id, unit_number, area_m2, share_bps, owners(full_name, email)")
+      .select("id, share_bps")
       .eq("building_id", id);
 
     if (unitsError) {
       loadError = unitsError.message;
     } else {
-      units = unitRows.map((row) => ({
-        id: row.id,
-        unit_number: row.unit_number,
-        area_m2: row.area_m2,
-        share_bps: row.share_bps,
-        full_name: row.owners.full_name,
-        email: row.owners.email,
-      }));
+      unitCount = unitRows.length;
+      shareTotal = unitRows.reduce((sum, unit) => sum + unit.share_bps, 0);
 
-      // Sorted here rather than in the query because unit numbers are text: ordering them
-      // in SQL puts "10" between "1" and "2", which is visibly wrong to anyone reading
-      // their own registry. Numeric-aware collation gives 1, 2, ... 10 while still
-      // handling "3A" and "12/1".
-      units.sort((a, b) => a.unit_number.localeCompare(b.unit_number, "pl", { numeric: true }));
-
-      // head: true — the rows are not wanted here, only how many there are. "id" rather than
-      // "*" for the same reason every other projection in this app names its columns: a later
-      // column-level revoke would turn "*" into a 42501.
-      const { count, error: resolutionsError } = await supabase
+      const { data: resolutionRows, error: resolutionsError } = await supabase
         .from("resolutions")
-        .select("id", { count: "exact", head: true })
+        .select("id, status")
         .eq("building_id", id);
 
       if (resolutionsError) {
         loadError = resolutionsError.message;
       } else {
-        // null count means PostgREST answered without one; 0 is the honest reading.
-        resolutionCount = count ?? 0;
+        resolutionCount = resolutionRows.length;
+        openResolutionCount = resolutionRows.filter((row) => row.status === "open").length;
       }
     }
   }
 }
 
-const shareTotal = units.reduce((sum, unit) => sum + unit.share_bps, 0);
+// Per-module state, keyed by the registry's ids. A module with no entry here still renders — its
+// card falls back to label, description and the link — so adding a module stays an entry in
+// BUILDING_MODULES rather than an edit to the markup below.
+const summaries: Record<string, string | undefined> = {};
+const notices: Record<string, { message: string; ctaLabel: string; ctaHref: string } | undefined> = {};
+
+if (building) {
+  if (unitCount > 0) {
+    const parts = [`Lokali: ${String(unitCount)}`];
+    if (building.total_area_m2 !== null) {
+      parts.push(`${formatSquareMetres(building.total_area_m2)} m²`);
+    }
+    parts.push(formatShareBps(shareTotal));
+    summaries.units = parts.join(" · ");
+  } else {
+    notices.units = {
+      message: "Bez rejestru nie da się policzyć udziałów.",
+      ctaLabel: "Wczytaj lokale z pliku CSV",
+      ctaHref: `/buildings/${building.id}/units/import`,
+    };
+  }
+
+  if (unitCount === 0) {
+    // The voting module is listed even with an empty registry — it exists whether or not it has
+    // content, and hiding it hid the product's own structure. It only says what comes first.
+    notices.resolutions = {
+      message: "Najpierw rejestr lokali — bez niego nie wiadomo, komu wystawić link do głosowania.",
+      ctaLabel: "Wczytaj lokale z pliku CSV",
+      ctaHref: `/buildings/${building.id}/units/import`,
+    };
+  } else if (resolutionCount === 0) {
+    notices.resolutions = {
+      message: "Ten budynek nie ma jeszcze żadnej uchwały.",
+      ctaLabel: "Nowa uchwała",
+      ctaHref: `/buildings/${building.id}/resolutions/new`,
+    };
+  } else {
+    summaries.resolutions =
+      openResolutionCount > 0
+        ? `Uchwał: ${String(resolutionCount)} · otwartych głosowań: ${String(openResolutionCount)}`
+        : `Uchwał: ${String(resolutionCount)}`;
+  }
+}
 ---
 
 <Layout title={building ? building.name : "Budynek"}>
   <div class="bg-cosmic min-h-screen p-4 py-12">
     <div
-      class="mx-auto w-full max-w-4xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
+      class="mx-auto w-full max-w-3xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
     >
       {
         loadError ? (
@@ -107,14 +135,7 @@ const shareTotal = units.reduce((sum, unit) => sum + unit.share_bps, 0);
         ) : (
           building && (
             <>
-              <div class="mb-6">
-                <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
-                  {building.name}
-                </h1>
-                <p class="mt-1 text-sm text-blue-100/60">
-                  {building.street}, {building.city}
-                </p>
-              </div>
+              <BuildingHeader building={building} />
 
               {error && (
                 <p
@@ -125,105 +146,38 @@ const shareTotal = units.reduce((sum, unit) => sum + unit.share_bps, 0);
                 </p>
               )}
 
-              {units.length > 0 ? (
-                <>
-                  <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-                    <h2 class="text-lg font-semibold">Rejestr lokali</h2>
-                    <p class="text-sm text-blue-100/60">
-                      Lokali: <span class="font-medium text-white">{units.length}</span>
-                      {building.total_area_m2 !== null && (
+              <ul class="grid gap-4 sm:grid-cols-2">
+                {BUILDING_MODULES.map((module) => {
+                  const summary = summaries[module.id];
+                  const notice = notices[module.id];
+                  return (
+                    <li class="relative flex flex-col rounded-xl border border-white/10 bg-white/5 p-5 transition-colors hover:border-purple-400/40 hover:bg-white/10">
+                      <h2 class="text-lg font-semibold">
+                        {/* The pseudo-element stretches the link over the whole card, so the card
+                            is one target. The call to action below sits above it with z-10. */}
+                        <a href={buildingModuleHref(building.id, module)} class="after:absolute after:inset-0">
+                          {module.label}
+                        </a>
+                      </h2>
+                      <p class="mt-1 text-sm text-blue-100/60">{module.description}</p>
+
+                      {summary && <p class="mt-4 text-sm text-blue-100/80 tabular-nums">{summary}</p>}
+
+                      {notice && (
                         <>
-                          {" · "}Łączna powierzchnia:{" "}
-                          <span class="font-medium text-white">{formatSquareMetres(building.total_area_m2)} m²</span>
+                          <p class="mt-4 text-sm text-blue-100/50">{notice.message}</p>
+                          <a
+                            href={notice.ctaHref}
+                            class="relative z-10 mt-3 self-start rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-purple-500"
+                          >
+                            {notice.ctaLabel}
+                          </a>
                         </>
                       )}
-                    </p>
-                  </div>
-
-                  <div class="overflow-x-auto rounded-xl border border-white/10">
-                    <table class="w-full text-left text-sm">
-                      <thead class="bg-white/5 text-xs tracking-wide text-blue-100/60 uppercase">
-                        <tr>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            Nr lokalu
-                          </th>
-                          <th scope="col" class="px-4 py-3 text-right font-medium">
-                            Metraż
-                          </th>
-                          <th scope="col" class="px-4 py-3 text-right font-medium">
-                            Udział
-                          </th>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            Właściciel
-                          </th>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            E-mail
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-white/5">
-                        {units.map((unit) => (
-                          <tr>
-                            <td class="px-4 py-3 font-medium">{unit.unit_number}</td>
-                            <td class="px-4 py-3 text-right tabular-nums">{formatSquareMetres(unit.area_m2)} m²</td>
-                            <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(unit.share_bps)}</td>
-                            <td class="px-4 py-3">{unit.full_name}</td>
-                            <td class="px-4 py-3">{unit.email ?? <span class="text-blue-100/40">brak</span>}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot class="border-t border-white/10 bg-white/5 font-medium">
-                        <tr>
-                          <td class="px-4 py-3">Razem</td>
-                          <td class="px-4 py-3 text-right tabular-nums">
-                            {building.total_area_m2 !== null && `${formatSquareMetres(building.total_area_m2)} m²`}
-                          </td>
-                          <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(shareTotal)}</td>
-                          <td class="px-4 py-3" colspan="2" />
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-
-                  {shareTotal !== TOTAL_BPS && (
-                    <p class="mt-4 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
-                      Suma udziałów wynosi {formatShareBps(shareTotal)} zamiast 100,00%. Zgłoś to jako błąd.
-                    </p>
-                  )}
-
-                  {/* Uchwały appear only once the registry is imported, matching the empty
-                      state above: without owners there is nobody to send a link to. */}
-                  <a
-                    href={`/buildings/${building.id}/resolutions`}
-                    class="mt-10 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-4 transition-colors hover:border-purple-400/50 hover:bg-white/10"
-                  >
-                    <span>
-                      <span class="text-lg font-semibold">Uchwały</span>
-                      <span class="ml-3 text-sm text-blue-100/60">
-                        {resolutionCount === 0
-                          ? "brak — napisz pierwszą"
-                          : `${String(resolutionCount)} w tym budynku, trwające i zakończone`}
-                      </span>
-                    </span>
-                    <span class="text-sm text-blue-200/80" aria-hidden="true">
-                      →
-                    </span>
-                  </a>
-                </>
-              ) : (
-                <div class="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-10 text-center">
-                  <p class="text-blue-100/80">Ten budynek nie ma jeszcze rejestru lokali.</p>
-                  <p class="mt-1 text-sm text-blue-100/50">
-                    Wczytaj listę lokali z pliku CSV, żeby policzyć udziały właścicieli.
-                  </p>
-                  <a
-                    href={`/buildings/${building.id}/units/import`}
-                    class="mt-5 inline-block rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-purple-500"
-                  >
-                    Wczytaj lokale z pliku CSV
-                  </a>
-                </div>
-              )}
+                    </li>
+                  );
+                })}
+              </ul>
             </>
           )
         )
