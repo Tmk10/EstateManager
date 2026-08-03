@@ -154,6 +154,61 @@ export type Database = {
           },
         ]
       }
+      votes: {
+        Row: {
+          building_id: string
+          choice: string
+          created_at: string
+          id: string
+          owner_id: string
+          resolution_id: string
+          share_bps: number
+          voting_link_id: string
+        }
+        Insert: {
+          building_id: string
+          choice: string
+          created_at?: string
+          id?: string
+          owner_id: string
+          resolution_id: string
+          share_bps: number
+          voting_link_id: string
+        }
+        Update: {
+          building_id?: string
+          choice?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          resolution_id?: string
+          share_bps?: number
+          voting_link_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_owner_same_building_fkey"
+            columns: ["owner_id", "building_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id", "building_id"]
+          },
+          {
+            foreignKeyName: "votes_resolution_same_building_fkey"
+            columns: ["resolution_id", "building_id"]
+            isOneToOne: false
+            referencedRelation: "resolutions"
+            referencedColumns: ["id", "building_id"]
+          },
+          {
+            foreignKeyName: "votes_voting_link_id_fkey"
+            columns: ["voting_link_id"]
+            isOneToOne: false
+            referencedRelation: "voting_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voting_links: {
         Row: {
           building_id: string
@@ -209,6 +264,14 @@ export type Database = {
         Args: { p_building_id: string }
         Returns: number
       }
+      cast_vote: {
+        Args: { p_choice: string; p_token: string }
+        Returns: {
+          vote_choice: string
+          vote_recorded: boolean
+          voted_at: string
+        }[]
+      }
       import_building_units: {
         Args: { p_building_id: string; p_rows: Json }
         Returns: number
@@ -217,6 +280,8 @@ export type Database = {
         Args: { p_token: string }
         Returns: {
           building_name: string
+          own_vote_choice: string
+          own_voted_at: string
           owner_full_name: string
           owner_share_bps: number
           owner_unit_numbers: string[]
