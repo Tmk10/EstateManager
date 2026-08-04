@@ -689,6 +689,54 @@ exercised. `CLAUDE.md` is the only place these facts live — do not duplicate t
 
 ---
 
+### Phase 4 Findings — executed 2026-08-04
+
+The slice ran live. Migration applied with `db push` before the merge; PR #29 merged; `deploy.yml`
+green including its `/api/health` assertion. Test building **Wspólnota Testowa S-04**
+(`23833314-1f7a-4ae4-9b7a-473637843a1f`), 5 lokale, 4 owners, addresses on plus-variants of one
+mailbox we control.
+
+- **4.4** — `sent=3&failed=0` in **5.9 s** for three owners, ≈2 s per send. Extrapolated, a
+  70-owner building is roughly **two minutes** of a pending request, which matches the plan's
+  "tens of seconds" estimate closely enough to leave the wait-don't-background decision standing.
+  All three messages arrived and render correctly (**2.6**).
+- **3.6 closed on production, not by argument.** Anna Testowa holds lokale 1 and 2. She appears
+  as **one** row at the summed 40,43%, received **one** link and **one** message. The button read
+  `Roześlij linki (3)`, not 4.
+- **The owner with no address never counted as a failure** — listed in her own block, summarised
+  as `bez adresu e-mail: 1`, absent from the table.
+- **4.5** — second press returned the notice; the `Wysłano` timestamps did not move.
+- **4.6 exercised in both directions.** With the binding gone: `sent=0&failed=3`, every row
+  rendering the mapped Polish sentence, and `E_BINDING_MISSING` itself **absent from the page**
+  (the mapping was used, not the fallback). `/api/health` reported `{"status":"ok","email":"missing"}`
+  — **200, not 503**, confirming that a dead mail channel still does not fail a deploy. Binding
+  restored: `sent=3`, the error state cleared, the button disappeared.
+- **No token appeared in any page source or redirect URL at any point.**
+
+**F4-1 — `wrangler deploy` does not read `wrangler.jsonc`. It reads `dist/server/wrangler.json`,
+which the Astro adapter generates at build time.** Wrangler says so out loud — _"Using redirected
+Wrangler configuration … Configuration being used: dist/server/wrangler.json"_ — and it is easy to
+miss. Editing `wrangler.jsonc` and deploying **without rebuilding first** ships the previous
+build's bindings. That happened here: the first attempt at `4.6` removed the binding from the
+source, deployed, and the Worker kept its `EMAIL` binding and **sent three real messages that were
+not meant to go out**. Nothing was corrupted — the recipients were our own test inboxes — but the
+rule is now paid for: **`npm run build` between editing `wrangler.jsonc` and `npx wrangler deploy`,
+always.** A second trap sits beside it: in the generated config the key is present but **empty**
+(`"send_email": []`), so `'send_email' in config` is true when the binding is gone; test the value.
+
+**F4-2 — the production Worker currently serves a locally-built deploy.** Restoring the binding
+was done with `npx wrangler deploy` rather than through `deploy.yml`. The tree is `main` with a
+git-clean `wrangler.jsonc`, so it is the same code CI validated, but it is not the artefact CI
+produced. Any subsequent push to `main` supersedes it through the normal path.
+
+**F4-3 — the test building and its three resolutions are permanent.** `EM009` refuses to delete a
+non-draft resolution and no screen deletes a building, so `Wspólnota Testowa S-04` with `1/2026`,
+`2/2026` and `3/2026` stays in the production database. `2/2026` and `3/2026` are technical: both
+exist only because a fanout needs unsent links, and a resolution whose links are all sent cannot
+provide them.
+
+---
+
 ## Testing Strategy
 
 There is no test runner in this project — no `npm test`, no framework, no test files. The gates
@@ -806,7 +854,7 @@ a further forward migration.
 
 - [x] 2.4 The rendered text part is legible to an owner who did not know a vote was happening — 3a73e91
 - [x] 2.5 The message leaks no other owner's name, share or address, and carries one URL — 3a73e91
-- [ ] 2.6 One real message renders correctly in a mail client, HTML and plain text — deferred to Phase 4 (needs a real send; covered by 4.4)
+- [x] 2.6 One real message renders correctly in a mail client, HTML and plain text — confirmed on production 2026-08-04 — 6ee0b0d
 
 ### Phase 3: The fanout, the button and the status column
 
@@ -820,7 +868,7 @@ a further forward migration.
 - [x] 3.3 One message per owner with an address, each carrying that owner's own token — f0eddb3
 - [x] 3.4 Table shows _Wysłano_ with timestamps; no-address block lists the rest — f0eddb3
 - [x] 3.5 Second press reports everyone already has a link and sends nothing — f0eddb3
-- [ ] 3.6 An owner holding two units receives exactly one message — deferred to Phase 4 (no multi-unit owner in local data; see F3-3)
+- [x] 3.6 An owner holding two units receives exactly one message — confirmed on production: Anna Testowa, lokale 1+2, 40,43%, one link, one message — 6ee0b0d
 - [x] 3.7 An interrupted run resumes correctly and nobody receives two messages — f0eddb3
 - [x] 3.8 Missing binding records `E_BINDING_MISSING` per owner; restoring it resumes — f0eddb3
 - [x] 3.9 No token and no e-mail address in the redirect URL or the page source — tokens: none anywhere; addresses: see F3-2 — f0eddb3
@@ -830,13 +878,13 @@ a further forward migration.
 
 #### Automated
 
-- [x] 4.1 CI green on the pull request
-- [ ] 4.2 `deploy.yml` green after merge, including the `/api/health` assertion
+- [x] 4.1 CI green on the pull request — 6ee0b0d
+- [x] 4.2 `deploy.yml` green after merge, including the `/api/health` assertion — 6ee0b0d
 
 #### Manual
 
-- [x] 4.3 Migration applied to production with `db push` **before** the merge
-- [ ] 4.4 Every test inbox received exactly one message with its own working link
-- [ ] 4.5 A second press on production sent nothing
-- [ ] 4.6 The `E_BINDING_MISSING` walk-through recorded, rendered and resumed on production
-- [ ] 4.7 `change.md`, `roadmap.md` and `CLAUDE.md` updated and mutually consistent
+- [x] 4.3 Migration applied to production with `db push` **before** the merge — 6ee0b0d
+- [x] 4.4 Every test inbox received exactly one message with its own working link — 6ee0b0d
+- [x] 4.5 A second press on production sent nothing — 6ee0b0d
+- [x] 4.6 The `E_BINDING_MISSING` walk-through recorded, rendered and resumed on production — 6ee0b0d
+- [x] 4.7 `change.md`, `roadmap.md` and `CLAUDE.md` updated and mutually consistent — 6ee0b0d
