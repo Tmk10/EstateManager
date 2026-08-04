@@ -812,30 +812,30 @@ a further forward migration.
 
 #### Automated
 
-- [x] 3.1 `astro sync && lint && build` pass
-- [x] 3.2 No middleware change needed — `/api/buildings` still covers the new endpoint
+- [x] 3.1 `astro sync && lint && build` pass — f0eddb3
+- [x] 3.2 No middleware change needed — `/api/buildings` still covers the new endpoint — f0eddb3
 
 #### Manual
 
-- [x] 3.3 One message per owner with an address, each carrying that owner's own token
-- [x] 3.4 Table shows _Wysłano_ with timestamps; no-address block lists the rest
-- [x] 3.5 Second press reports everyone already has a link and sends nothing
+- [x] 3.3 One message per owner with an address, each carrying that owner's own token — f0eddb3
+- [x] 3.4 Table shows _Wysłano_ with timestamps; no-address block lists the rest — f0eddb3
+- [x] 3.5 Second press reports everyone already has a link and sends nothing — f0eddb3
 - [ ] 3.6 An owner holding two units receives exactly one message — deferred to Phase 4 (no multi-unit owner in local data; see F3-3)
-- [x] 3.7 An interrupted run resumes correctly and nobody receives two messages
-- [x] 3.8 Missing binding records `E_BINDING_MISSING` per owner; restoring it resumes
-- [x] 3.9 No token and no e-mail address in the redirect URL or the page source — tokens: none anywhere; addresses: see F3-2
-- [x] 3.10 A draft offers no button and the endpoint refuses a direct post
+- [x] 3.7 An interrupted run resumes correctly and nobody receives two messages — f0eddb3
+- [x] 3.8 Missing binding records `E_BINDING_MISSING` per owner; restoring it resumes — f0eddb3
+- [x] 3.9 No token and no e-mail address in the redirect URL or the page source — tokens: none anywhere; addresses: see F3-2 — f0eddb3
+- [x] 3.10 A draft offers no button and the endpoint refuses a direct post — f0eddb3
 
 ### Phase 4: Production and the record
 
 #### Automated
 
-- [ ] 4.1 CI green on the pull request
+- [x] 4.1 CI green on the pull request
 - [ ] 4.2 `deploy.yml` green after merge, including the `/api/health` assertion
 
 #### Manual
 
-- [ ] 4.3 Migration applied to production with `db push` **before** the merge
+- [x] 4.3 Migration applied to production with `db push` **before** the merge
 - [ ] 4.4 Every test inbox received exactly one message with its own working link
 - [ ] 4.5 A second press on production sent nothing
 - [ ] 4.6 The `E_BINDING_MISSING` walk-through recorded, rendered and resumed on production
