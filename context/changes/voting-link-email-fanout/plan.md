@@ -854,7 +854,7 @@ a further forward migration.
 
 - [x] 2.4 The rendered text part is legible to an owner who did not know a vote was happening — 3a73e91
 - [x] 2.5 The message leaks no other owner's name, share or address, and carries one URL — 3a73e91
-- [x] 2.6 One real message renders correctly in a mail client, HTML and plain text — confirmed on production 2026-08-04
+- [x] 2.6 One real message renders correctly in a mail client, HTML and plain text — confirmed on production 2026-08-04 — 6ee0b0d
 
 ### Phase 3: The fanout, the button and the status column
 
@@ -868,7 +868,7 @@ a further forward migration.
 - [x] 3.3 One message per owner with an address, each carrying that owner's own token — f0eddb3
 - [x] 3.4 Table shows _Wysłano_ with timestamps; no-address block lists the rest — f0eddb3
 - [x] 3.5 Second press reports everyone already has a link and sends nothing — f0eddb3
-- [x] 3.6 An owner holding two units receives exactly one message — confirmed on production: Anna Testowa, lokale 1+2, 40,43%, one link, one message
+- [x] 3.6 An owner holding two units receives exactly one message — confirmed on production: Anna Testowa, lokale 1+2, 40,43%, one link, one message — 6ee0b0d
 - [x] 3.7 An interrupted run resumes correctly and nobody receives two messages — f0eddb3
 - [x] 3.8 Missing binding records `E_BINDING_MISSING` per owner; restoring it resumes — f0eddb3
 - [x] 3.9 No token and no e-mail address in the redirect URL or the page source — tokens: none anywhere; addresses: see F3-2 — f0eddb3
@@ -878,13 +878,13 @@ a further forward migration.
 
 #### Automated
 
-- [x] 4.1 CI green on the pull request
-- [x] 4.2 `deploy.yml` green after merge, including the `/api/health` assertion
+- [x] 4.1 CI green on the pull request — 6ee0b0d
+- [x] 4.2 `deploy.yml` green after merge, including the `/api/health` assertion — 6ee0b0d
 
 #### Manual
 
-- [x] 4.3 Migration applied to production with `db push` **before** the merge
-- [x] 4.4 Every test inbox received exactly one message with its own working link
-- [x] 4.5 A second press on production sent nothing
-- [x] 4.6 The `E_BINDING_MISSING` walk-through recorded, rendered and resumed on production
-- [x] 4.7 `change.md`, `roadmap.md` and `CLAUDE.md` updated and mutually consistent
+- [x] 4.3 Migration applied to production with `db push` **before** the merge — 6ee0b0d
+- [x] 4.4 Every test inbox received exactly one message with its own working link — 6ee0b0d
+- [x] 4.5 A second press on production sent nothing — 6ee0b0d
+- [x] 4.6 The `E_BINDING_MISSING` walk-through recorded, rendered and resumed on production — 6ee0b0d
+- [x] 4.7 `change.md`, `roadmap.md` and `CLAUDE.md` updated and mutually consistent — 6ee0b0d
