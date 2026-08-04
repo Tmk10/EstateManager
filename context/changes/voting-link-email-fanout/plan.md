@@ -566,6 +566,35 @@ how many owners have no address.
 **Implementation Note**: After automated verification passes, pause for confirmation that the
 manual checks — the resume behaviour above all — ran before starting Phase 4.
 
+### Phase 3 Findings — executed 2026-08-04
+
+**F3-1 — One counter added that this phase's contract does not name: `unrecorded`.** Step 5
+writes each owner's status immediately after their send. If the send succeeds and that write
+fails, the owner holds their link and the database does not know it — so the next press mails
+them a **second** time, which is the single failure the Overview says this slice must not have.
+The plan is silent on the case. Counting it as `sent` would hide it; counting it as `failed`
+would be a lie that also causes the duplicate. It is therefore counted separately, returned as
+`?unrecorded=N`, and rendered as a warning naming exactly that consequence. Approved 2026-08-04.
+
+**F3-2 — Success criterion 3.9 says "the page source contains no e-mail address", and that is
+not true of this page — nor was it before this slice.** `S-02`'s owner→link table has always
+rendered an `E-mail` column, deliberately: the administrator reads the registry. What the
+criterion protects is the **token**, and that holds — a redirect carries only `?sent=`/`?failed=`
+(and `?unrecorded=` above), and a `/vote/[A-Za-z0-9_-]{43}` scan of the rendered page returns
+zero matches. Read 3.9 as being about the redirect and about tokens.
+
+**F3-3 — 3.6 is not exercisable on local data and is deferred to Phase 4.** No owner in the
+local database holds more than one unit. One message per owner is structural rather than
+incidental — `voting_links` carries `unique (resolution_id, owner_id)` and `public.owners` is
+one row per person, so the fanout iterates links, never units — but that is an argument, not a
+demonstration. The test building in Phase 4 must include a two-lokale owner.
+
+**F3-4 — `npm run dev` does not send real mail, which makes local verification safe.** Miniflare
+stubs the `send_email` binding and writes each message to a temp file under
+`.../miniflare-*/email/`. Everything above ran without a message leaving the machine, and the
+temp files are how "each message carries that owner's own token" was checked. Production is the
+first real send, and that is Phase 4.
+
 ---
 
 ## Phase 4: Production and the record
@@ -769,33 +798,33 @@ a further forward migration.
 
 #### Automated
 
-- [x] 2.1 `astro sync && lint && build` pass
-- [x] 2.2 `voting-link-email.ts` executed directly: hostile body escaped in html, verbatim in text, single URL
-- [x] 2.3 `describeSendFailure` maps each listed code and falls back by naming an unmapped one
+- [x] 2.1 `astro sync && lint && build` pass — 3a73e91
+- [x] 2.2 `voting-link-email.ts` executed directly: hostile body escaped in html, verbatim in text, single URL — 3a73e91
+- [x] 2.3 `describeSendFailure` maps each listed code and falls back by naming an unmapped one — 3a73e91
 
 #### Manual
 
-- [x] 2.4 The rendered text part is legible to an owner who did not know a vote was happening
-- [x] 2.5 The message leaks no other owner's name, share or address, and carries one URL
+- [x] 2.4 The rendered text part is legible to an owner who did not know a vote was happening — 3a73e91
+- [x] 2.5 The message leaks no other owner's name, share or address, and carries one URL — 3a73e91
 - [ ] 2.6 One real message renders correctly in a mail client, HTML and plain text — deferred to Phase 4 (needs a real send; covered by 4.4)
 
 ### Phase 3: The fanout, the button and the status column
 
 #### Automated
 
-- [ ] 3.1 `astro sync && lint && build` pass
-- [ ] 3.2 No middleware change needed — `/api/buildings` still covers the new endpoint
+- [x] 3.1 `astro sync && lint && build` pass
+- [x] 3.2 No middleware change needed — `/api/buildings` still covers the new endpoint
 
 #### Manual
 
-- [ ] 3.3 One message per owner with an address, each carrying that owner's own token
-- [ ] 3.4 Table shows _Wysłano_ with timestamps; no-address block lists the rest
-- [ ] 3.5 Second press reports everyone already has a link and sends nothing
-- [ ] 3.6 An owner holding two units receives exactly one message
-- [ ] 3.7 An interrupted run resumes correctly and nobody receives two messages
-- [ ] 3.8 Missing binding records `E_BINDING_MISSING` per owner; restoring it resumes
-- [ ] 3.9 No token and no e-mail address in the redirect URL or the page source
-- [ ] 3.10 A draft offers no button and the endpoint refuses a direct post
+- [x] 3.3 One message per owner with an address, each carrying that owner's own token
+- [x] 3.4 Table shows _Wysłano_ with timestamps; no-address block lists the rest
+- [x] 3.5 Second press reports everyone already has a link and sends nothing
+- [ ] 3.6 An owner holding two units receives exactly one message — deferred to Phase 4 (no multi-unit owner in local data; see F3-3)
+- [x] 3.7 An interrupted run resumes correctly and nobody receives two messages
+- [x] 3.8 Missing binding records `E_BINDING_MISSING` per owner; restoring it resumes
+- [x] 3.9 No token and no e-mail address in the redirect URL or the page source — tokens: none anywhere; addresses: see F3-2
+- [x] 3.10 A draft offers no button and the endpoint refuses a direct post
 
 ### Phase 4: Production and the record
 
