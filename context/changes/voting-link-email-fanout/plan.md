@@ -752,32 +752,32 @@ a further forward migration.
 
 #### Automated
 
-- [x] 1.1 Migration applies to the local stack (`npx supabase migration up` — see F0-6)
-- [x] 1.2 `npm run db:types` regenerates and carries the new columns
-- [x] 1.3 `astro sync && lint && build` pass
-- [x] 1.7 The four new columns are added to the column-level `select` grant (F0-2)
-- [x] 1.8 A `security definer` function returns unsent links with tokens, granted to `authenticated` only (F0-1)
+- [x] 1.1 Migration applies to the local stack (`npx supabase migration up` — see F0-6) — cee3939
+- [x] 1.2 `npm run db:types` regenerates and carries the new columns — cee3939
+- [x] 1.3 `astro sync && lint && build` pass — cee3939
+- [x] 1.7 The four new columns are added to the column-level `select` grant (F0-2) — cee3939
+- [x] 1.8 A `security definer` function returns unsent links with tokens, granted to `authenticated` only (F0-1) — cee3939
 
 #### Manual
 
-- [x] 1.4 `anon` still gets `[]` on select and `42501` on insert for `voting_links`
-- [x] 1.5 `resolve_voting_link` as `anon` returns the same ten keys as before (F0-3)
-- [x] 1.6 `voting_links_send_state_check` refuses `sent_at` and `last_error_code` together
-- [x] 1.9 `anon` cannot execute the new token-reading function; `authenticated` can, and it returns only the named resolution's unsent links
+- [x] 1.4 `anon` still gets `[]` on select and `42501` on insert for `voting_links` — cee3939
+- [x] 1.5 `resolve_voting_link` as `anon` returns the same ten keys as before (F0-3) — cee3939
+- [x] 1.6 `voting_links_send_state_check` refuses `sent_at` and `last_error_code` together — cee3939
+- [x] 1.9 `anon` cannot execute the new token-reading function; `authenticated` can, and it returns only the named resolution's unsent links — cee3939
 
 ### Phase 2: The message and the send
 
 #### Automated
 
-- [ ] 2.1 `astro sync && lint && build` pass
-- [ ] 2.2 `voting-link-email.ts` executed directly: hostile body escaped in html, verbatim in text, single URL
-- [ ] 2.3 `describeSendFailure` maps each listed code and falls back by naming an unmapped one
+- [x] 2.1 `astro sync && lint && build` pass
+- [x] 2.2 `voting-link-email.ts` executed directly: hostile body escaped in html, verbatim in text, single URL
+- [x] 2.3 `describeSendFailure` maps each listed code and falls back by naming an unmapped one
 
 #### Manual
 
-- [ ] 2.4 The rendered text part is legible to an owner who did not know a vote was happening
-- [ ] 2.5 The message leaks no other owner's name, share or address, and carries one URL
-- [ ] 2.6 One real message renders correctly in a mail client, HTML and plain text
+- [x] 2.4 The rendered text part is legible to an owner who did not know a vote was happening
+- [x] 2.5 The message leaks no other owner's name, share or address, and carries one URL
+- [ ] 2.6 One real message renders correctly in a mail client, HTML and plain text — deferred to Phase 4 (needs a real send; covered by 4.4)
 
 ### Phase 3: The fanout, the button and the status column
 
