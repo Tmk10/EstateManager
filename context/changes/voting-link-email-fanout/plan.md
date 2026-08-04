@@ -738,32 +738,32 @@ a further forward migration.
 
 #### Automated
 
-- [x] 0.1 Both new tables exist in a migration
-- [x] 0.2 `src/pages/vote/[token].astro` exists with the token as the path segment
-- [x] 0.3 The resolution page exists
-- [x] 0.4 `astro sync && lint && build` pass on the inherited tree
+- [x] 0.1 Both new tables exist in a migration — 15bffc5
+- [x] 0.2 `src/pages/vote/[token].astro` exists with the token as the path segment — 15bffc5
+- [x] 0.3 The resolution page exists — 15bffc5
+- [x] 0.4 `astro sync && lint && build` pass on the inherited tree — 15bffc5
 
 #### Manual
 
-- [x] 0.5 Every bullet of the inherited contract confirmed against delivered code
-- [x] 0.6 Any difference from `S-02`'s plan written into this plan before Phase 1
+- [x] 0.5 Every bullet of the inherited contract confirmed against delivered code — 15bffc5
+- [x] 0.6 Any difference from `S-02`'s plan written into this plan before Phase 1 — 15bffc5
 
 ### Phase 1: Send state on `voting_links`
 
 #### Automated
 
-- [ ] 1.1 Migration applies to the local stack (`npx supabase migration up` — see F0-6)
-- [ ] 1.2 `npm run db:types` regenerates and carries the new columns
-- [ ] 1.3 `astro sync && lint && build` pass
-- [ ] 1.7 The four new columns are added to the column-level `select` grant (F0-2)
-- [ ] 1.8 A `security definer` function returns unsent links with tokens, granted to `authenticated` only (F0-1)
+- [x] 1.1 Migration applies to the local stack (`npx supabase migration up` — see F0-6)
+- [x] 1.2 `npm run db:types` regenerates and carries the new columns
+- [x] 1.3 `astro sync && lint && build` pass
+- [x] 1.7 The four new columns are added to the column-level `select` grant (F0-2)
+- [x] 1.8 A `security definer` function returns unsent links with tokens, granted to `authenticated` only (F0-1)
 
 #### Manual
 
-- [ ] 1.4 `anon` still gets `[]` on select and `42501` on insert for `voting_links`
-- [ ] 1.5 `resolve_voting_link` as `anon` returns the same ten keys as before (F0-3)
-- [ ] 1.6 `voting_links_send_state_check` refuses `sent_at` and `last_error_code` together
-- [ ] 1.9 `anon` cannot execute the new token-reading function; `authenticated` can, and it returns only the named resolution's unsent links
+- [x] 1.4 `anon` still gets `[]` on select and `42501` on insert for `voting_links`
+- [x] 1.5 `resolve_voting_link` as `anon` returns the same ten keys as before (F0-3)
+- [x] 1.6 `voting_links_send_state_check` refuses `sent_at` and `last_error_code` together
+- [x] 1.9 `anon` cannot execute the new token-reading function; `authenticated` can, and it returns only the named resolution's unsent links
 
 ### Phase 2: The message and the send
 
