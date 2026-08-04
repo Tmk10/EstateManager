@@ -211,27 +211,39 @@ export type Database = {
       }
       voting_links: {
         Row: {
+          attempt_count: number
           building_id: string
           created_at: string
           id: string
+          last_attempt_at: string | null
+          last_error_code: string | null
           owner_id: string
           resolution_id: string
+          sent_at: string | null
           token: string
         }
         Insert: {
+          attempt_count?: number
           building_id: string
           created_at?: string
           id?: string
+          last_attempt_at?: string | null
+          last_error_code?: string | null
           owner_id: string
           resolution_id: string
+          sent_at?: string | null
           token: string
         }
         Update: {
+          attempt_count?: number
           building_id?: string
           created_at?: string
           id?: string
+          last_attempt_at?: string | null
+          last_error_code?: string | null
           owner_id?: string
           resolution_id?: string
+          sent_at?: string | null
           token?: string
         }
         Relationships: [
@@ -289,6 +301,15 @@ export type Database = {
           resolution_number: string
           resolution_status: string
           resolution_title: string
+        }[]
+      }
+      unsent_voting_links: {
+        Args: { p_resolution_id: string }
+        Returns: {
+          link_id: string
+          owner_email: string
+          owner_full_name: string
+          token: string
         }[]
       }
     }

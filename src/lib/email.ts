@@ -97,3 +97,55 @@ export async function sendTestEmail(to: string): Promise<SendResult> {
     return { ok: false, code, message };
   }
 }
+
+/**
+ * Sends one owner their voting link (S-04). The message is built by
+ * src/lib/voting-link-email.ts; this function only puts it on the wire.
+ *
+ * Never throws — the fanout walks 70 owners and a throw would abort the run
+ * mid-way, which is the one behaviour the resume exists to make unnecessary.
+ * The caller gets every failure as a value and records it against that owner.
+ *
+ * `from` is deliberately not a parameter. wrangler.jsonc's
+ * `allowed_sender_addresses` locks the sending identity, so a caller-supplied
+ * address would fail at the binding anyway; making it a parameter would only
+ * move that failure later and imply a choice that does not exist.
+ */
+export async function sendVotingLinkEmail(
+  to: string,
+  message: { subject: string; text: string; html: string },
+): Promise<SendResult> {
+  const binding = emailBinding();
+
+  if (!binding) {
+    return {
+      ok: false,
+      // Our own code, not Cloudflare's — the send never happened. The fanout
+      // records it per owner like any other failure and the resume clears it
+      // once the binding comes back.
+      code: "E_BINDING_MISSING",
+      message: "Binding EMAIL nie jest skonfigurowany.",
+    };
+  }
+
+  try {
+    const result = await binding.send({
+      to,
+      from: SENDER,
+      subject: message.subject,
+      text: message.text,
+      html: message.html,
+    });
+    return { ok: true, messageId: result.messageId };
+  } catch (error) {
+    const { code, message: reason } = describeSendError(error);
+    // The code and nothing else. Not the recipient — an owner's address is
+    // personal data — and above all not the message, which carries the bearer
+    // token. Workers Logs already records /vote/<token> from the request URL
+    // when an owner opens their link (CLAUDE.md); this path must not add a
+    // second copy, in bulk, on the administrator's action.
+    // eslint-disable-next-line no-console -- observability is enabled in wrangler.jsonc; this is the only record of a failed send
+    console.error(`EMAIL.send failed for a voting link: ${code} — ${reason}`);
+    return { ok: false, code, message: reason };
+  }
+}

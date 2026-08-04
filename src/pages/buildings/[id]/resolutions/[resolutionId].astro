@@ -3,6 +3,9 @@ import Layout from "@/layouts/Layout.astro";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps } from "@/lib/shares";
 import { formatResolutionDate } from "@/lib/resolutions";
+// Safe to import here precisely because it is dependency-free: it does NOT import
+// src/lib/email.ts, which would pull `cloudflare:workers` into this component's graph.
+import { describeSendFailure } from "@/lib/voting-link-email";
 
 const { id, resolutionId } = Astro.params;
 
@@ -10,6 +13,23 @@ const { id, resolutionId } = Astro.params;
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 
 const error = Astro.url.searchParams.get("error");
+const notice = Astro.url.searchParams.get("notice");
+
+/**
+ * The fanout's run summary, counts only -- it never carries a token, an address or a name.
+ * Read as numbers rather than echoed as text so that nothing from the query string reaches
+ * the page as prose.
+ */
+const parseCount = (name: string): number => {
+  const raw = Astro.url.searchParams.get(name);
+  if (raw === null) return 0;
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+};
+const sentCount = parseCount("sent");
+const failedCount = parseCount("failed");
+const unrecordedCount = parseCount("unrecorded");
+const hasRunSummary = Astro.url.searchParams.has("sent");
 
 interface OwnerRow {
   id: string;
@@ -22,6 +42,12 @@ interface OwnerRow {
    * voting links; it is not a delivery channel for them. See the read below.
    */
   hasLink: boolean;
+  /**
+   * Send state, derived at render time rather than stored (see the S-04 migration): a
+   * `status` column would be a second thing to keep in agreement with these timestamps.
+   * Null when the owner has no link at all.
+   */
+  send: { sentAt: string | null; lastErrorCode: string | null; attemptCount: number } | null;
 }
 
 let loadError: string | null = null;
@@ -96,7 +122,13 @@ if (!supabase) {
           // The accompanying migration revokes column-level `select (token)` from
           // `authenticated`, so adding it back to this string fails at the database with
           // 42501 rather than quietly widening what an administrator's browser receives.
-          supabase.from("voting_links").select("owner_id").eq("resolution_id", resolutionId),
+          // The send-state columns are readable here only because the S-04 migration added
+          // them to the column-level grant; `token` is still absent from it and still must
+          // never appear in this string.
+          supabase
+            .from("voting_links")
+            .select("owner_id, sent_at, last_error_code, attempt_count")
+            .eq("resolution_id", resolutionId),
           // head: true — the rows themselves are never wanted here. A vote row carries the
           // owner and the choice, and neither belongs on this page (see voteCount above);
           // asking only for the count means the browser cannot receive them by accident.
@@ -110,10 +142,11 @@ if (!supabase) {
         if (readError) {
           loadError = readError.message;
         } else {
-          const ownersWithLink = new Set(linksResult.data.map((link) => link.owner_id));
+          const linksByOwner = new Map(linksResult.data.map((link) => [link.owner_id, link]));
 
           ownerRows = ownersResult.data.map((owner) => {
             const units = unitsResult.data.filter((unit) => unit.owner_id === owner.id);
+            const link = linksByOwner.get(owner.id);
 
             return {
               id: owner.id,
@@ -127,7 +160,15 @@ if (!supabase) {
               // Per-owner voting: an owner holding several units votes once, with their
               // shares summed into a single weight (PRD, 2026-08-02).
               shareBps: units.reduce((sum, unit) => sum + unit.share_bps, 0),
-              hasLink: ownersWithLink.has(owner.id),
+              hasLink: link !== undefined,
+              send:
+                link === undefined
+                  ? null
+                  : {
+                      sentAt: link.sent_at,
+                      lastErrorCode: link.last_error_code,
+                      attemptCount: link.attempt_count,
+                    },
             };
           });
 
@@ -156,6 +197,27 @@ const ownersWithoutEmail = ownerRows.filter((owner) => !owner.hasLink && owner.e
 const ownersMissingLink = ownerRows.filter((owner) => !owner.hasLink && owner.email !== null);
 
 const openedAtLabel = resolution?.opened_at != null ? formatResolutionDate(resolution.opened_at) : null;
+
+/**
+ * The three derived states, in the order the migration defines them. Kept as one function
+ * so the page cannot drift from the rule: sent wins over everything, a failed attempt is
+ * only "failed" while nothing has succeeded since, and no attempt at all is "niewysłane".
+ */
+type SendStatus = { kind: "sent"; at: string } | { kind: "error"; sentence: string } | { kind: "pending" };
+
+const sendStatusOf = (owner: OwnerRow): SendStatus => {
+  if (owner.send === null || owner.send.attemptCount === 0) return { kind: "pending" };
+  if (owner.send.sentAt !== null) return { kind: "sent", at: owner.send.sentAt };
+  // attemptCount > 0 and never sent. lastErrorCode should be present; if a row somehow
+  // carries neither, the fallback sentence still names what is knowable.
+  return { kind: "error", sentence: describeSendFailure(owner.send.lastErrorCode ?? "E_UNKNOWN") };
+};
+
+// Owners still to be reached by a press of the button: they hold a link that has not been
+// sent. This drives the button's label and its count, so a second press advertises exactly
+// what it will do rather than repeating the first press's number.
+const unsentCount = ownerRows.filter((owner) => owner.hasLink && owner.send?.sentAt == null).length;
+const anySent = ownerRows.some((owner) => owner.send?.sentAt != null);
 
 const inputClass =
   "w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:border-purple-400/50 focus:ring-2 focus:ring-purple-400 focus:outline-none";
@@ -204,6 +266,46 @@ const inputClass =
                 >
                   {error}
                 </p>
+              )}
+
+              {notice && (
+                <p class="mb-6 rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-100">
+                  {notice}
+                </p>
+              )}
+
+              {/* The run summary: counts only, parsed as numbers. Nothing from the query
+                  string is echoed as prose, so a doctored URL cannot put text on this page. */}
+              {hasRunSummary && (
+                <div class="mb-6 rounded-lg border border-green-400/30 bg-green-500/10 px-3 py-2 text-sm text-green-100">
+                  <p>
+                    Wysłano linki: <span class="font-medium text-white">{sentCount}</span>
+                    {failedCount > 0 && (
+                      <>
+                        {" · "}
+                        nie udało się: <span class="font-medium text-red-200">{failedCount}</span>
+                      </>
+                    )}
+                    {ownersWithoutEmail.length > 0 && (
+                      <>
+                        {" · "}
+                        bez adresu e-mail: <span class="font-medium text-amber-200">{ownersWithoutEmail.length}</span>
+                      </>
+                    )}
+                  </p>
+                  {failedCount > 0 && (
+                    <p class="mt-1 text-xs text-green-100/70">
+                      Powód niepowodzenia jest podany przy każdym właścicielu w tabeli poniżej.
+                    </p>
+                  )}
+                  {unrecordedCount > 0 && (
+                    <p class="mt-2 rounded border border-amber-400/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
+                      Uwaga: <span class="font-medium">{unrecordedCount}</span> wiadomości wysłano, ale nie udało się
+                      zapisać tego w bazie. Ci właściciele mają już swój link — kolejne naciśnięcie przycisku wyśle im
+                      go po raz drugi.
+                    </p>
+                  )}
+                </div>
               )}
 
               {isDraft ? (
@@ -325,6 +427,37 @@ const inputClass =
                     głosującego, więc trafia wyłącznie do właściciela, na jego adres e-mail.
                   </p>
 
+                  {/* Deliberately NOT gated on isEmailConfigured(): a missing binding is
+                      recorded per owner as E_BINDING_MISSING like any other failure and
+                      cleared by the resume once it returns. Hiding the button would turn
+                      the only failure this slice can deliberately produce into an
+                      unreachable branch. */}
+                  {unsentCount > 0 && (
+                    <div class="mb-6 rounded-xl border border-purple-400/30 bg-purple-500/10 p-4">
+                      <h3 class="text-sm font-semibold">{anySent ? "Dokończ rozsyłkę" : "Roześlij linki"}</h3>
+                      <p class="mt-1 text-sm text-blue-100/80">
+                        Każdy właściciel dostanie osobną wiadomość z treścią uchwały i swoim własnym linkiem. Wysyłka
+                        dużego budynku trwa do około minuty — nie zamykaj tej strony. Jeśli przerwiesz, nic nie
+                        przepadnie: naciśnij przycisk ponownie, a wyślemy tylko do tych, którzy jeszcze nie dostali
+                        linku. Nikt nie dostanie wiadomości dwa razy.
+                      </p>
+                      <form
+                        method="POST"
+                        action={`/api/buildings/${building.id}/resolutions/${resolution.id}/send`}
+                        class="mt-4"
+                        data-send-form
+                      >
+                        <button
+                          type="submit"
+                          class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
+                          data-send-button
+                        >
+                          {anySent ? `Wyślij pozostałe linki (${unsentCount})` : `Roześlij linki (${unsentCount})`}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
                   <div class="overflow-x-auto rounded-xl border border-white/10">
                     <table class="w-full text-left text-sm">
                       <thead class="bg-white/5 text-xs tracking-wide text-blue-100/60 uppercase">
@@ -344,22 +477,48 @@ const inputClass =
                           <th scope="col" class="px-4 py-3 font-medium">
                             Status linku
                           </th>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            Wysyłka
+                          </th>
                         </tr>
                       </thead>
                       <tbody class="divide-y divide-white/5">
-                        {linkedOwners.map((owner) => (
-                          <tr>
-                            <td class="px-4 py-3 font-medium">{owner.fullName}</td>
-                            <td class="px-4 py-3">{owner.email}</td>
-                            <td class="px-4 py-3">{owner.unitNumbers.join(", ")}</td>
-                            <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(owner.shareBps)}</td>
-                            <td class="px-4 py-3">
-                              <span class="rounded-full border border-green-400/40 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-200">
-                                Wystawiony
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {linkedOwners.map((owner) => {
+                          const status = sendStatusOf(owner);
+                          return (
+                            <tr>
+                              <td class="px-4 py-3 font-medium">{owner.fullName}</td>
+                              <td class="px-4 py-3">{owner.email}</td>
+                              <td class="px-4 py-3">{owner.unitNumbers.join(", ")}</td>
+                              <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(owner.shareBps)}</td>
+                              <td class="px-4 py-3">
+                                <span class="rounded-full border border-green-400/40 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-200">
+                                  Wystawiony
+                                </span>
+                              </td>
+                              <td class="px-4 py-3">
+                                {status.kind === "sent" && (
+                                  <span class="rounded-full border border-green-400/40 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-200">
+                                    Wysłano {formatResolutionDate(status.at)}
+                                  </span>
+                                )}
+                                {status.kind === "error" && (
+                                  <>
+                                    <span class="rounded-full border border-red-400/40 bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-200">
+                                      Błąd
+                                    </span>
+                                    <span class="mt-1 block text-xs text-red-200/80">{status.sentence}</span>
+                                  </>
+                                )}
+                                {status.kind === "pending" && (
+                                  <span class="rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-xs font-medium text-blue-100/70">
+                                    Niewysłane
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -398,8 +557,10 @@ const inputClass =
                     <div class="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
                       <h3 class="text-sm font-medium text-amber-100">Właściciele bez linku</h3>
                       <p class="mt-1 text-sm text-amber-100/80">
-                        Ci właściciele nie mają adresu e-mail w rejestrze, więc nie powstał dla nich link. Ich głos
-                        trzeba zebrać poza aplikacją — ich udziały nadal liczą się do progu większości.
+                        Ci właściciele nie mają adresu e-mail w rejestrze, więc nie powstał dla nich link. Nie dostaną
+                        żadnej wiadomości i trzeba dotrzeć do nich poza aplikacją — listownie lub osobiście. Nie są
+                        liczeni jako nieudana wysyłka, bo nie było czego wysłać; ich udziały nadal liczą się do progu
+                        większości.
                       </p>
                       <ul class="mt-3 space-y-1 text-sm text-amber-100/90">
                         {ownersWithoutEmail.map((owner) => (
@@ -428,3 +589,23 @@ const inputClass =
     </div>
   </div>
 </Layout>
+
+<script>
+  // The fanout holds the request open for as long as the run takes -- tens of seconds for a
+  // large building. Without this, the button looks idle and invites a second press, which
+  // would start a concurrent run from the same tab and race the first one's status writes.
+  //
+  // The disable is deferred by a tick on purpose: disabling a submit button synchronously
+  // inside its own submit handler cancels the submission in some browsers.
+  const form = document.querySelector<HTMLFormElement>("[data-send-form]");
+  const button = document.querySelector<HTMLButtonElement>("[data-send-button]");
+
+  form?.addEventListener("submit", () => {
+    setTimeout(() => {
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Wysyłanie…";
+      }
+    }, 0);
+  });
+</script>
