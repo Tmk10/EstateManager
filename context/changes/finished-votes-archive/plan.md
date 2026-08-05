@@ -95,6 +95,13 @@ both, and a Vitest suite that fails if the assembler stops reconciling.
 
 - **No migration.** No new table, function, policy, grant, or column. If the implementation finds
   it needs one, that is a signal the plan was wrong — stop and re-plan rather than adding it.
+  - **OVERRIDDEN 2026-08-05, by the product owner, during Phase 3.** The trail rendered an owner
+    holding no lokale as `— (0,00%)`, seated in the electorate of a settled uchwała. The rule
+    above worked exactly as intended: implementation stopped and surfaced it rather than quietly
+    adding a migration. The decision was to add one anyway — `20260805192000_owner_holds_units.sql`,
+    raising **EM015** — because the invariant "an owner is someone who owns something" was never
+    written down and only `import_building_units` happened to honour it. Consequences: this slice
+    is **no longer** a plain code deploy (see Migration Notes), and criterion 2.4 no longer holds.
 - **Nothing on `/vote/<token>`.** An owner still never learns another owner's vote. That is a PRD
   guardrail, not a scope decision, and this slice does not reopen it.
 - **Nothing on a `draft` or `open` uchwała.** No live per-owner attribution, no "kto już
@@ -346,9 +353,23 @@ existing parallel batch — one more column set, not one more round trip.
 
 ## Migration Notes
 
-None. This slice adds no migration, and that is a deliberate constraint of the plan rather than an
+~~None. This slice adds no migration, and that is a deliberate constraint of the plan rather than an
 omission — see "What We're NOT Doing". Nothing needs applying to production before the code lands,
-which makes this the first slice in the project that deploys as a plain code change.
+which makes this the first slice in the project that deploys as a plain code change.~~
+
+**Superseded 2026-08-05.** One migration, added under the override recorded in "What We're NOT
+Doing": `20260805192000_owner_holds_units.sql` (EM015 — an owner must hold at least one lokal).
+
+It must be applied **before** the code that ships with it, by the standing hand-applied procedure
+(`npx supabase db push` from a linked checkout; CLAUDE.md, deployment residual G14). The ordering is
+softer than usual here — the application code does not call anything the migration adds, so code
+deployed first would run correctly against an unconstrained database — but the order still holds,
+because reversed it leaves a window in which a unit-less owner can be created and then outlives the
+constraint that would have refused it. `create constraint trigger` validates nothing that already
+exists.
+
+The migration is safe against existing data for the same reason: it cannot fail on rows already in
+the table. It also cannot be rolled back by `wrangler rollback`, which reverts code and never schema.
 
 ## References
 
@@ -383,17 +404,17 @@ which makes this the first slice in the project that deploys as a plain code cha
 
 #### Automated
 
-- [x] 2.1 `npx astro sync && npm run lint` passes
-- [x] 2.2 `npm run build` completes
-- [x] 2.3 `npm test` still passes
-- [x] 2.4 No new migration file exists in `supabase/migrations/`
-- [x] 2.5 The rendered HTML of a settled uchwała contains no 43-character voting token
+- [x] 2.1 `npx astro sync && npm run lint` passes — 24a3b0c
+- [x] 2.2 `npm run build` completes — 24a3b0c
+- [x] 2.3 `npm test` still passes — 24a3b0c
+- [x] 2.4 No new migration file exists in `supabase/migrations/` — 24a3b0c (true as of that commit; **superseded** — see the EM015 override below)
+- [x] 2.5 The rendered HTML of a settled uchwała contains no 43-character voting token — 24a3b0c
 
 #### Manual
 
-- [x] 2.6 A settled uchwała shows the trail; `draft` and `open` are visually unchanged
-- [x] 2.7 The trail's figures agree with the Bilans udziałów panel above it
-- [x] 2.8 The non-voter block names the owners the balance says have not voted
+- [x] 2.6 A settled uchwała shows the trail; `draft` and `open` are visually unchanged — 24a3b0c
+- [x] 2.7 The trail's figures agree with the Bilans udziałów panel above it — 24a3b0c
+- [x] 2.8 The non-voter block names the owners the balance says have not voted — 24a3b0c
 
 ### Phase 3: Verification against the fixtures, and the records
 

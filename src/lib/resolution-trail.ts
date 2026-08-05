@@ -119,6 +119,15 @@ export function assembleResolutionTrail(input: {
 
   const notCast = input.owners
     .filter((owner) => !votedOwnerIds.has(owner.id))
+    // An owner holding no lokale is not part of the electorate. They carry no udziały,
+    // so they can neither vote to any weight nor withhold one, and naming them under
+    // "whose silence counted as a no" asserts something untrue about the result.
+    //
+    // The schema refuses such a row since EM015 (20260805192000), but `create constraint
+    // trigger` validates nothing that already exists -- a database predating that
+    // migration keeps the ones it has, and one is exactly how this surfaced. The
+    // constraint stops new ones; this line survives the old ones.
+    .filter((owner) => (registryBpsByOwner.get(owner.id) ?? 0) > 0)
     .map((owner) => ({
       ownerId: owner.id,
       fullName: owner.full_name,

@@ -104,6 +104,28 @@ describe("the audit trail of a settled uchwała", () => {
     expect(trail.forBps + trail.againstBps + trail.notCastBps).toBe(TOTAL_BPS);
   });
 
+  it("does not seat an owner holding no lokale in the electorate", () => {
+    // EM015 now refuses such a row, but `create constraint trigger` validates nothing
+    // that already exists, so any database predating that migration keeps the ones it
+    // has. Carrying no udziały, they can neither vote to any weight nor withhold one --
+    // listing them under "whose silence counted as a no" states something untrue.
+    const trail = assembleResolutionTrail({
+      owners: [
+        { id: "o1", full_name: "Anna Kowalska" },
+        { id: "o2", full_name: "Bogdan Nowak" },
+        { id: "ghost", full_name: "Ewa Bezlokalowa" },
+      ],
+      units: [
+        { owner_id: "o1", unit_number: "1", share_bps: 6000 },
+        { owner_id: "o2", unit_number: "2", share_bps: 4000 },
+      ],
+      votes: [{ owner_id: "o1", choice: "for", share_bps: 6000, created_at: "2026-08-05T10:00:00Z" }],
+    });
+
+    expect(trail.notCast.map((row) => row.fullName)).toEqual(["Bogdan Nowak"]);
+    expect(trail.forBps + trail.againstBps + trail.notCastBps).toBe(TOTAL_BPS);
+  });
+
   it("keeps a vote whose owner is missing from the registry in the trail rather than dropping it", () => {
     // A broken invariant -- the composite foreign key makes it unreachable today. If it ever
     // happens, the udziały must still be counted and the row must still be visible, because a
