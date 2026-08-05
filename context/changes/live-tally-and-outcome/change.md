@@ -9,6 +9,27 @@ archived_at: null
 
 ## Notes
 
+### Shipped 2026-08-05 — PR #31, squash `6f73637`
+
+`ci` and `Workers Builds` both green before the merge; `deploy.yml` succeeded afterwards. The
+window this slice opened — the trigger deciding uchwały on production while the UI that explains
+one was still unmerged — is closed.
+
+Verified on the live Worker, signed in as the administrator:
+
+| Check | Result |
+| --- | --- |
+| `/api/health` | `200 {"status":"ok","email":"ok"}` |
+| `/buildings/<id>/resolutions` signed out | `302` → `/auth/signin` |
+| `/buildings/<id>/resolutions` signed in | `200`, two *Głosowanie otwarte* badges |
+| Resolution page | *Bilans udziałów* renders: `0,00%` za, `0,00%` przeciw, `100,00%` nie oddano |
+| Distance to the threshold | `50,01%` needed either way — 5001 bps, the exact bar |
+| Threshold copy | *"działają w skutku jak głos przeciw"* present |
+| Any 43-character token in the HTML | **0 matches** |
+
+The three figures sum to `100,00%`, which is the invariant worth re-checking on any future change
+to `resolution_tally`.
+
 ### EM014: widening EM007 handed the outcome to every writer, not just to the trigger
 
 Found by the implementation review on 2026-08-05, after all four phases had been committed and
