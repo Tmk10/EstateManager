@@ -62,9 +62,11 @@ against the local stack (see [First-time setup](#first-time-setup-local-no-cloud
 below to stand it up). It does **not** reset or migrate the database, and every
 test file ends in `rollback`, so local data survives a run.
 
-Both suites currently contain **smoke tests only** — they prove the harnesses work
-and assert nothing about udziały, quorum, or access rules. The risks worth covering,
-and the patterns for covering them, are in
+Two modules are genuinely pinned — the audit trail's arithmetic
+(`src/lib/resolution-trail.test.ts`) and `EM015`
+(`supabase/tests/database/owner_holds_units.test.sql`). Everything else is a smoke
+test, and nothing yet asserts udziały, quorum, RLS, or the electorate guards. The
+risks worth covering, and the patterns for covering them, are in
 [`context/foundation/test-plan.md`](./context/foundation/test-plan.md) §2 and §6.
 
 To add a test: unit tests go beside the module they exercise as `<module>.test.ts`;
