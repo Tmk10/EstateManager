@@ -89,6 +89,14 @@ timeline_budget:
 Nagłówki sekcji są po angielsku — to kontrakt schematu, na którym parsuje `/10x-prd`.
 Treść zapisywana jest w języku, w którym prowadzona jest rozmowa (polski).
 
+> **To jest migawka rozmowy odkrywczej z 2026-07-31/08-01, a nie żywa specyfikacja.**
+> Zapisane niżej rozstrzygnięcia były prawdziwe w chwili, w której zapadły, i **nie są
+> aktualizowane wstecz** — inaczej dokument przestałby świadczyć o tym, co wtedy ustalono.
+> Gdzie się rozchodzi z `prd.md`, **wiążący jest PRD**. Znana rozbieżność na dzień
+> 2026-08-05: zakres budynków. Ten dokument (fazy 3 i 5 oraz `## Non-Goals`) wiąże z jednym
+> budynkiem **obie** role; PRD v5 zawęził to do samego właściciela, bo portfel nieruchomości
+> po stronie administratora został dowieziony w `S-01`–`S-05`.
+
 ## Seed idea (verbatim)
 
 > Modulowa Aplikacja dla zarzadcow nieruchomosci ktora pozwala kompleksowo zarzadzac
@@ -122,7 +130,7 @@ Odpowiedzią jest aplikacja złożona z modułów, które każdy odbiorca dobier
 z jednym modułem obowiązkowym (**Nieruchomości i mieszkańcy**, de facto baza danych
 o zarządzanych nieruchomościach i ich mieszkańcach) i modułami dodatkowymi dla różnych
 typów spraw. Kluczowe przeformułowanie problemu: skoro blokadą jest nieobecność, a nie
-sprzeciw, produkt nie ma pomagać ludziom *decydować* — ma sprawić, żeby głosy w ogóle
+sprzeciw, produkt nie ma pomagać ludziom _decydować_ — ma sprawić, żeby głosy w ogóle
 zostały oddane.
 
 ## User & Persona
@@ -234,6 +242,7 @@ o usunięciu kont i logowania właścicieli szacunek skorygowany do **5 tygodni*
   zostaje doliczony do wyniku
 
 #### Acceptance Criteria
+
 - Głos jest ważony udziałem lokalu wyliczonym z metrażu, nie liczony per osoba
 - Oddanie głosu nie wymaga konta, hasła ani logowania
 - Po oddaniu głosu właściciel nie może go zmienić ani wycofać
@@ -249,6 +258,7 @@ o usunięciu kont i logowania właścicieli szacunek skorygowany do **5 tygodni*
   do progu
 
 #### Acceptance Criteria
+
 - Suma udziałów wszystkich lokali w budynku daje 100%
 - Administrator widzi brakującą liczbę udziałów do przekroczenia progu 50%
 - Uchwała zostaje oznaczona jako podjęta w momencie, w którym suma udziałów „za"
@@ -472,12 +482,12 @@ Non-goale niefunkcjonalne:
 
 ## Forward: tech-stack
 
-*(Blok informacyjny — nie jest częścią schematu PRD. Do odebrania przez krok wyboru stacku.)*
+_(Blok informacyjny — nie jest częścią schematu PRD. Do odebrania przez krok wyboru stacku.)_
 
 - Modułowość jest cechą produktu deklarowaną przez użytkownika: obowiązkowy moduł bazowy
-  + moduły opcjonalne dobierane przez odbiorcę. Ma to konsekwencje architektoniczne
-  (granice modułów, włączanie/wyłączanie per odbiorca), ale wybór mechanizmu należy
-  do kroku wyboru stacku, nie do PRD.
+  - moduły opcjonalne dobierane przez odbiorcę. Ma to konsekwencje architektoniczne
+    (granice modułów, włączanie/wyłączanie per odbiorca), ale wybór mechanizmu należy
+    do kroku wyboru stacku, nie do PRD.
 - Skalowanie deklarowane jako „dodawanie kolejnych budynków" — wielotenantowość
   lub wieloobiektowość do rozstrzygnięcia downstream.
 - Import rejestru z pliku oraz wysyłka poczty transakcyjnej to dwie zewnętrzne

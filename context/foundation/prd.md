@@ -1,9 +1,9 @@
 ---
 project: "EstateManager"
-version: 4
+version: 5
 status: draft
 created: 2026-08-01
-updated: 2026-08-02
+updated: 2026-08-05
 context_type: greenfield
 product_type: web-app
 target_scale:
@@ -149,6 +149,14 @@ elektroniczny wystarczył".
   > w kilku budynkach, przełączanie kontekstu, uprawnienia per budynek), a nie sposobu,
   > w jaki powstaje ten jeden budynek. Zakładanie go formularzem zamiast migracją lub
   > seedem nie zobowiązuje reszty produktu do niczego. Non-goal zostaje bez zmian.
+  > **Weryfikacja 2026-08-05, po dowiezieniu `S-01`–`S-05`: kontrargument miał rację
+  > w połowie.** Formularz rzeczywiście otworzył wielobudynkowość po stronie
+  > administratora — i to nie przez rozszerzenie zakresu, tylko dlatego, że nic w
+  > schemacie nigdy nie ograniczało liczby wierszy w `buildings`, a każda tabela poniżej
+  > od początku niosła `building_id`. „Ten jeden budynek" był założeniem, którego kod
+  > nigdy nie egzekwował. Non-goal został więc **zawężony** (patrz `## Non-Goals` i
+  > `## Access Control`), a nie utrzymany: portfel administratora jest w zakresie,
+  > właściciel z lokalami w kilku budynkach nadal nie jest.
   > Zmiana 2026-08-02: adres rozbity z jednego pola na miejscowość i ulicę z numerem —
   > jedno pole tekstowe „adres" jest nieprzeszukiwalne i nieporównywalne, a rozbicie
   > wykonane teraz, na pustej tabeli, jest jedną kolumną więcej; wykonane później
@@ -328,10 +336,24 @@ od nierozstrzygniętego pytania o wymogi prawne (patrz `## Open Questions`).
 Konsekwencja operacyjna: administrator musi wprowadzić rejestr, zanim jakiekolwiek
 głosowanie ruszy — moduł bazowy i moduł głosowania są w jednym zakresie MVP.
 
-**Zakres budynków.** W v1 zarówno administrator, jak i właściciel są powiązani z jednym
-budynkiem; przełącznik kontekstu nie powstaje po żadnej ze stron. Uprawnienia są
-wycinane zakresem budynku. Obsługa portfela nieruchomości po stronie administratora
-oraz właściciela z lokalami w kilku budynkach przechodzi do wersji późniejszej.
+**Zakres budynków.** Zmienione 2026-08-05, po dowiezieniu `S-01`–`S-05`; poprzednie
+brzmienie wiązało obie role z jednym budynkiem i nie opisuje już produktu.
+
+- **Administrator prowadzi dowolną liczbę budynków.** Każdy niesie własny rejestr, własne
+  uchwały i własne linki do głosowania, a wszystkie tabele poniżej budynku są zakresowane
+  przez `building_id`. Kontekst budynku wybiera się z listy budynków — osobny przełącznik
+  kontekstu nadal nie powstaje.
+- **Właściciel pozostaje związany z jednym budynkiem** i to jest granica, która nadal
+  obowiązuje. Rejestr zna właściciela **w obrębie budynku**: ta sama osoba pod tym samym
+  adresem e-mail w dwóch budynkach to dwa odrębne wpisy, dwa linki i dwa niezależne głosy.
+  Tożsamość właściciela ponad budynkami nie istnieje i nie da się jej dziś wyrazić.
+- **Uprawnienia nie są wycinane zakresem budynku** — poprzednie brzmienie twierdziło, że są,
+  i było nieprawdziwe. v1 nie ma modelu ról ani tabeli wiążącej użytkownika z budynkiem, więc
+  każde konto administratora sięga każdego budynku. Bariery „dane właścicieli nie wychodzą
+  poza budynek" broni dziś co innego: jawna odmowa dla roli anonimowej oraz złożony klucz
+  obcy, który czyni lokal wskazujący na właściciela z innego budynku **niewyrażalnym**, a nie
+  tylko niepożądanym. Zakresowanie uprawnień per budynek wchodzi razem z modelem ról v2 i do
+  tego czasu **drugie konto administratora nie jest bezpieczne do założenia**.
 
 ## Non-Goals
 
@@ -352,8 +374,14 @@ Granice zakresu wybrane jawnie:
 Granice wynikające z decyzji zakresowych:
 
 - **Bez kont i logowania właścicieli.** Głos oddawany z indywidualnego linku.
-- **Bez obsługi wielu budynków.** v1 wiąże obie role z jednym budynkiem; portfel
-  nieruchomości i właściciel z lokalami w kilku budynkach są poza zakresem.
+- **Bez właściciela z lokalami w kilku budynkach.** Zawężone 2026-08-05; do tej daty
+  brzmiało „bez obsługi wielu budynków" i wiązało z jednym budynkiem **obie** role.
+  Połowa dotycząca administratora **wypadła z non-goalów** — portfel nieruchomości jest
+  dowieziony i w zakresie (patrz `## Access Control`). Zostaje połowa dotycząca
+  właściciela: rejestr zna go wyłącznie w obrębie budynku, więc ta sama osoba w dwóch
+  budynkach to dwa odrębne wpisy, dwa linki i dwa niezależne głosy. Poza zakresem jest
+  też **zakresowanie uprawnień administratora per budynek** — to część modelu ról v2,
+  wymieniona niżej osobno.
 - **Bez edycji rejestru.** Rejestr jest statyczny — zmiana właściciela wymaga
   interwencji poza aplikacją. Kontrargument uznany i świadomie odłożony.
 - **Bez modelowania współwłasności lokalu.** Jeden lokal = jeden głosujący
