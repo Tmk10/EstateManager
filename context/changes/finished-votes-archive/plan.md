@@ -367,33 +367,33 @@ which makes this the first slice in the project that deploys as a plain code cha
 
 #### Automated
 
-- [x] 1.1 `npm test` passes with the new suite green
-- [x] 1.2 The assembler reports the vote's `share_bps`, not the owner's live unit sum, when the two disagree
-- [x] 1.3 Trail totals reconcile: `for + against + notCast === TOTAL_BPS` on a full registry
-- [x] 1.4 Cast rows come back in `created_at` ascending order regardless of input order
-- [x] 1.5 The 5001-bps boundary case assembles correctly
-- [x] 1.6 `npx astro sync && npm run lint` passes
-- [x] 1.7 `npm run build` completes
+- [x] 1.1 `npm test` passes with the new suite green — 5a2be8a
+- [x] 1.2 The assembler reports the vote's `share_bps`, not the owner's live unit sum, when the two disagree — 5a2be8a
+- [x] 1.3 Trail totals reconcile: `for + against + notCast === TOTAL_BPS` on a full registry — 5a2be8a
+- [x] 1.4 Cast rows come back in `created_at` ascending order regardless of input order — 5a2be8a
+- [x] 1.5 The 5001-bps boundary case assembles correctly — 5a2be8a
+- [x] 1.6 `npx astro sync && npm run lint` passes — 5a2be8a
+- [x] 1.7 `npm run build` completes — 5a2be8a
 
 #### Manual
 
-- [x] 1.8 The test names describe outcomes, not mechanism
+- [x] 1.8 The test names describe outcomes, not mechanism — 5a2be8a
 
 ### Phase 2: The read and the trail section
 
 #### Automated
 
-- [ ] 2.1 `npx astro sync && npm run lint` passes
-- [ ] 2.2 `npm run build` completes
-- [ ] 2.3 `npm test` still passes
-- [ ] 2.4 No new migration file exists in `supabase/migrations/`
-- [ ] 2.5 The rendered HTML of a settled uchwała contains no 43-character voting token
+- [x] 2.1 `npx astro sync && npm run lint` passes
+- [x] 2.2 `npm run build` completes
+- [x] 2.3 `npm test` still passes
+- [x] 2.4 No new migration file exists in `supabase/migrations/`
+- [x] 2.5 The rendered HTML of a settled uchwała contains no 43-character voting token
 
 #### Manual
 
-- [ ] 2.6 A settled uchwała shows the trail; `draft` and `open` are visually unchanged
-- [ ] 2.7 The trail's figures agree with the Bilans udziałów panel above it
-- [ ] 2.8 The non-voter block names the owners the balance says have not voted
+- [x] 2.6 A settled uchwała shows the trail; `draft` and `open` are visually unchanged
+- [x] 2.7 The trail's figures agree with the Bilans udziałów panel above it
+- [x] 2.8 The non-voter block names the owners the balance says have not voted
 
 ### Phase 3: Verification against the fixtures, and the records
 
