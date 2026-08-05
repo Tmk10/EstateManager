@@ -1,61 +1,25 @@
 ---
-import { NAV_LINK } from "@/lib/ui";
+import { NAV_LINK, SHELL_CONTAINER } from "@/lib/ui";
 
-// The application's one persistent bar: who you are, what the product is called, and the
-// two places you can go from anywhere.
+// The application's one persistent bar: what the product is called, who you are, and the way
+// out. It is deliberately not where you navigate — that is the module rail in
+// `src/components/SideNav.astro`, and this bar carried a copy of the same two links until the
+// rail arrived on 2026-08-05. Two lists of identical destinations, one above the other, is how
+// an interface starts to feel larger than the product behind it.
 //
-// It used to render on `/` alone, so every signed-in screen ended in a hand-written "Wróć do
-// panelu" link and getting from the registry to Pomoc meant three back-steps. The links below
-// are deliberately few — the product's claim is that it is simple, and a bar that lists
-// everything is how that claim stops being true.
-//
-// This is *not* the application-module registry the roadmap calls `S-09` level 1. That slice
-// makes /dashboard a list of application modules and is still unbuilt; these two links are
-// navigation, not that structure, and adding a third here is not a substitute for building it.
+// The wordmark stays a link, because it is the shortest way back to the panel from anywhere.
 
 const { user } = Astro.locals;
-const path = Astro.url.pathname;
-
-// startsWith, matching how src/middleware.ts decides what is protected, so /buildings/<id>/units
-// marks "Budynki" as current rather than nothing at all.
-const NAV = [
-  { href: "/buildings", label: "Budynki" },
-  { href: "/help", label: "Pomoc" },
-];
 ---
 
 <header class="border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 sticky top-0 z-20 border-b backdrop-blur">
-  <div class="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4 sm:px-6">
+  <div class:list={[SHELL_CONTAINER, "flex h-14 items-center gap-6"]}>
     <a
       href={user ? "/dashboard" : "/"}
       class="text-foreground hover:text-primary text-sm font-semibold tracking-tight transition-colors"
     >
       EstateManager
     </a>
-
-    {
-      user && (
-        <nav aria-label="Nawigacja główna" class="flex items-center gap-1">
-          {NAV.map((item) => {
-            const isCurrent = path.startsWith(item.href);
-            return (
-              <a
-                href={item.href}
-                aria-current={isCurrent ? "page" : undefined}
-                class:list={[
-                  "rounded-md px-3 py-1.5 text-sm transition-colors",
-                  isCurrent
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                ]}
-              >
-                {item.label}
-              </a>
-            );
-          })}
-        </nav>
-      )
-    }
 
     <div class="ml-auto flex items-center gap-4 text-sm">
       {

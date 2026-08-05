@@ -1,0 +1,88 @@
+---
+import { APP_MODULES, appModuleSubmodules, isAppModuleCurrent } from "@/lib/app-modules";
+
+// The application's modules, down the left-hand side of every signed-in screen.
+//
+// Until 2026-08-05 they were tiles in the middle of `/dashboard` and of `/buildings/<id>`: the
+// module list *was* the page, so reading a module meant leaving the list and coming back through
+// a breadcrumb. The rail inverts that — the list is furniture that stays put, and the middle of
+// the screen is where the uchwała is. The building's modules nest under _Budynki_ as submodules,
+// which is the two-level structure the roadmap (`S-09`) asks for, drawn as a tree rather than
+// as two separate menus that happen to be on the same page.
+//
+// **This component contains no module names.** Both levels come from the registries
+// (`src/lib/app-modules.ts`, `src/lib/building-modules.ts`), including the answer to which
+// module has submodules and when. Adding a module must stay an entry in a registry; the moment
+// it needs a line of markup here, the registries have stopped doing their job.
+//
+// The current path is the only state it has. Nothing is passed in, so no page has to know the
+// rail exists.
+
+const path = Astro.url.pathname;
+
+// Three states, not two, and the middle one is why. **Exactly one item in the rail is filled:**
+// the deepest one the reader is actually on. A module whose submodule is open is *on the way*
+// there — it takes weight without a background, so the eye still finds the one place it is.
+// Filling both makes the rail look like two current pages, which is the failure this replaces.
+const ITEM_BASE = "block rounded-md px-3 py-2 text-sm transition-colors";
+const ITEM_IDLE = "text-muted-foreground hover:bg-muted hover:text-foreground";
+const ITEM_IN_PATH = "text-foreground font-medium hover:bg-muted";
+const ITEM_CURRENT = "bg-accent text-accent-foreground font-medium";
+
+const SUB_BASE = "block rounded-md px-3 py-1.5 text-sm transition-colors";
+const SUB_IDLE = "text-muted-foreground hover:bg-muted hover:text-foreground";
+const SUB_CURRENT = "bg-accent text-accent-foreground font-medium";
+---
+
+<aside class="lg:w-56 lg:shrink-0">
+  {
+    /* `sticky` only from lg: below it the rail is a block above the content and scrolling it
+      away with the page is exactly right. */
+  }
+  <nav aria-label="Moduły aplikacji" class="lg:sticky lg:top-20">
+    <p class="text-muted-foreground/70 mb-2 px-3 text-xs font-medium tracking-wide uppercase">Moduły</p>
+    <ul class="space-y-1">
+      {
+        APP_MODULES.map((module) => {
+          const inPath = isAppModuleCurrent(module, path);
+          const submodules = appModuleSubmodules(module, path);
+          const openSubmodule = submodules.find(
+            (submodule) => path === submodule.href || path.startsWith(`${submodule.href}/`),
+          );
+          const isCurrent = inPath && openSubmodule === undefined;
+
+          return (
+            <li>
+              <a
+                href={module.href}
+                aria-current={isCurrent ? "page" : undefined}
+                class:list={[ITEM_BASE, isCurrent ? ITEM_CURRENT : inPath ? ITEM_IN_PATH : ITEM_IDLE]}
+              >
+                {module.label}
+              </a>
+
+              {submodules.length > 0 && (
+                <ul class="border-border mt-1 ml-4 space-y-0.5 border-l pl-2">
+                  {submodules.map((submodule) => {
+                    const isSubCurrent = submodule.id === openSubmodule?.id;
+                    return (
+                      <li>
+                        <a
+                          href={submodule.href}
+                          aria-current={isSubCurrent ? "page" : undefined}
+                          class:list={[SUB_BASE, isSubCurrent ? SUB_CURRENT : SUB_IDLE]}
+                        >
+                          {submodule.label}
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </li>
+          );
+        })
+      }
+    </ul>
+  </nav>
+</aside>

@@ -44,6 +44,13 @@ export const WIDTHS = {
 
 export type Width = keyof typeof WIDTHS;
 
+/**
+ * The outermost gutter, shared by the topbar and by the shell's rail-plus-content row so the
+ * wordmark, the module rail and the page's first character stand on the same vertical line.
+ * Wide enough to hold the rail next to a `wide` page without the table losing a column.
+ */
+export const SHELL_CONTAINER = "mx-auto w-full max-w-7xl px-4 sm:px-6";
+
 /* ---------------------------------------------------------------------------------------- */
 /* Surfaces                                                                                   */
 /* ---------------------------------------------------------------------------------------- */

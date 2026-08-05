@@ -538,14 +538,48 @@ owner's instruction. Four things follow:
   `200` as controls), not by reading the array. The CSV import endpoint and page now redirect to
   `/buildings/<id>/units`, because `/buildings/<id>` is no longer the registry.
 - **`src/components/buildings/BuildingHeader.astro` carries the state "I am in building X"** —
-  breadcrumbs, building identity, and the module strip with the current one marked. The roadmap
-  names _this_, not the cards, as the substance of the slice: without it level 2 is loose screens
-  sharing a URL prefix. It takes `activeModule` and omits the strip on the index itself, where
-  the cards already are the navigation.
+  breadcrumbs and building identity. The roadmap names _this_, not the cards, as the substance of
+  the slice: without it level 2 is loose screens sharing a URL prefix. It carried the modules as a
+  strip of tabs until 2026-08-05; the strip is gone because the rail draws the same list, and its
+  `activeModule` prop is now `inModule`, which decides one thing only — whether the breadcrumb's
+  building name links back to the overview.
 - **The voting module is listed even when the registry is empty**, where the old building page
   hid the uchwały section until import — structure used to disappear along with its content. The
   "co jest pierwsze" answer moved into `/buildings/<id>/resolutions`, which now guards on an
   empty registry itself rather than relying on the caller to hide the link.
+- **The tiles are gone from `/buildings/<id>` too** (2026-08-05, same instruction that produced
+  the rail). What is left is a _Stan budynku_ list carrying what the tiles held besides
+  navigation — how far each module has got, and the one thing to do next when it has not started.
+  It still loops over `BUILDING_MODULES`, so the first bullet above holds unchanged.
+
+## Module navigation (the left rail)
+
+Modules are a rail down the left of every signed-in screen, and both levels of them come out of a
+registry. Shipped 2026-08-05 on the product owner's instruction, replacing the tiles that sat in
+the middle of `/dashboard` and `/buildings/<id>`. `src/components/SideNav.astro` draws it;
+`src/lib/app-modules.ts` is the level-1 registry, the twin of `building-modules.ts` and the half
+of `S-09` level 1 that `/dashboard` previously faked with two hand-written tiles. Five things are
+load-bearing:
+
+- **The rail's only input is the path.** `currentBuildingId` / `currentBuildingModuleId` (in
+  `building-modules.ts`) read the building and the module out of `/buildings/<id>/…`, so not one
+  of the eight screens under that prefix passes navigation state — the rail takes no props at all.
+  `src/lib/app-modules.test.ts` pins both, because a rail that marks the wrong module looks like a
+  working rail in every screenshot.
+- **`SideNav.astro` contains no module names**, including which module has submodules:
+  `appModuleSubmodules` answers that. The moment adding a module needs a line of markup there, the
+  registries have stopped doing their job.
+- **Exactly one item is filled at a time** — the deepest one the reader is on. A module whose
+  submodule is open takes weight without a background, and `aria-current="page"` sits on that one
+  item only. Filling both reads as two current pages.
+- **The topbar is no longer navigation.** It kept a copy of _Budynki_ / _Pomoc_ until the rail
+  landed; two lists of the same destinations, one above the other, is how an interface starts to
+  feel larger than the product behind it. It now carries the wordmark, the address and _Wyloguj_.
+- **`nav={false}` opts a page out**, and `/` is its only caller. A signed-out reader never gets
+  the rail regardless — every module route is behind the auth gate, so the rail would offer an
+  anonymous visitor a column of redirects to the sign-in screen. `/vote/<token>` still renders its
+  own document and must not use `AppShell` at all; the rail makes that case worse, not better,
+  since every link on it needs a session the owner does not have.
 
 ## Product name (`S-08`)
 
@@ -557,6 +591,15 @@ do zarządzania nieruchomościami_, and nothing else. Three things follow:
   like every other page here. The starter's three feature cards and its separate _Sign In_ button
   went with it; `Topbar` still carries sign-in, so the page describes and admits in the same
   breath.
+- **The page gained the product's one picture on 2026-08-05** — `src/components/PencilSkyline.astro`,
+  a row of five blocks of flats drawn as if in pencil. It is inline SVG generated from a `BLOCKS`
+  array, not hand-written markup: the wobble is `feTurbulence` + `feDisplacementMap`, the shading
+  is one `<pattern>`, and the whole scene is stamped twice — firmly, then faintly and offset —
+  through two filters with **different seeds**, because a doubled line that displaces identically
+  reads as a printing error rather than as a hand. Three consequences: it is `aria-hidden`, since
+  the heading beside it already names the product; it strokes `currentColor`, so it never pins a
+  grey the palette does not know about; and it fetches nothing, which is what keeps it legal under
+  this app's CSP. Move the skyline by editing `BLOCKS`, never the markup below it.
 - ~~**The cosmic styling stays, as a decision.**~~ **Reversed on 2026-08-05**, on the product
   owner's instruction, hours after `S-08` recorded it. The starter's dark gradient, its purple
   accents and its `bg-cosmic` utility are gone from every screen — see
@@ -590,9 +633,12 @@ are load-bearing:
   colour; what separates them is that a fallen uchwała is a *pill* and a failure is a *block with
   `role="alert"`*. Do not "simplify" the two into one tone.
 - **`src/components/AppShell.astro` owns every page's outer geometry** — document, persistent
-  topbar, one centred column at one of three widths from `WIDTHS`. Eleven pages each had their own
-  wrapper before it, and had already drifted into three paddings. **`/vote/<token>` must not use
-  it**, and its page comment says why: `AppShell` carries links, and a click on one would put a
+  topbar, the module rail, and one content column at one of three widths from `WIDTHS`. Eleven
+  pages each had their own wrapper before it, and had already drifted into three paddings. Since
+  the rail landed it has two geometries, not one: rail plus content inside `SHELL_CONTAINER` for a
+  signed-in reader, a centred column for everyone else. The `min-w-0` on the content column is
+  load-bearing — without it a `wide` table refuses to shrink beside the rail and pushes the whole
+  page sideways instead of scrolling inside its wrapper. **`/vote/<token>` must not use it**, and its page comment says why: `AppShell` carries links, and a click on one would put a
   voting token into a `Referer`. That page renders its own document and its wordmark is
   deliberately plain text, not a link.
 - **`src/lib/ui.ts` imports nothing**, so `resolutions.ts` can take its tones from it without

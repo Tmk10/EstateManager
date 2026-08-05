@@ -1,30 +1,23 @@
 ---
 import AppShell from "@/components/AppShell.astro";
-import { CARD, PAGE_TITLE, SECTION_TITLE, MUTED_TEXT } from "@/lib/ui";
+import { CARD_PADDED, PAGE_TITLE, SECTION_TITLE, MUTED_TEXT, BUTTON_PRIMARY } from "@/lib/ui";
 
 const { user } = Astro.locals;
 
-// **This is not `S-09` level 1.** That slice makes this page a list of *application* modules
-// read from a registry, the way `/buildings/<id>` reads `src/lib/building-modules.ts`, and it
-// is still unbuilt. What is below is the same two destinations the page already offered,
-// wearing the same clothes as the rest of the product. Building the registry is a roadmap
-// slice with its own change folder; do not read these two tiles as it having happened.
+// The panel is a greeting and one first step — not a menu.
+//
+// It used to be the menu: two tiles in the middle of the page, one per application module. They
+// moved to the rail on the left on 2026-08-05 (`src/components/SideNav.astro`), on the product
+// owner's instruction, and were not copied here — a list of modules in the middle of the screen
+// and the same list beside it is the duplication the topbar's nav links were just deleted for.
+//
+// **This is still not `S-09` level 1 in full.** That slice's registry now exists
+// (`src/lib/app-modules.ts`) and the rail reads it, so the half that was missing is the half
+// this page used to fake with two hand-written tiles. What is left of the slice is whatever the
+// panel should say once there is state worth summarising here; two tiles were never that.
 //
 // The sign-out button that used to sit here is gone, not lost: the topbar carries it on every
-// screen now, and two ways to sign out on one page is the kind of duplication that makes an
-// interface feel larger than it is.
-const DESTINATIONS = [
-  {
-    href: "/buildings",
-    label: "Budynki",
-    description: "Wspólnoty, rejestry lokali i głosowania nad uchwałami.",
-  },
-  {
-    href: "/help",
-    label: "Pomoc",
-    description: "Kontakt do osoby, która prowadzi tę aplikację.",
-  },
-];
+// screen, and two ways to sign out on one page makes an interface feel larger than it is.
 ---
 
 <AppShell title="Panel">
@@ -33,20 +26,12 @@ const DESTINATIONS = [
     Zalogowano jako <span class="text-foreground font-medium">{user?.email}</span> — administrator.
   </p>
 
-  <ul class="mt-8 grid gap-4 sm:grid-cols-2">
-    {
-      DESTINATIONS.map((item) => (
-        <li class:list={[CARD, "hover:border-ring hover:bg-accent/40 relative p-5 transition-colors"]}>
-          <h2 class:list={SECTION_TITLE}>
-            {/* The pseudo-element stretches the link over the whole tile, so the tile is one
-                target rather than a paragraph with a small link in it. */}
-            <a href={item.href} class="after:absolute after:inset-0">
-              {item.label}
-            </a>
-          </h2>
-          <p class:list={["mt-1", MUTED_TEXT]}>{item.description}</p>
-        </li>
-      ))
-    }
-  </ul>
+  <div class:list={[CARD_PADDED, "mt-8"]}>
+    <h2 class:list={SECTION_TITLE}>Od czego zacząć</h2>
+    <p class:list={["mt-1", MUTED_TEXT]}>
+      Moduły aplikacji są w menu po lewej stronie. Praca zaczyna się od budynku — to w nim mieszka rejestr lokali i
+      głosowanie nad uchwałami.
+    </p>
+    <a href="/buildings" class:list={[BUTTON_PRIMARY, "mt-4"]}>Przejdź do budynków</a>
+  </div>
 </AppShell>

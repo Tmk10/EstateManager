@@ -4,12 +4,27 @@ import BuildingHeader from "@/components/buildings/BuildingHeader.astro";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps, formatSquareMetres } from "@/lib/shares";
 import { BUILDING_MODULES, buildingModuleHref } from "@/lib/building-modules";
-import { CARD, SECTION_TITLE, MUTED_TEXT, BUTTON_PRIMARY, ALERT_ERROR, FINE_PRINT } from "@/lib/ui";
+import {
+  CARD_PADDED,
+  SECTION_TITLE,
+  SUBSECTION_TITLE,
+  MUTED_TEXT,
+  BUTTON_PRIMARY,
+  ALERT_ERROR,
+  FINE_PRINT,
+  LINK,
+} from "@/lib/ui";
 
-// The index of this building's modules (roadmap `S-09`, level 2). This page used to *be* the
-// registry; the registry now lives at `/buildings/<id>/units` and the resolutions list at
-// `/buildings/<id>/resolutions`. What stays here is the answer to "what can I do in this
-// building", which is the only thing that has to change when a module is added.
+// The state of this building, module by module (roadmap `S-09`, level 2). This page used to *be*
+// the registry; the registry now lives at `/buildings/<id>/units` and the resolutions list at
+// `/buildings/<id>/resolutions`.
+//
+// It also used to be the *menu* of those two modules — one tile each, in the middle of the
+// screen. The menu moved to the rail on the left on 2026-08-05 (`src/components/SideNav.astro`),
+// on the product owner's instruction, and what is left here is what the tiles carried besides
+// navigation: how far each module has got, and the one thing to do next when it has not started.
+// The loop over BUILDING_MODULES stayed, and stayed for the same reason — a module added to the
+// registry appears here without this file being edited.
 //
 // Both new routes are already behind the auth gate: PROTECTED_ROUTES in src/middleware.ts
 // matches with startsWith and contains "/buildings". No entry was added — verified by request,
@@ -140,40 +155,38 @@ if (building) {
             </p>
           )}
 
-          <ul class="grid gap-4 sm:grid-cols-2">
-            {BUILDING_MODULES.map((module) => {
-              const summary = summaries[module.id];
-              const notice = notices[module.id];
-              return (
-                <li
-                  class:list={[
-                    CARD,
-                    "hover:border-ring hover:bg-accent/40 relative flex flex-col p-5 transition-colors",
-                  ]}
-                >
-                  <h2 class:list={SECTION_TITLE}>
-                    {/* The pseudo-element stretches the link over the whole card, so the card
-                        is one target. The call to action below sits above it with z-10. */}
-                    <a href={buildingModuleHref(building.id, module)} class="after:absolute after:inset-0">
-                      {module.label}
-                    </a>
-                  </h2>
-                  <p class:list={["mt-1", MUTED_TEXT]}>{module.description}</p>
+          <section class:list={CARD_PADDED}>
+            <h2 class:list={SECTION_TITLE}>Stan budynku</h2>
+            <p class:list={["mt-1", MUTED_TEXT]}>Moduły tego budynku otwierasz z menu po lewej stronie.</p>
 
-                  {summary && <p class="text-foreground mt-4 text-sm font-medium tabular-nums">{summary}</p>}
-
-                  {notice && (
-                    <>
-                      <p class:list={["mt-4", FINE_PRINT]}>{notice.message}</p>
-                      <a href={notice.ctaHref} class:list={[BUTTON_PRIMARY, "relative z-10 mt-3 self-start"]}>
-                        {notice.ctaLabel}
+            <ul class="divide-border mt-4 divide-y">
+              {BUILDING_MODULES.map((module) => {
+                const summary = summaries[module.id];
+                const notice = notices[module.id];
+                return (
+                  <li class="flex flex-col py-4 first:pt-0 last:pb-0">
+                    <h3 class:list={SUBSECTION_TITLE}>
+                      <a href={buildingModuleHref(building.id, module)} class:list={LINK}>
+                        {module.label}
                       </a>
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                    </h3>
+                    <p class:list={["mt-0.5", FINE_PRINT]}>{module.description}</p>
+
+                    {summary && <p class="text-foreground mt-2 text-sm font-medium tabular-nums">{summary}</p>}
+
+                    {notice && (
+                      <>
+                        <p class:list={["mt-2", MUTED_TEXT]}>{notice.message}</p>
+                        <a href={notice.ctaHref} class:list={[BUTTON_PRIMARY, "mt-3 self-start"]}>
+                          {notice.ctaLabel}
+                        </a>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         </>
       )
     )

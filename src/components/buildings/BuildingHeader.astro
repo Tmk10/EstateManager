@@ -1,24 +1,27 @@
 ---
-import { BUILDING_MODULES, buildingModuleHref } from "@/lib/building-modules";
 import { PAGE_TITLE, MUTED_TEXT, NAV_LINK } from "@/lib/ui";
 
 // The building context every level-2 screen carries. The roadmap (`S-09`) names this — not the
 // cards — as the substance of the slice: navigation has to hold the state "I am in building X",
 // otherwise the second level falls apart into loose screens that happen to share a URL prefix.
 //
-// `activeModule` is omitted on the module index itself: there the cards are the navigation, and
-// a strip repeating them above would be the same list twice.
-//
-// The strip is drawn as underlined tabs rather than as pills. Tabs read as "these are the
-// sections of the thing named above" and pills read as "these are buttons"; the distinction
-// matters here because the building's name sits directly above them and is what they belong to.
+// It used to carry the building's modules as a strip of tabs under the address. The strip is
+// gone as of 2026-08-05: the modules are in the rail on the left (`src/components/SideNav.astro`)
+// and the rail marks the current one, so the tabs would have been the same list a second time, a
+// few centimetres away. What is left is what the rail cannot say — *which* building this is, and
+// the way back up to the list of them.
 
 interface Props {
   building: { id: string; name: string; city: string; street: string };
-  activeModule?: string;
+  /**
+   * Whether this screen sits inside a module of the building rather than on its overview. It
+   * decides one thing only: whether the building's own name in the breadcrumb is a link back to
+   * that overview, or the end of the trail.
+   */
+  inModule?: boolean;
 }
 
-const { building, activeModule } = Astro.props;
+const { building, inModule = false } = Astro.props;
 ---
 
 <div class="mb-8">
@@ -26,7 +29,7 @@ const { building, activeModule } = Astro.props;
     <a href="/buildings" class:list={NAV_LINK}>Budynki</a>
     <span aria-hidden="true" class="text-muted-foreground/50">/</span>
     {
-      activeModule ? (
+      inModule ? (
         <a href={`/buildings/${building.id}`} class:list={NAV_LINK}>
           {building.name}
         </a>
@@ -40,28 +43,4 @@ const { building, activeModule } = Astro.props;
   <p class:list={["mt-1", MUTED_TEXT]}>
     {building.street}, {building.city}
   </p>
-
-  {
-    activeModule && (
-      <nav aria-label="Moduły budynku" class="border-border mt-6 flex flex-wrap gap-6 border-b">
-        {BUILDING_MODULES.map((module) => {
-          const isActive = module.id === activeModule;
-          return (
-            <a
-              href={buildingModuleHref(building.id, module)}
-              aria-current={isActive ? "page" : undefined}
-              class:list={[
-                "-mb-px border-b-2 pb-2.5 text-sm transition-colors",
-                isActive
-                  ? "border-primary text-primary font-medium"
-                  : "text-muted-foreground hover:border-border hover:text-foreground border-transparent",
-              ]}
-            >
-              {module.label}
-            </a>
-          );
-        })}
-      </nav>
-    )
-  }
 </div>

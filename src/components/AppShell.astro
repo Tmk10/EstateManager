@@ -1,32 +1,58 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import Topbar from "@/components/Topbar.astro";
-import { WIDTHS, type Width } from "@/lib/ui";
+import SideNav from "@/components/SideNav.astro";
+import { WIDTHS, SHELL_CONTAINER, type Width } from "@/lib/ui";
 
-// The frame every administrator screen sits in: the document, the persistent topbar, and one
-// centred column at one of three widths.
+// The frame every administrator screen sits in: the document, the persistent topbar, the module
+// rail down the left, and one content column at one of three widths.
 //
 // Its job is to be the only place a page's outer geometry is decided. Before it, each of the
 // eleven pages opened with its own `min-h-screen p-4 py-12` wrapper and its own `max-w-*`,
 // and the eleven had drifted into three different paddings — so moving between two screens
 // shifted the content under the reader's eye for no reason they could see.
 //
+// The rail arrived on 2026-08-05, when the module tiles moved out of the middle of `/dashboard`
+// and of `/buildings/<id>`. It appears for a signed-in reader and for nobody else — there is
+// nothing on it to reach while signed out, since every module route is behind the auth gate —
+// so it keys off `Astro.locals.user` rather than off a prop every page would have to pass.
+// `nav={false}` opts a page out: the start page is a public description of the product, and the
+// rail there would compete with the one thing that page is for.
+//
 // The one screen that must not use this is /vote/<token>: it renders its own document because
 // Layout's configuration banner can carry an external documentation link, and a click on one
 // would put the voting token in a Referer header on its way off-site. That page's comment
-// carries the full argument; do not "unify" it in here.
+// carries the full argument; do not "unify" it in here. The rail makes that case worse rather
+// than better — every link on it is a link the owner reading that page has no session for.
 
 interface Props {
   title: string;
   width?: Width;
+  /** Set false on a public page. A signed-out reader never gets the rail regardless. */
+  nav?: boolean;
 }
 
-const { title, width = "default" } = Astro.props;
+const { title, width = "default", nav = true } = Astro.props;
+
+const showRail = nav && Astro.locals.user != null;
 ---
 
 <Layout title={title}>
   <Topbar />
-  <main class:list={["mx-auto w-full px-4 py-8 sm:px-6 sm:py-10", WIDTHS[width]]}>
-    <slot />
-  </main>
+  {
+    showRail ? (
+      <div class:list={[SHELL_CONTAINER, "flex flex-col gap-8 py-8 lg:flex-row lg:gap-10"]}>
+        <SideNav />
+        {/* min-w-0 is load-bearing beside a flex rail: without it a wide table refuses to
+            shrink and pushes the whole page sideways instead of scrolling inside its wrapper. */}
+        <main class:list={["w-full min-w-0 flex-1", WIDTHS[width]]}>
+          <slot />
+        </main>
+      </div>
+    ) : (
+      <main class:list={["mx-auto w-full px-4 py-8 sm:px-6 sm:py-10", WIDTHS[width]]}>
+        <slot />
+      </main>
+    )
+  }
 </Layout>

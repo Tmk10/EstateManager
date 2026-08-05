@@ -43,6 +43,8 @@ Rules that are cheap to break and expensive to discover. The evidence behind eac
 - **One design system, in two files: `src/styles/global.css` (oklch tokens) and `src/lib/ui.ts` (the class vocabulary).** A screen that names a raw colour has broken it. Colour carries meaning or it is grey — `BADGE_TONES` is the one table that assigns meaning. → §Design system
 - **`src/lib/ui.ts` imports nothing.** The moment it does, three `src/lib` modules stop being executable on their own. → §Design system
 - **`src/components/AppShell.astro` owns every page's outer geometry — except `/vote/<token>`, which must not use it.** `AppShell` carries links, and a click on one would put a voting token into a `Referer`. → §Design system
+- **Modules are a left rail, and both levels of them come out of a registry** — `src/lib/app-modules.ts` and `src/lib/building-modules.ts`. `src/components/SideNav.astro` carries no module names and reads its state from the path alone; adding a module is a registry entry plus its route, never markup. → §Module navigation
+- **`src/components/PencilSkyline.astro` is generated from its `BLOCKS` array.** Move the skyline by editing the array, not the markup under it. → §Product name
 - **All user-facing copy is Polish, `<html lang="pl">` included.** Code, comments and commits stay English. → §Design system
 
 **Platform**
