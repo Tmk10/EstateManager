@@ -2,7 +2,7 @@
 import "@/styles/global.css";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps } from "@/lib/shares";
-import { formatResolutionDate } from "@/lib/resolutions";
+import { formatResolutionDate, isResolutionDecided } from "@/lib/resolutions";
 
 /**
  * The only route in this application reachable without a session.
@@ -93,6 +93,13 @@ interface VoteView {
   resolutionNumber: string;
   resolutionTitle: string;
   resolutionBody: string;
+  /**
+   * `open`, `passed` or `rejected` — never `draft`, which resolve_voting_link filters out.
+   * Read since S-05, and reading it is what stops this page offering a vote on an uchwała
+   * that has already been settled: cast_vote requires `open`, so the buttons would post, be
+   * refused, and land the reader back here with no explanation, forever.
+   */
+  resolutionStatus: string;
   ownerFullName: string;
   ownerUnitNumbers: string[];
   ownerShareBps: number;
@@ -117,6 +124,8 @@ type VoteState =
   | { kind: "receipt"; choice: string; votedAt: string }
   | { kind: "confirm"; choice: Choice }
   | { kind: "buttons" }
+  /** Settled, and this reader never voted. There is nothing to press and nothing to confirm. */
+  | { kind: "closed" }
   | { kind: "neutral" };
 
 let view: VoteView | null = null;
@@ -135,6 +144,7 @@ if (supabase && token) {
       resolutionNumber: row.resolution_number,
       resolutionTitle: row.resolution_title,
       resolutionBody: row.resolution_body,
+      resolutionStatus: row.resolution_status,
       ownerFullName: row.owner_full_name,
       ownerUnitNumbers: row.owner_unit_numbers,
       ownerShareBps: row.owner_share_bps,
@@ -156,15 +166,41 @@ const pendingChoice = parseChoice(Astro.url.searchParams.get("wybor"));
  */
 let state: VoteState = { kind: "neutral" };
 
+/**
+ * Whether the uchwała has been settled. Ordered BEFORE `pendingChoice` below, so a link opened
+ * on a decided resolution — with or without a stale `?wybor` in it — never reaches the confirm
+ * screen. Before S-05 this page branched only on whether the reader had voted, which was right
+ * while `open` was the only status a resolved token could carry; it is not right now.
+ *
+ * The receipt still wins over everything: someone who voted sees their own vote first,
+ * whatever became of the uchwała afterwards.
+ */
+const isDecided = view !== null && isResolutionDecided(view.resolutionStatus);
+
 if (view) {
   if (view.ownVoteChoice && view.ownVotedAt) {
     state = { kind: "receipt", choice: view.ownVoteChoice, votedAt: view.ownVotedAt };
+  } else if (isDecided) {
+    state = { kind: "closed" };
   } else if (pendingChoice) {
     state = { kind: "confirm", choice: pendingChoice };
   } else {
     state = { kind: "buttons" };
   }
 }
+
+/**
+ * One sentence for the settled uchwała, shown to whoever holds a link to it — voter or not.
+ * This is a fact about their own community, not about any other owner's vote: the visibility
+ * contract is untouched, resolve_voting_link was not widened, and how anyone else voted
+ * remains S-06's question.
+ */
+const outcomeText =
+  view === null || !isDecided
+    ? null
+    : view.resolutionStatus === "passed"
+      ? "Uchwała została podjęta — udziały „za” przekroczyły połowę wszystkich udziałów w budynku."
+      : "Uchwała upadła — udziały „przeciw” przekroczyły połowę wszystkich udziałów w budynku.";
 
 // Rendered only inside the resolved branch (property 1). The endpoint sets it when the read
 // path worked and the write did not, which is the one failure that can be named here.
@@ -224,6 +260,45 @@ const choiceButtonClass =
                 </p>
               )}
 
+              {/* The outcome, for anyone holding a link to a settled uchwała — before the
+                  receipt, because what happened to the uchwała is the headline and how this
+                  reader voted is the footnote. Rendered from resolution_status, which
+                  resolve_voting_link already returned; nothing was added to that function's
+                  return list, so the visibility contract is exactly as narrow as it was. */}
+              {outcomeText && (
+                <div
+                  class:list={[
+                    "mt-6 rounded-xl border p-4",
+                    view.resolutionStatus === "passed"
+                      ? "border-green-400/40 bg-green-500/10"
+                      : "border-rose-400/40 bg-rose-500/10",
+                  ]}
+                >
+                  <h2
+                    class:list={[
+                      "text-lg font-semibold",
+                      view.resolutionStatus === "passed" ? "text-green-100" : "text-rose-100",
+                    ]}
+                  >
+                    {view.resolutionStatus === "passed" ? "Uchwała została podjęta" : "Uchwała upadła"}
+                  </h2>
+                  <p class="mt-2 text-sm text-blue-100/90">{outcomeText}</p>
+                  <p class="mt-2 text-sm text-blue-100/70">Głosowanie nad tą uchwałą zostało zakończone.</p>
+                </div>
+              )}
+
+              {/* Settled, and this reader never voted. No buttons, because pressing one would
+                  post to cast_vote, be refused for want of an open resolution, and redirect
+                  back here with nothing said — the neutral answer is correct at the endpoint
+                  and would be an unexplained loop on the screen. The fix belongs here, not
+                  there: /api/vote/[token] must go on answering a late vote exactly as it
+                  answers an unknown token. */}
+              {state.kind === "closed" && (
+                <p class="mt-4 text-sm text-blue-100/70">
+                  Pod tym linkiem nie oddano głosu, a głosowanie jest już zamknięte — nie można go teraz oddać.
+                </p>
+              )}
+
               {state.kind === "receipt" && (
                 <div class="mt-6 rounded-xl border border-green-400/40 bg-green-500/10 p-4">
                   <h2 class="text-lg font-semibold text-green-100">Twój głos został zapisany</h2>
@@ -232,7 +307,8 @@ const choiceButtonClass =
                   </p>
                   <p class="mt-1 text-sm text-blue-100/70">Zapisano {formatResolutionDate(state.votedAt)}</p>
                   <p class="mt-3 text-sm text-blue-100/80">
-                    Głosu nie można zmienić ani wycofać. Zachowaj ten link — pod nim zawsze zobaczysz to potwierdzenie.
+                    Głosu nie można zmienić ani wycofać. Zachowaj ten link — pod nim zawsze zobaczysz to potwierdzenie
+                    {isDecided ? " oraz wynik głosowania." : "."}
                   </p>
                 </div>
               )}

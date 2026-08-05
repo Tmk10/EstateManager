@@ -466,26 +466,26 @@ schema.
 
 #### Automated
 
-- [x] 3.1 `npx astro sync && npm run lint` passes
-- [x] 3.2 `npm run build` passes
+- [x] 3.1 `npx astro sync && npm run lint` passes — da5f4a5
+- [x] 3.2 `npm run build` passes — da5f4a5
 
 #### Manual
 
-- [x] 3.3 Three figures sum to 100,00% and the missing figures are arithmetically right
-- [x] 3.4 After the threshold is crossed the panel states the outcome and agrees with the badge
-- [x] 3.5 The response HTML contains no owner-to-choice mapping
+- [x] 3.3 Three figures sum to 100,00% and the missing figures are arithmetically right — da5f4a5
+- [x] 3.4 After the threshold is crossed the panel states the outcome and agrees with the badge — da5f4a5
+- [x] 3.5 The response HTML contains no owner-to-choice mapping — da5f4a5
 
 ### Phase 4: The owner's link after the decision
 
 #### Automated
 
-- [ ] 4.1 `npx astro sync && npm run lint` passes
-- [ ] 4.2 `npm run build` passes
+- [x] 4.1 `npx astro sync && npm run lint` passes
+- [x] 4.2 `npm run build` passes
 
 #### Manual
 
-- [ ] 4.3 An owner who never voted sees the outcome and no buttons
-- [ ] 4.4 An owner who voted sees the outcome and their own receipt
-- [ ] 4.5 An unknown token still renders the neutral page unchanged
+- [x] 4.3 An owner who never voted sees the outcome and no buttons
+- [x] 4.4 An owner who voted sees the outcome and their own receipt
+- [x] 4.5 An unknown token still renders the neutral page unchanged
 - [ ] 4.6 Production migration applied by hand BEFORE the code is deployed
 - [ ] 4.7 `/api/health` returns 200 after deploy and a production resolution shows its tally

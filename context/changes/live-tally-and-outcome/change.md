@@ -60,6 +60,41 @@ The exact-half case is the one worth keeping: PRD `FR-007` says *przekroczy* —
 not half — and the local registry happens to hold owners at 2501 and 2499 bps, which sums to
 exactly 5000 and proves the boundary rather than approximating it.
 
+### Phase 4: the defect this slice would have shipped
+
+`src/pages/vote/[token].astro` branched only on whether the reader had voted. That was right
+while `open` was the only status a resolved token could carry. After Phase 1 it stopped being
+right: an owner who never voted, opening their link on a settled uchwała, would have seen live
+`Za` / `Przeciw` buttons, pressed one, and got **nothing** — `cast_vote` refuses a resolution
+that is not open, returns zero rows, and the endpoint redirects back with no `?error=`. A
+silent loop, forever.
+
+The fix is in the page, and deliberately **not** in the endpoint. `/api/vote/[token]` must go
+on answering a late vote exactly as it answers an unknown token; naming the failure there would
+tell a caller that their token resolves. So the page reads `resolution_status` — already in
+`resolve_voting_link`'s return list, nothing widened — and renders the outcome instead of the
+buttons.
+
+Ordering matters in the state machine: the decided check sits **before** `pendingChoice`, so a
+link opened with a stale `?wybor=za` still lands on the outcome rather than on a confirm screen
+for a vote that can no longer be cast.
+
+Verified locally across every state:
+
+| Link | Renders |
+| --- | --- |
+| Never voted, uchwała `passed` | outcome, **no buttons**, "głosowanie jest już zamknięte" |
+| Same, with a stale `?wybor=za` | outcome — confirm screen not reached |
+| Voted, uchwała `passed` | outcome **and** own receipt |
+| Voted, uchwała `rejected` | outcome and own receipt |
+| Uchwała still `open` | buttons, no outcome — unchanged |
+| Unknown token | neutral page, nothing |
+
+And the property that had to survive: a passed hit, an open hit and a miss all answer `200`
+with byte-identical `Cache-Control`, `X-Robots-Tag` and `Referrer-Policy`. The settled page
+carries no token anywhere, because it has no form to post — one fewer place it can appear than
+an open one.
+
 ### The local test fixture now carries two decided uchwały — deliberately, and irreversibly
 
 2026-08-05, with the user's agreement. Verifying the decided state needed a decided
