@@ -1,5 +1,5 @@
 ---
-import Layout from "@/layouts/Layout.astro";
+import AppShell from "@/components/AppShell.astro";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps } from "@/lib/shares";
 import { formatResolutionDate, describeResolutionStatus, isResolutionDecided } from "@/lib/resolutions";
@@ -7,6 +7,35 @@ import { assembleResolutionTrail, type ResolutionTrail } from "@/lib/resolution-
 // Safe to import here precisely because it is dependency-free: it does NOT import
 // src/lib/email.ts, which would pull `cloudflare:workers` into this component's graph.
 import { describeSendFailure } from "@/lib/voting-link-email";
+import {
+  CARD,
+  CARD_PADDED,
+  PAGE_TITLE,
+  SECTION_TITLE,
+  SUBSECTION_TITLE,
+  MUTED_TEXT,
+  FINE_PRINT,
+  LABEL,
+  INPUT,
+  BUTTON_PRIMARY,
+  BUTTON_PRIMARY_BLOCK,
+  BUTTON_SECONDARY_BLOCK,
+  ALERT,
+  ALERT_ERROR,
+  ALERT_TONES,
+  BADGE,
+  BADGE_TONES,
+  NAV_LINK,
+  TABLE_WRAP,
+  TABLE,
+  TABLE_HEAD,
+  TABLE_BODY,
+  TABLE_ROW,
+  TH,
+  TH_NUMERIC,
+  TD,
+  TD_NUMERIC,
+} from "@/lib/ui";
 
 const { id, resolutionId } = Astro.params;
 
@@ -292,540 +321,519 @@ const sendStatusOf = (owner: OwnerRow): SendStatus => {
 // what it will do rather than repeating the first press's number.
 const unsentCount = ownerRows.filter((owner) => owner.hasLink && owner.send?.sentAt == null).length;
 const anySent = ownerRows.some((owner) => owner.send?.sentAt != null);
-
-const inputClass =
-  "w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:border-purple-400/50 focus:ring-2 focus:ring-purple-400 focus:outline-none";
 ---
 
-<Layout title={resolution ? resolution.title : "Uchwała"}>
-  <div class="bg-cosmic min-h-screen p-4 py-12">
-    <div
-      class="mx-auto w-full max-w-4xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
-    >
-      {
-        loadError ? (
-          <p class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300" role="alert">
-            {loadError}
-          </p>
-        ) : (
-          building &&
-          resolution && (
-            <>
-              <div class="mb-6">
-                <div class="flex flex-wrap items-center gap-3">
-                  <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
-                    Uchwała {resolution.number}
-                  </h1>
-                  <span class:list={["rounded-full px-2.5 py-0.5 text-xs font-medium", statusBadge.className]}>
-                    {statusBadge.label}
-                  </span>
-                </div>
-                <p class="mt-1 text-sm text-blue-100/60">
-                  {building.name} — {building.street}, {building.city}
-                </p>
-                {/* "Głosowanie otwarte od" is a claim about now, and stops being true once the
-                    uchwała is settled — the vote is closed and cast_vote refuses every later
-                    ballot. A decided resolution states when voting opened, in the past tense. */}
-                {openedAtLabel && (
-                  <p class="mt-1 text-sm text-blue-100/60">
-                    {isDecided ? "Głosowanie otwarto" : "Głosowanie otwarte od"} {openedAtLabel}
-                  </p>
+<AppShell title={resolution ? resolution.title : "Uchwała"} width="wide">
+  {
+    loadError ? (
+      <p class:list={ALERT_ERROR} role="alert">
+        {loadError}
+      </p>
+    ) : (
+      building &&
+      resolution && (
+        <>
+          <nav aria-label="Ścieżka nawigacji" class="mb-3 flex items-center gap-1.5 text-sm">
+            <a href="/buildings" class:list={NAV_LINK}>
+              Budynki
+            </a>
+            <span aria-hidden="true" class="text-muted-foreground/50">
+              /
+            </span>
+            <a href={`/buildings/${building.id}`} class:list={NAV_LINK}>
+              {building.name}
+            </a>
+            <span aria-hidden="true" class="text-muted-foreground/50">
+              /
+            </span>
+            <a href={`/buildings/${building.id}/resolutions`} class:list={NAV_LINK}>
+              Uchwały
+            </a>
+          </nav>
+
+          <div class="mb-6">
+            <div class="flex flex-wrap items-center gap-3">
+              <h1 class:list={PAGE_TITLE}>Uchwała {resolution.number}</h1>
+              <span class:list={[BADGE, statusBadge.className]}>{statusBadge.label}</span>
+            </div>
+            <p class:list={["mt-1", MUTED_TEXT]}>
+              {building.name} — {building.street}, {building.city}
+            </p>
+            {/* "Głosowanie otwarte od" is a claim about now, and stops being true once the
+                uchwała is settled — the vote is closed and cast_vote refuses every later
+                ballot. A decided resolution states when voting opened, in the past tense. */}
+            {openedAtLabel && (
+              <p class:list={["mt-1", MUTED_TEXT]}>
+                {isDecided ? "Głosowanie otwarto" : "Głosowanie otwarte od"} {openedAtLabel}
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <p class:list={[ALERT_ERROR, "mb-6"]} role="alert">
+              {error}
+            </p>
+          )}
+
+          {notice && <p class:list={[ALERT, ALERT_TONES.info, "mb-6"]}>{notice}</p>}
+
+          {/* The run summary: counts only, parsed as numbers. Nothing from the query
+                  string is echoed as prose, so a doctored URL cannot put text on this page. */}
+          {hasRunSummary && (
+            <div class:list={[ALERT, ALERT_TONES.success, "mb-6"]}>
+              <p>
+                Wysłano linki: <span class="font-semibold">{sentCount}</span>
+                {failedCount > 0 && (
+                  <>
+                    {" · "}
+                    nie udało się: <span class="font-semibold text-red-800">{failedCount}</span>
+                  </>
                 )}
+                {ownersWithoutEmail.length > 0 && (
+                  <>
+                    {" · "}
+                    bez adresu e-mail: <span class="font-semibold text-amber-800">{ownersWithoutEmail.length}</span>
+                  </>
+                )}
+              </p>
+              {failedCount > 0 && (
+                <p class="mt-1 text-xs opacity-80">
+                  Powód niepowodzenia jest podany przy każdym właścicielu w tabeli poniżej.
+                </p>
+              )}
+              {unrecordedCount > 0 && (
+                <p class:list={[ALERT, ALERT_TONES.warning, "mt-2 px-3 py-2 text-xs"]}>
+                  Uwaga: <span class="font-semibold">{unrecordedCount}</span> wiadomości wysłano, ale nie udało się
+                  zapisać tego w bazie. Ci właściciele mają już swój link — kolejne naciśnięcie przycisku wyśle im go po
+                  raz drugi.
+                </p>
+              )}
+            </div>
+          )}
+
+          {isDraft ? (
+            <>
+              <div class:list={CARD_PADDED}>
+                <form
+                  method="POST"
+                  action={`/api/buildings/${building.id}/resolutions/${resolution.id}`}
+                  class="space-y-5"
+                >
+                  <div>
+                    <label for="number" class:list={LABEL}>
+                      Numer uchwały
+                    </label>
+                    <input
+                      id="number"
+                      name="number"
+                      type="text"
+                      maxlength="50"
+                      required
+                      value={resolution.number}
+                      class:list={INPUT}
+                    />
+                  </div>
+
+                  <div>
+                    <label for="title" class:list={LABEL}>
+                      Tytuł
+                    </label>
+                    <input
+                      id="title"
+                      name="title"
+                      type="text"
+                      maxlength="200"
+                      required
+                      value={resolution.title}
+                      class:list={INPUT}
+                    />
+                  </div>
+
+                  <div>
+                    <label for="body" class:list={LABEL}>
+                      Treść uchwały
+                    </label>
+                    {/* set:text rather than children: the template's own indentation and
+                        newlines would otherwise land inside the textarea, and a body
+                        rendered with a blank first line looks like corrupted data. */}
+                    <textarea
+                      id="body"
+                      name="body"
+                      rows="12"
+                      maxlength="20000"
+                      required
+                      class:list={INPUT}
+                      set:text={resolution.body}
+                    />
+                  </div>
+
+                  {/* Secondary, not primary: saving a draft is the reversible step. The one
+                      irreversible action on this screen — opening the vote — is the primary
+                      button below, and two primaries would put them on equal footing. */}
+                  <button type="submit" class:list={BUTTON_SECONDARY_BLOCK}>
+                    Zapisz zmiany
+                  </button>
+                </form>
               </div>
 
-              {error && (
-                <p
-                  class="mb-6 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
-                  role="alert"
+              <div class:list={[CARD, "border-primary/30 bg-primary/5 mt-8 p-5"]}>
+                <h2 class:list={SECTION_TITLE}>Uruchom głosowanie</h2>
+                <p class:list={["mt-1", MUTED_TEXT]}>
+                  Każdy właściciel z adresem e-mail dostanie własny link do głosowania. Od tej chwili treści uchwały nie
+                  da się już zmienić — właściciele głosują nad tym, co widzą pod swoim linkiem.
+                </p>
+                <form
+                  method="POST"
+                  action={`/api/buildings/${building.id}/resolutions/${resolution.id}/open`}
+                  class="mt-4"
                 >
-                  {error}
-                </p>
-              )}
+                  <button type="submit" class:list={BUTTON_PRIMARY_BLOCK}>
+                    Uruchom głosowanie
+                  </button>
+                </form>
+              </div>
+            </>
+          ) : (
+            <>
+              <div class:list={CARD_PADDED}>
+                <h2 class:list={SECTION_TITLE}>{resolution.title}</h2>
+                {/* Same reason as the draft's textarea: whitespace-pre-wrap would
+                    otherwise render the template's indentation as part of the text. */}
+                <p
+                  class="text-foreground mt-3 text-sm leading-relaxed whitespace-pre-wrap"
+                  set:text={resolution.body}
+                />
+              </div>
 
-              {notice && (
-                <p class="mb-6 rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-100">
-                  {notice}
-                </p>
-              )}
+              {/* Sits in the non-draft branch only: before the vote is opened there are
+                  no links and no votes, and a "0,00% za" on a draft would read as a
+                  result rather than as an empty state. */}
+              <div class:list={[CARD_PADDED, "mt-6"]}>
+                <h2 class:list={SECTION_TITLE}>Bilans udziałów</h2>
 
-              {/* The run summary: counts only, parsed as numbers. Nothing from the query
-                  string is echoed as prose, so a doctored URL cannot put text on this page. */}
-              {hasRunSummary && (
-                <div class="mb-6 rounded-lg border border-green-400/30 bg-green-500/10 px-3 py-2 text-sm text-green-100">
-                  <p>
-                    Wysłano linki: <span class="font-medium text-white">{sentCount}</span>
-                    {failedCount > 0 && (
-                      <>
-                        {" · "}
-                        nie udało się: <span class="font-medium text-red-200">{failedCount}</span>
-                      </>
-                    )}
-                    {ownersWithoutEmail.length > 0 && (
-                      <>
-                        {" · "}
-                        bez adresu e-mail: <span class="font-medium text-amber-200">{ownersWithoutEmail.length}</span>
-                      </>
-                    )}
-                  </p>
-                  {failedCount > 0 && (
-                    <p class="mt-1 text-xs text-green-100/70">
-                      Powód niepowodzenia jest podany przy każdym właścicielu w tabeli poniżej.
-                    </p>
-                  )}
-                  {unrecordedCount > 0 && (
-                    <p class="mt-2 rounded border border-amber-400/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
-                      Uwaga: <span class="font-medium">{unrecordedCount}</span> wiadomości wysłano, ale nie udało się
-                      zapisać tego w bazie. Ci właściciele mają już swój link — kolejne naciśnięcie przycisku wyśle im
-                      go po raz drugi.
-                    </p>
-                  )}
-                </div>
-              )}
+                {tally === null ? (
+                  <p class:list={[ALERT, ALERT_TONES.warning, "mt-3"]}>Nie udało się odczytać bilansu udziałów.</p>
+                ) : (
+                  <>
+                    {/* Three tiles at one size, not a chart. The figure is the message and it
+                        is read against a threshold, so the number carries the weight and the
+                        colour only says which side it belongs to. */}
+                    <dl class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                        <dt class="text-xs font-medium tracking-wide text-emerald-800 uppercase">Za</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-emerald-900 tabular-nums">
+                          {formatShareBps(tally.for_bps)}
+                        </dd>
+                      </div>
+                      <div class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
+                        <dt class="text-xs font-medium tracking-wide text-rose-800 uppercase">Przeciw</dt>
+                        <dd class="mt-1 text-2xl font-semibold text-rose-900 tabular-nums">
+                          {formatShareBps(tally.against_bps)}
+                        </dd>
+                      </div>
+                      <div class="border-border bg-muted rounded-lg border px-4 py-3">
+                        <dt class="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                          Jeszcze nie oddano
+                        </dt>
+                        <dd class="text-foreground mt-1 text-2xl font-semibold tabular-nums">
+                          {formatShareBps(tally.not_cast_bps)}
+                        </dd>
+                      </div>
+                    </dl>
 
-              {isDraft ? (
-                <>
-                  <form
-                    method="POST"
-                    action={`/api/buildings/${building.id}/resolutions/${resolution.id}`}
-                    class="space-y-4"
-                  >
-                    <div>
-                      <label for="number" class="mb-1 block text-sm text-blue-100/80">
-                        Numer uchwały
-                      </label>
-                      <input
-                        id="number"
-                        name="number"
-                        type="text"
-                        maxlength="50"
-                        required
-                        value={resolution.number}
-                        class:list={inputClass}
-                      />
-                    </div>
-
-                    <div>
-                      <label for="title" class="mb-1 block text-sm text-blue-100/80">
-                        Tytuł
-                      </label>
-                      <input
-                        id="title"
-                        name="title"
-                        type="text"
-                        maxlength="200"
-                        required
-                        value={resolution.title}
-                        class:list={inputClass}
-                      />
-                    </div>
-
-                    <div>
-                      <label for="body" class="mb-1 block text-sm text-blue-100/80">
-                        Treść uchwały
-                      </label>
-                      {/* set:text rather than children: the template's own indentation and
-                          newlines would otherwise land inside the textarea, and a body
-                          rendered with a blank first line looks like corrupted data. */}
-                      <textarea
-                        id="body"
-                        name="body"
-                        rows="12"
-                        maxlength="20000"
-                        required
-                        class:list={inputClass}
-                        set:text={resolution.body}
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      class="w-full rounded-lg border border-white/20 bg-white/5 px-4 py-2 font-medium text-white transition-colors hover:border-purple-400/50 hover:bg-white/10"
-                    >
-                      Zapisz zmiany
-                    </button>
-                  </form>
-
-                  <div class="mt-8 rounded-xl border border-purple-400/30 bg-purple-500/10 p-4">
-                    <h2 class="text-lg font-semibold">Uruchom głosowanie</h2>
-                    <p class="mt-1 text-sm text-blue-100/80">
-                      Każdy właściciel z adresem e-mail dostanie własny link do głosowania. Od tej chwili treści uchwały
-                      nie da się już zmienić — właściciele głosują nad tym, co widzą pod swoim linkiem.
-                    </p>
-                    <form
-                      method="POST"
-                      action={`/api/buildings/${building.id}/resolutions/${resolution.id}/open`}
-                      class="mt-4"
-                    >
-                      <button
-                        type="submit"
-                        class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
-                      >
-                        Uruchom głosowanie
-                      </button>
-                    </form>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div class="rounded-xl border border-white/10 bg-white/5 p-5">
-                    <h2 class="text-lg font-semibold">{resolution.title}</h2>
-                    {/* Same reason as the draft's textarea: whitespace-pre-wrap would
-                        otherwise render the template's indentation as part of the text. */}
-                    <p class="mt-3 text-sm whitespace-pre-wrap text-blue-100/80" set:text={resolution.body} />
-                  </div>
-
-                  {/* Sits in the non-draft branch only: before the vote is opened there are
-                      no links and no votes, and a "0,00% za" on a draft would read as a
-                      result rather than as an empty state. */}
-                  <div class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
-                    <h2 class="text-lg font-semibold">Bilans udziałów</h2>
-
-                    {tally === null ? (
-                      <p class="mt-2 text-sm text-amber-100">Nie udało się odczytać bilansu udziałów.</p>
-                    ) : (
-                      <>
-                        <dl class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                          <div class="rounded-lg border border-green-400/30 bg-green-500/10 px-3 py-2">
-                            <dt class="text-xs tracking-wide text-green-100/70 uppercase">Za</dt>
-                            <dd class="mt-1 text-xl font-semibold text-green-100 tabular-nums">
-                              {formatShareBps(tally.for_bps)}
-                            </dd>
-                          </div>
-                          <div class="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2">
-                            <dt class="text-xs tracking-wide text-rose-100/70 uppercase">Przeciw</dt>
-                            <dd class="mt-1 text-xl font-semibold text-rose-100 tabular-nums">
-                              {formatShareBps(tally.against_bps)}
-                            </dd>
-                          </div>
-                          <div class="rounded-lg border border-white/15 bg-white/5 px-3 py-2">
-                            <dt class="text-xs tracking-wide text-blue-100/60 uppercase">Jeszcze nie oddano</dt>
-                            <dd class="mt-1 text-xl font-semibold text-white tabular-nums">
-                              {formatShareBps(tally.not_cast_bps)}
-                            </dd>
-                          </div>
-                        </dl>
-
-                        {/* Two different sentences, because a decided uchwała and a running
+                    {/* Two different sentences, because a decided uchwała and a running
                             one answer different questions. A running one is asked "how much
                             further?"; a decided one has no further to go, and showing a
                             distance beside a settled result would invite the reading that it
                             could still move. It cannot: cast_vote refuses every later vote. */}
-                        {isDecided ? (
-                          <p class="mt-4 text-sm text-blue-100/80">
-                            {resolution.status === "passed"
-                              ? "Uchwała została podjęta — udziały „za” przekroczyły połowę wszystkich udziałów w budynku."
-                              : "Uchwała upadła — udziały „przeciw” przekroczyły połowę wszystkich udziałów w budynku."}
-                            {decidedAtLabel !== null && ` Rozstrzygnięcie: ${decidedAtLabel}.`}
-                          </p>
-                        ) : (
-                          <p class="mt-4 text-sm text-blue-100/80">
-                            Do podjęcia uchwały brakuje jeszcze
-                            <span class="font-medium text-white"> {formatShareBps(tally.for_missing_bps)} </span>
-                            udziałów „za”; do jej upadku —
-                            <span class="font-medium text-white"> {formatShareBps(tally.against_missing_bps)} </span>
-                            udziałów „przeciw”.
-                          </p>
-                        )}
-
-                        <p class="mt-3 text-xs text-blue-100/60">
-                          Próg liczy się od <span class="font-medium">wszystkich</span> udziałów w budynku, a nie od
-                          oddanych — udziały, które jeszcze nie zagłosowały, działają w skutku jak głos przeciw.
-                          Zagłosowało {voteCount} z {linkedOwners.length} właścicieli; o wyniku decydują wyłącznie
-                          udziały, nie liczba osób.
-                        </p>
-                      </>
+                    {isDecided ? (
+                      <p class="text-foreground mt-4 text-sm">
+                        {resolution.status === "passed"
+                          ? "Uchwała została podjęta — udziały „za” przekroczyły połowę wszystkich udziałów w budynku."
+                          : "Uchwała upadła — udziały „przeciw” przekroczyły połowę wszystkich udziałów w budynku."}
+                        {decidedAtLabel !== null && ` Rozstrzygnięcie: ${decidedAtLabel}.`}
+                      </p>
+                    ) : (
+                      <p class="text-foreground mt-4 text-sm">
+                        Do podjęcia uchwały brakuje jeszcze
+                        <span class="font-semibold tabular-nums"> {formatShareBps(tally.for_missing_bps)} </span>
+                        udziałów „za”; do jej upadku —
+                        <span class="font-semibold tabular-nums"> {formatShareBps(tally.against_missing_bps)} </span>
+                        udziałów „przeciw”.
+                      </p>
                     )}
-                  </div>
 
-                  {/* The audit trail (S-06, FR-009). Rendered for a settled uchwała only --
+                    <p class:list={["mt-3", FINE_PRINT]}>
+                      Próg liczy się od <span class="font-medium">wszystkich</span> udziałów w budynku, a nie od
+                      oddanych — udziały, które jeszcze nie zagłosowały, działają w skutku jak głos przeciw. Zagłosowało{" "}
+                      {voteCount} z {linkedOwners.length} właścicieli; o wyniku decydują wyłącznie udziały, nie liczba
+                      osób.
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* The audit trail (S-06, FR-009). Rendered for a settled uchwała only --
                       `trail` is null while a vote is running, so the gate is the assembly
                       above rather than a second status test here. */}
-                  {trail !== null && (
-                    <div class="mt-8">
-                      <h2 class="text-lg font-semibold">Jak zagłosowano</h2>
-                      <p class="mt-1 mb-4 text-sm text-blue-100/70">
-                        Głosy w kolejności, w jakiej wpłynęły. Udział przy każdym głosie to waga, jaką ten głos miał w
-                        chwili oddania — to ona złożyła się na wynik, niezależnie od tego, co rejestr pokazuje dziś.
+              {trail !== null && (
+                <div class="mt-8">
+                  <h2 class:list={SECTION_TITLE}>Jak zagłosowano</h2>
+                  <p class:list={["mt-1 mb-4", MUTED_TEXT]}>
+                    Głosy w kolejności, w jakiej wpłynęły. Udział przy każdym głosie to waga, jaką ten głos miał w
+                    chwili oddania — to ona złożyła się na wynik, niezależnie od tego, co rejestr pokazuje dziś.
+                  </p>
+
+                  {trail.cast.length === 0 ? (
+                    <p class:list={[CARD, "text-muted-foreground px-4 py-3 text-sm"]}>Nikt nie oddał głosu.</p>
+                  ) : (
+                    <div class:list={TABLE_WRAP}>
+                      <table class:list={TABLE}>
+                        <thead class:list={TABLE_HEAD}>
+                          <tr>
+                            <th scope="col" class:list={TH}>
+                              Właściciel
+                            </th>
+                            <th scope="col" class:list={TH}>
+                              Lokale
+                            </th>
+                            <th scope="col" class:list={TH_NUMERIC}>
+                              Udział
+                            </th>
+                            <th scope="col" class:list={TH}>
+                              Głos
+                            </th>
+                            <th scope="col" class:list={TH}>
+                              Kiedy
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody class:list={TABLE_BODY}>
+                          {trail.cast.map((row) => (
+                            <tr class:list={TABLE_ROW}>
+                              {/* A null name means the vote's owner is missing from the
+                                  registry read -- unreachable while the composite foreign
+                                  key holds. Said plainly rather than left blank: an empty
+                                  cell reads as a formatting slip, and this would be a
+                                  broken invariant worth chasing. */}
+                              <td class:list={[TD, "font-medium"]}>
+                                {row.fullName ?? <span class="text-amber-800">Właściciel spoza rejestru</span>}
+                              </td>
+                              <td class:list={TD}>{row.unitNumbers.join(", ")}</td>
+                              <td class:list={TD_NUMERIC}>{formatShareBps(row.shareBps)}</td>
+                              <td class:list={TD}>
+                                {/* The same green/rose vocabulary describeResolutionStatus
+                                    gives `passed` / `rejected`, for the same reason: a
+                                    colour that means one thing at the top of the page
+                                    must not mean another halfway down it. Both now come
+                                    from the one BADGE_TONES table, so they cannot drift. */}
+                                {row.choice === "for" && <span class:list={[BADGE, BADGE_TONES.success]}>Za</span>}
+                                {row.choice === "against" && (
+                                  <span class:list={[BADGE, BADGE_TONES.danger]}>Przeciw</span>
+                                )}
+                                {row.choice !== "for" && row.choice !== "against" && (
+                                  <span class:list={[BADGE, BADGE_TONES.warning]}>Nieznany głos</span>
+                                )}
+                              </td>
+                              <td class:list={[TD, "text-muted-foreground"]}>{formatResolutionDate(row.castAt)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {trail.notCast.length > 0 && (
+                    <div class:list={[ALERT, ALERT_TONES.warning, "mt-6"]}>
+                      <h3 class="font-semibold">Kto nie oddał głosu</h3>
+                      <p class="mt-1 opacity-90">
+                        Ci właściciele nie zagłosowali. Próg liczy się od wszystkich udziałów w budynku, więc ich
+                        udziały zadziałały w skutku jak głos przeciw uchwale — i tak zostały policzone w wyniku powyżej.
                       </p>
+                      <ul class="mt-3 space-y-1">
+                        {trail.notCast.map((owner) => (
+                          <li>
+                            {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-                      {trail.cast.length === 0 ? (
-                        <p class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-blue-100/80">
-                          Nikt nie oddał głosu.
-                        </p>
-                      ) : (
-                        <div class="overflow-x-auto rounded-xl border border-white/10">
-                          <table class="w-full text-left text-sm">
-                            <thead class="bg-white/5 text-xs tracking-wide text-blue-100/60 uppercase">
-                              <tr>
-                                <th scope="col" class="px-4 py-3 font-medium">
-                                  Właściciel
-                                </th>
-                                <th scope="col" class="px-4 py-3 font-medium">
-                                  Lokale
-                                </th>
-                                <th scope="col" class="px-4 py-3 text-right font-medium">
-                                  Udział
-                                </th>
-                                <th scope="col" class="px-4 py-3 font-medium">
-                                  Głos
-                                </th>
-                                <th scope="col" class="px-4 py-3 font-medium">
-                                  Kiedy
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody class="divide-y divide-white/5">
-                              {trail.cast.map((row) => (
-                                <tr>
-                                  {/* A null name means the vote's owner is missing from the
-                                      registry read -- unreachable while the composite foreign
-                                      key holds. Said plainly rather than left blank: an empty
-                                      cell reads as a formatting slip, and this would be a
-                                      broken invariant worth chasing. */}
-                                  <td class="px-4 py-3 font-medium">
-                                    {row.fullName ?? <span class="text-amber-200">Właściciel spoza rejestru</span>}
-                                  </td>
-                                  <td class="px-4 py-3">{row.unitNumbers.join(", ")}</td>
-                                  <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(row.shareBps)}</td>
-                                  <td class="px-4 py-3">
-                                    {/* The same green/rose vocabulary describeResolutionStatus
-                                        gives `passed` / `rejected`, for the same reason: a
-                                        colour that means one thing at the top of the page
-                                        must not mean another halfway down it. */}
-                                    {row.choice === "for" && (
-                                      <span class="rounded-full border border-green-400/40 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-200">
-                                        Za
-                                      </span>
-                                    )}
-                                    {row.choice === "against" && (
-                                      <span class="rounded-full border border-rose-400/40 bg-rose-500/10 px-2.5 py-0.5 text-xs font-medium text-rose-100">
-                                        Przeciw
-                                      </span>
-                                    )}
-                                    {row.choice !== "for" && row.choice !== "against" && (
-                                      <span class="rounded-full border border-amber-400/40 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-100">
-                                        Nieznany głos
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td class="px-4 py-3 text-blue-100/80">{formatResolutionDate(row.castAt)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
-                      {trail.notCast.length > 0 && (
-                        <div class="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
-                          <h3 class="text-sm font-medium text-amber-100">Kto nie oddał głosu</h3>
-                          <p class="mt-1 text-sm text-amber-100/80">
-                            Ci właściciele nie zagłosowali. Próg liczy się od wszystkich udziałów w budynku, więc ich
-                            udziały zadziałały w skutku jak głos przeciw uchwale — i tak zostały policzone w wyniku
-                            powyżej.
-                          </p>
-                          <ul class="mt-3 space-y-1 text-sm text-amber-100/90">
-                            {trail.notCast.map((owner) => (
-                              <li>
-                                {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* The reconciliation, summed from the rows above and NOT copied from
+                  {/* The reconciliation, summed from the rows above and NOT copied from
                           resolution_tally. That is what gives it something to say: if it
                           disagreed with the balance panel, or failed to reach 100,00%, an
                           owner would be missing or double-counted and this line is where it
                           would show. Echoing the tally would make it agree by construction. */}
-                      <p class="mt-4 text-xs text-blue-100/60">
-                        Rozliczenie śladu: za <span class="font-medium text-white">{formatShareBps(trail.forBps)}</span>
-                        {" + "}przeciw <span class="font-medium text-white">{formatShareBps(trail.againstBps)}</span>
-                        {" + "}nieoddane <span class="font-medium text-white">{formatShareBps(trail.notCastBps)}</span>
-                        {" = "}
-                        <span class="font-medium text-white">
-                          {formatShareBps(trail.forBps + trail.againstBps + trail.notCastBps)}
-                        </span>{" "}
-                        — wszystkie udziały w budynku są rozliczone.
-                      </p>
-                    </div>
-                  )}
-
-                  <div class="mt-8 mb-4 flex flex-wrap items-baseline justify-between gap-2">
-                    <h2 class="text-lg font-semibold">Linki do głosowania</h2>
-                    <p class="text-sm text-blue-100/60">
-                      Właścicieli z linkiem: <span class="font-medium text-white">{linkedOwners.length}</span>
-                    </p>
-                  </div>
-
-                  <p class="mb-4 text-sm text-blue-100/70">
-                    Linki są zapisane w bazie i nie są tutaj pokazywane — link jest jedynym dowodem tożsamości
-                    głosującego, więc trafia wyłącznie do właściciela, na jego adres e-mail.
+                  <p class:list={["mt-4", FINE_PRINT]}>
+                    Rozliczenie śladu: za{" "}
+                    <span class="text-foreground font-medium tabular-nums">{formatShareBps(trail.forBps)}</span>
+                    {" + "}przeciw{" "}
+                    <span class="text-foreground font-medium tabular-nums">{formatShareBps(trail.againstBps)}</span>
+                    {" + "}nieoddane{" "}
+                    <span class="text-foreground font-medium tabular-nums">{formatShareBps(trail.notCastBps)}</span>
+                    {" = "}
+                    <span class="text-foreground font-medium tabular-nums">
+                      {formatShareBps(trail.forBps + trail.againstBps + trail.notCastBps)}
+                    </span>{" "}
+                    — wszystkie udziały w budynku są rozliczone.
                   </p>
+                </div>
+              )}
 
-                  {/* Deliberately NOT gated on isEmailConfigured(): a missing binding is
+              <div class="mt-8 mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 class:list={SECTION_TITLE}>Linki do głosowania</h2>
+                <p class:list={MUTED_TEXT}>
+                  Właścicieli z linkiem: <span class="text-foreground font-medium">{linkedOwners.length}</span>
+                </p>
+              </div>
+
+              <p class:list={["mb-4", MUTED_TEXT]}>
+                Linki są zapisane w bazie i nie są tutaj pokazywane — link jest jedynym dowodem tożsamości głosującego,
+                więc trafia wyłącznie do właściciela, na jego adres e-mail.
+              </p>
+
+              {/* Deliberately NOT gated on isEmailConfigured(): a missing binding is
                       recorded per owner as E_BINDING_MISSING like any other failure and
                       cleared by the resume once it returns. Hiding the button would turn
                       the only failure this slice can deliberately produce into an
                       unreachable branch. */}
-                  {unsentCount > 0 && (
-                    <div class="mb-6 rounded-xl border border-purple-400/30 bg-purple-500/10 p-4">
-                      <h3 class="text-sm font-semibold">{anySent ? "Dokończ rozsyłkę" : "Roześlij linki"}</h3>
-                      <p class="mt-1 text-sm text-blue-100/80">
-                        Każdy właściciel dostanie osobną wiadomość z treścią uchwały i swoim własnym linkiem. Wysyłka
-                        dużego budynku trwa do około minuty — nie zamykaj tej strony. Jeśli przerwiesz, nic nie
-                        przepadnie: naciśnij przycisk ponownie, a wyślemy tylko do tych, którzy jeszcze nie dostali
-                        linku. Nikt nie dostanie wiadomości dwa razy.
-                      </p>
-                      <form
-                        method="POST"
-                        action={`/api/buildings/${building.id}/resolutions/${resolution.id}/send`}
-                        class="mt-4"
-                        data-send-form
-                      >
-                        <button
-                          type="submit"
-                          class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
-                          data-send-button
-                        >
-                          {anySent ? `Wyślij pozostałe linki (${unsentCount})` : `Roześlij linki (${unsentCount})`}
-                        </button>
-                      </form>
-                    </div>
-                  )}
+              {unsentCount > 0 && (
+                <div class:list={[CARD, "border-primary/30 bg-primary/5 mb-6 p-5"]}>
+                  <h3 class:list={SUBSECTION_TITLE}>{anySent ? "Dokończ rozsyłkę" : "Roześlij linki"}</h3>
+                  <p class:list={["mt-1", MUTED_TEXT]}>
+                    Każdy właściciel dostanie osobną wiadomość z treścią uchwały i swoim własnym linkiem. Wysyłka dużego
+                    budynku trwa do około minuty — nie zamykaj tej strony. Jeśli przerwiesz, nic nie przepadnie:
+                    naciśnij przycisk ponownie, a wyślemy tylko do tych, którzy jeszcze nie dostali linku. Nikt nie
+                    dostanie wiadomości dwa razy.
+                  </p>
+                  <form
+                    method="POST"
+                    action={`/api/buildings/${building.id}/resolutions/${resolution.id}/send`}
+                    class="mt-4"
+                    data-send-form
+                  >
+                    <button type="submit" class:list={[BUTTON_PRIMARY, "disabled:cursor-not-allowed"]} data-send-button>
+                      {anySent ? `Wyślij pozostałe linki (${unsentCount})` : `Roześlij linki (${unsentCount})`}
+                    </button>
+                  </form>
+                </div>
+              )}
 
-                  <div class="overflow-x-auto rounded-xl border border-white/10">
-                    <table class="w-full text-left text-sm">
-                      <thead class="bg-white/5 text-xs tracking-wide text-blue-100/60 uppercase">
-                        <tr>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            Właściciel
-                          </th>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            E-mail
-                          </th>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            Lokale
-                          </th>
-                          <th scope="col" class="px-4 py-3 text-right font-medium">
-                            Udział
-                          </th>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            Status linku
-                          </th>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            Wysyłka
-                          </th>
+              <div class:list={TABLE_WRAP}>
+                <table class:list={TABLE}>
+                  <thead class:list={TABLE_HEAD}>
+                    <tr>
+                      <th scope="col" class:list={TH}>
+                        Właściciel
+                      </th>
+                      <th scope="col" class:list={TH}>
+                        E-mail
+                      </th>
+                      <th scope="col" class:list={TH}>
+                        Lokale
+                      </th>
+                      <th scope="col" class:list={TH_NUMERIC}>
+                        Udział
+                      </th>
+                      <th scope="col" class:list={TH}>
+                        Status linku
+                      </th>
+                      <th scope="col" class:list={TH}>
+                        Wysyłka
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class:list={TABLE_BODY}>
+                    {linkedOwners.map((owner) => {
+                      const status = sendStatusOf(owner);
+                      return (
+                        <tr class:list={TABLE_ROW}>
+                          <td class:list={[TD, "font-medium"]}>{owner.fullName}</td>
+                          <td class:list={[TD, "text-muted-foreground"]}>{owner.email}</td>
+                          <td class:list={TD}>{owner.unitNumbers.join(", ")}</td>
+                          <td class:list={TD_NUMERIC}>{formatShareBps(owner.shareBps)}</td>
+                          <td class:list={TD}>
+                            <span class:list={[BADGE, BADGE_TONES.success]}>Wystawiony</span>
+                          </td>
+                          <td class:list={TD}>
+                            {status.kind === "sent" && (
+                              <span class:list={[BADGE, BADGE_TONES.success]}>
+                                Wysłano {formatResolutionDate(status.at)}
+                              </span>
+                            )}
+                            {status.kind === "error" && (
+                              <>
+                                <span class:list={[BADGE, "border-red-300 bg-red-50 text-red-900"]}>Błąd</span>
+                                <span class="mt-1 block text-xs text-red-800">{status.sentence}</span>
+                              </>
+                            )}
+                            {status.kind === "pending" && (
+                              <span class:list={[BADGE, BADGE_TONES.neutral]}>Niewysłane</span>
+                            )}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody class="divide-y divide-white/5">
-                        {linkedOwners.map((owner) => {
-                          const status = sendStatusOf(owner);
-                          return (
-                            <tr>
-                              <td class="px-4 py-3 font-medium">{owner.fullName}</td>
-                              <td class="px-4 py-3">{owner.email}</td>
-                              <td class="px-4 py-3">{owner.unitNumbers.join(", ")}</td>
-                              <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(owner.shareBps)}</td>
-                              <td class="px-4 py-3">
-                                <span class="rounded-full border border-green-400/40 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-200">
-                                  Wystawiony
-                                </span>
-                              </td>
-                              <td class="px-4 py-3">
-                                {status.kind === "sent" && (
-                                  <span class="rounded-full border border-green-400/40 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-200">
-                                    Wysłano {formatResolutionDate(status.at)}
-                                  </span>
-                                )}
-                                {status.kind === "error" && (
-                                  <>
-                                    <span class="rounded-full border border-red-400/40 bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-200">
-                                      Błąd
-                                    </span>
-                                    <span class="mt-1 block text-xs text-red-200/80">{status.sentence}</span>
-                                  </>
-                                )}
-                                {status.kind === "pending" && (
-                                  <span class="rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-xs font-medium text-blue-100/70">
-                                    Niewysłane
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-                  {ownersMissingLink.length > 0 && (
-                    <div class="mt-6 rounded-xl border border-red-500/40 bg-red-900/30 p-4" role="alert">
-                      <h3 class="text-sm font-medium text-red-200">Brakuje linków do głosowania</h3>
-                      <p class="mt-1 text-sm text-red-200/90">
-                        Ci właściciele mają adres e-mail w rejestrze, ale nie powstał dla nich link. Naciśnij
-                        <span class="font-medium"> Uruchom głosowanie </span>
-                        jeszcze raz — brakujące linki zostaną wystawione, a te już istniejące pozostaną bez zmian.
-                      </p>
-                      <ul class="mt-3 space-y-1 text-sm text-red-100">
-                        {ownersMissingLink.map((owner) => (
-                          <li>
-                            {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
-                          </li>
-                        ))}
-                      </ul>
-                      <form
-                        method="POST"
-                        action={`/api/buildings/${building.id}/resolutions/${resolution.id}/open`}
-                        class="mt-4"
-                      >
-                        <button
-                          type="submit"
-                          class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500"
-                        >
-                          Uruchom głosowanie
-                        </button>
-                      </form>
-                    </div>
-                  )}
+              {ownersMissingLink.length > 0 && (
+                <div class:list={[ALERT, ALERT_TONES.error, "mt-6"]} role="alert">
+                  <h3 class="font-semibold">Brakuje linków do głosowania</h3>
+                  <p class="mt-1">
+                    Ci właściciele mają adres e-mail w rejestrze, ale nie powstał dla nich link. Naciśnij
+                    <span class="font-medium"> Uruchom głosowanie </span>
+                    jeszcze raz — brakujące linki zostaną wystawione, a te już istniejące pozostaną bez zmian.
+                  </p>
+                  <ul class="mt-3 space-y-1">
+                    {ownersMissingLink.map((owner) => (
+                      <li>
+                        {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
+                      </li>
+                    ))}
+                  </ul>
+                  <form
+                    method="POST"
+                    action={`/api/buildings/${building.id}/resolutions/${resolution.id}/open`}
+                    class="mt-4"
+                  >
+                    <button type="submit" class:list={BUTTON_PRIMARY}>
+                      Uruchom głosowanie
+                    </button>
+                  </form>
+                </div>
+              )}
 
-                  {ownersWithoutEmail.length > 0 && (
-                    <div class="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
-                      <h3 class="text-sm font-medium text-amber-100">Właściciele bez linku</h3>
-                      <p class="mt-1 text-sm text-amber-100/80">
-                        Ci właściciele nie mają adresu e-mail w rejestrze, więc nie powstał dla nich link. Nie dostaną
-                        żadnej wiadomości i trzeba dotrzeć do nich poza aplikacją — listownie lub osobiście. Nie są
-                        liczeni jako nieudana wysyłka, bo nie było czego wysłać; ich udziały nadal liczą się do progu
-                        większości.
-                      </p>
-                      <ul class="mt-3 space-y-1 text-sm text-amber-100/90">
-                        {ownersWithoutEmail.map((owner) => (
-                          <li>
-                            {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </>
+              {ownersWithoutEmail.length > 0 && (
+                <div class:list={[ALERT, ALERT_TONES.warning, "mt-6"]}>
+                  <h3 class="font-semibold">Właściciele bez linku</h3>
+                  <p class="mt-1 opacity-90">
+                    Ci właściciele nie mają adresu e-mail w rejestrze, więc nie powstał dla nich link. Nie dostaną
+                    żadnej wiadomości i trzeba dotrzeć do nich poza aplikacją — listownie lub osobiście. Nie są liczeni
+                    jako nieudana wysyłka, bo nie było czego wysłać; ich udziały nadal liczą się do progu większości.
+                  </p>
+                  <ul class="mt-3 space-y-1">
+                    {ownersWithoutEmail.map((owner) => (
+                      <li>
+                        {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </>
-          )
-        )
-      }
+          )}
+        </>
+      )
+    )
+  }
 
-      <p class="mt-8 text-center text-sm">
-        <a
-          href={building ? `/buildings/${building.id}/resolutions` : "/buildings"}
-          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
-        >
-          Wróć do uchwał
-        </a>
-      </p>
-    </div>
-  </div>
-</Layout>
+  <p class="mt-8 text-center text-sm">
+    <a href={building ? `/buildings/${building.id}/resolutions` : "/buildings"} class:list={NAV_LINK}>Wróć do uchwał</a>
+  </p>
+</AppShell>
 
 <script>
   // The fanout holds the request open for as long as the run takes -- tens of seconds for a

@@ -3,6 +3,18 @@ import "@/styles/global.css";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps } from "@/lib/shares";
 import { formatResolutionDate, isResolutionDecided } from "@/lib/resolutions";
+import {
+  CARD_PADDED,
+  PANEL,
+  PAGE_TITLE,
+  SECTION_TITLE,
+  MUTED_TEXT,
+  BUTTON_PRIMARY_BLOCK,
+  BUTTON_SECONDARY_BLOCK,
+  ALERT,
+  ALERT_TONES,
+  ALERT_ERROR,
+} from "@/lib/ui";
 
 /**
  * The only route in this application reachable without a session.
@@ -206,56 +218,57 @@ const outcomeText =
 // path worked and the write did not, which is the one failure that can be named here.
 const error = Astro.url.searchParams.get("error");
 
-const primaryButtonClass =
-  "w-full rounded-lg bg-purple-600 px-4 py-3 font-medium text-white transition-colors hover:bg-purple-500";
-// Both choices share it, deliberately: a Za styled more invitingly than a Przeciw is the
-// interface putting a thumb on a vote.
+// Both choices share one class, deliberately: a Za styled more invitingly than a Przeciw is
+// the interface putting a thumb on a vote. Neither is the primary button — the primary is the
+// confirm on the next screen, which is the press that actually writes.
 const choiceButtonClass =
-  "w-full rounded-lg border border-white/20 bg-white/5 px-4 py-3 text-lg font-semibold text-white transition-colors hover:border-purple-400/50 hover:bg-white/10";
+  "w-full rounded-md border border-input bg-card px-4 py-3.5 text-lg font-semibold text-foreground transition-colors hover:border-ring hover:bg-accent";
 ---
 
 <!doctype html>
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <title>{view ? `Uchwała ${view.resolutionNumber}` : "Głosowanie"}</title>
   </head>
-  <body>
-    <div class="bg-cosmic min-h-screen p-4 py-12">
-      <div
-        class="mx-auto w-full max-w-2xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
-      >
+  <body class="bg-background text-foreground min-h-screen">
+    {
+      /* No topbar and no AppShell here — both carry links, and this page must have none: a
+        click on one would put the voting token into a Referer header on its way off-site.
+        The wordmark below is plain text for exactly that reason; do not make it a link. */
+    }
+    <div class="mx-auto w-full max-w-2xl px-4 py-10 sm:py-14">
+      <p class="text-muted-foreground mb-6 text-sm font-semibold tracking-tight">EstateManager</p>
+
+      <div class:list={CARD_PADDED}>
         {
           view ? (
             <>
-              <p class="text-sm text-blue-100/60">{view.buildingName}</p>
-              <h1 class="mt-1 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
-                Uchwała {view.resolutionNumber}
-              </h1>
-              <h2 class="mt-2 text-lg font-semibold">{view.resolutionTitle}</h2>
+              <p class:list={MUTED_TEXT}>{view.buildingName}</p>
+              <h1 class:list={["mt-1", PAGE_TITLE]}>Uchwała {view.resolutionNumber}</h1>
+              <h2 class:list={["mt-2", SECTION_TITLE]}>{view.resolutionTitle}</h2>
 
               {/* set:text rather than children: whitespace-pre-wrap would otherwise render
                   the template's own indentation as part of the resolution. */}
-              <p class="mt-4 text-sm whitespace-pre-wrap text-blue-100/80" set:text={view.resolutionBody} />
+              <p
+                class="text-foreground mt-4 text-sm leading-relaxed whitespace-pre-wrap"
+                set:text={view.resolutionBody}
+              />
 
-              <div class="mt-8 rounded-xl border border-white/10 bg-white/5 p-4">
-                <p class="text-sm text-blue-100/60">
-                  {state.kind === "receipt" ? "Głos oddany przez" : "Głosujesz jako"}
-                </p>
-                <p class="mt-1 font-medium">{view.ownerFullName}</p>
-                <p class="mt-1 text-sm text-blue-100/70">
+              <div class:list={[PANEL, "mt-8"]}>
+                <p class:list={MUTED_TEXT}>{state.kind === "receipt" ? "Głos oddany przez" : "Głosujesz jako"}</p>
+                <p class="text-foreground mt-1 font-medium">{view.ownerFullName}</p>
+                <p class:list={["mt-1", MUTED_TEXT]}>
                   {view.ownerUnitNumbers.length === 1 ? "Lokal" : "Lokale"}: {view.ownerUnitNumbers.join(", ")} · Udział
-                  w głosowaniu: <span class="font-medium text-white">{formatShareBps(view.ownerShareBps)}</span>
+                  w głosowaniu:{" "}
+                  <span class="text-foreground font-semibold tabular-nums">{formatShareBps(view.ownerShareBps)}</span>
                 </p>
               </div>
 
               {error && (
-                <p
-                  class="mt-6 rounded-xl border border-red-500/30 bg-red-900/30 px-4 py-3 text-sm text-red-300"
-                  role="alert"
-                >
+                <p class:list={[ALERT_ERROR, "mt-6"]} role="alert">
                   {error}
                 </p>
               )}
@@ -268,22 +281,16 @@ const choiceButtonClass =
               {outcomeText && (
                 <div
                   class:list={[
-                    "mt-6 rounded-xl border p-4",
-                    view.resolutionStatus === "passed"
-                      ? "border-green-400/40 bg-green-500/10"
-                      : "border-rose-400/40 bg-rose-500/10",
+                    ALERT,
+                    "mt-6",
+                    view.resolutionStatus === "passed" ? ALERT_TONES.success : ALERT_TONES.danger,
                   ]}
                 >
-                  <h2
-                    class:list={[
-                      "text-lg font-semibold",
-                      view.resolutionStatus === "passed" ? "text-green-100" : "text-rose-100",
-                    ]}
-                  >
+                  <h2 class="text-base font-semibold">
                     {view.resolutionStatus === "passed" ? "Uchwała została podjęta" : "Uchwała upadła"}
                   </h2>
-                  <p class="mt-2 text-sm text-blue-100/90">{outcomeText}</p>
-                  <p class="mt-2 text-sm text-blue-100/70">Głosowanie nad tą uchwałą zostało zakończone.</p>
+                  <p class="mt-2">{outcomeText}</p>
+                  <p class="mt-2 opacity-80">Głosowanie nad tą uchwałą zostało zakończone.</p>
                 </div>
               )}
 
@@ -294,19 +301,19 @@ const choiceButtonClass =
                   there: /api/vote/[token] must go on answering a late vote exactly as it
                   answers an unknown token. */}
               {state.kind === "closed" && (
-                <p class="mt-4 text-sm text-blue-100/70">
+                <p class:list={["mt-4", MUTED_TEXT]}>
                   Pod tym linkiem nie oddano głosu, a głosowanie jest już zamknięte — nie można go teraz oddać.
                 </p>
               )}
 
               {state.kind === "receipt" && (
-                <div class="mt-6 rounded-xl border border-green-400/40 bg-green-500/10 p-4">
-                  <h2 class="text-lg font-semibold text-green-100">Twój głos został zapisany</h2>
-                  <p class="mt-2 text-sm text-blue-100/90">
-                    Zagłosowano: <span class="text-lg font-semibold text-white">{choiceLabel(state.choice)}</span>
+                <div class:list={[ALERT, ALERT_TONES.success, "mt-6"]}>
+                  <h2 class="text-base font-semibold">Twój głos został zapisany</h2>
+                  <p class="mt-2">
+                    Zagłosowano: <span class="text-lg font-semibold">{choiceLabel(state.choice)}</span>
                   </p>
-                  <p class="mt-1 text-sm text-blue-100/70">Zapisano {formatResolutionDate(state.votedAt)}</p>
-                  <p class="mt-3 text-sm text-blue-100/80">
+                  <p class="mt-1 opacity-80">Zapisano {formatResolutionDate(state.votedAt)}</p>
+                  <p class="mt-3">
                     Głosu nie można zmienić ani wycofać. Zachowaj ten link — pod nim zawsze zobaczysz to potwierdzenie
                     {isDecided ? " oraz wynik głosowania." : "."}
                   </p>
@@ -314,19 +321,16 @@ const choiceButtonClass =
               )}
 
               {state.kind === "confirm" && (
-                <div class="mt-6 rounded-xl border border-amber-400/40 bg-amber-500/10 p-4">
-                  <h2 class="text-lg font-semibold text-amber-100">Potwierdź swój głos</h2>
-                  <p class="mt-2 text-sm text-blue-100/90">
-                    Zamierzasz zagłosować:{" "}
-                    <span class="text-lg font-semibold text-white">{choiceLabel(state.choice)}</span>
+                <div class:list={[ALERT, ALERT_TONES.warning, "mt-6"]}>
+                  <h2 class="text-base font-semibold">Potwierdź swój głos</h2>
+                  <p class="mt-2">
+                    Zamierzasz zagłosować: <span class="text-lg font-semibold">{choiceLabel(state.choice)}</span>
                   </p>
-                  <p class="mt-3 text-sm text-amber-100/90">
-                    Głos jest ostateczny. Po zapisaniu nie można go zmienić ani wycofać.
-                  </p>
+                  <p class="mt-3">Głos jest ostateczny. Po zapisaniu nie można go zmienić ani wycofać.</p>
 
                   <form method="POST" action={view.castAction} class="mt-4">
                     <input type="hidden" name="choice" value={state.choice} />
-                    <button type="submit" class:list={primaryButtonClass}>
+                    <button type="submit" class:list={BUTTON_PRIMARY_BLOCK}>
                       Oddaję głos — potwierdzam
                     </button>
                   </form>
@@ -335,10 +339,7 @@ const choiceButtonClass =
                       that drops ?wybor and lands back on the buttons. An anchor would do the
                       same thing at the cost of putting the token in an href (property 2). */}
                   <form method="get" class="mt-3">
-                    <button
-                      type="submit"
-                      class="w-full rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:border-purple-400/50 hover:bg-white/10"
-                    >
+                    <button type="submit" class:list={BUTTON_SECONDARY_BLOCK}>
                       Wróć do wyboru
                     </button>
                   </form>
@@ -347,7 +348,7 @@ const choiceButtonClass =
 
               {state.kind === "buttons" && (
                 <div class="mt-6">
-                  <p class="text-sm text-blue-100/80">
+                  <p class="text-foreground text-sm">
                     Zagłosuj nad uchwałą. Twój głos waży tyle, ile wynosi udział Twoich lokali — poprosimy jeszcze o
                     potwierdzenie, zanim go zapiszemy.
                   </p>
@@ -367,10 +368,8 @@ const choiceButtonClass =
             </>
           ) : (
             <>
-              <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
-                Nie znaleziono głosowania
-              </h1>
-              <p class="mt-3 text-sm text-blue-100/80">
+              <h1 class:list={PAGE_TITLE}>Nie znaleziono głosowania</h1>
+              <p class="text-muted-foreground mt-3 text-sm">
                 Ten link jest niepoprawny albo głosowanie nie zostało jeszcze uruchomione. Skontaktuj się z zarządcą
                 swojej wspólnoty.
               </p>
@@ -381,12 +380,3 @@ const choiceButtonClass =
     </div>
   </body>
 </html>
-
-<style>
-  html,
-  body {
-    margin: 0;
-    width: 100%;
-    height: 100%;
-  }
-</style>

@@ -3,6 +3,10 @@ import "../styles/global.css";
 import Banner from "@/components/Banner.astro";
 import { getMissingConfigs } from "@/lib/config-status";
 
+// The document. Chrome above the content — the topbar, the page frame — belongs to
+// AppShell.astro, which wraps this; a screen that wants the document without the chrome
+// (there is one: /vote/<token>, and its page comment says why) uses neither.
+
 interface Props {
   title?: string;
 }
@@ -12,18 +16,23 @@ const missingConfigs = getMissingConfigs();
 ---
 
 <!doctype html>
-<html lang="en">
+{
+  /* `pl`, not `en`: every word this application renders is Polish. A screen reader takes the
+    document language as its pronunciation rule, so `en` had it reading Polish names with
+    English phonetics. */
+}
+<html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <title>{title}</title>
   </head>
-  <body>
+  <body class="bg-background text-foreground min-h-screen">
     {
       missingConfigs.map((cfg) => (
         <Banner variant="error">
-          <strong>Uwaga:</strong> {cfg.message}
+          <strong class="font-semibold">Uwaga:</strong> {cfg.message}
           {cfg.docsUrl && (
             <>
               {" "}
@@ -39,12 +48,3 @@ const missingConfigs = getMissingConfigs();
     <slot />
   </body>
 </html>
-
-<style>
-  html,
-  body {
-    margin: 0;
-    width: 100%;
-    height: 100%;
-  }
-</style>

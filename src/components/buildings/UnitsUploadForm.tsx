@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FileSpreadsheet, Upload } from "lucide-react";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { ServerError } from "@/components/auth/ServerError";
+import { LABEL, FIELD_ERROR } from "@/lib/ui";
 
 interface Props {
   serverError?: string | null;
@@ -30,25 +31,25 @@ export default function UnitsUploadForm({ serverError }: Props) {
     // No action: the form posts back to the page it is on, which handles POST itself.
     <form method="POST" encType="multipart/form-data" className="space-y-4" onSubmit={handleSubmit} noValidate>
       <div className="space-y-2">
-        <label htmlFor="file" className="block text-sm font-medium text-blue-100/80">
+        <label htmlFor="file" className={LABEL}>
           Plik CSV z listą lokali
         </label>
 
         <label
           htmlFor="file"
-          className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-white/20 bg-white/5 px-4 py-8 text-center transition-colors hover:border-purple-400/50 hover:bg-white/10"
+          className="border-input bg-muted/40 hover:border-ring hover:bg-accent flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-8 text-center transition-colors"
         >
           {fileName ? (
             <>
-              <FileSpreadsheet className="size-6 text-purple-300" />
-              <span className="text-sm font-medium break-all text-white">{fileName}</span>
-              <span className="text-xs text-blue-100/50">Kliknij, żeby wybrać inny plik</span>
+              <FileSpreadsheet aria-hidden="true" className="text-primary size-6" />
+              <span className="text-foreground text-sm font-medium break-all">{fileName}</span>
+              <span className="text-muted-foreground text-xs">Kliknij, żeby wybrać inny plik</span>
             </>
           ) : (
             <>
-              <Upload className="size-6 text-blue-100/60" />
-              <span className="text-sm text-blue-100/80">Kliknij, żeby wybrać plik</span>
-              <span className="text-xs text-blue-100/50">Format CSV, kodowanie UTF-8</span>
+              <Upload aria-hidden="true" className="text-muted-foreground size-6" />
+              <span className="text-foreground text-sm">Kliknij, żeby wybrać plik</span>
+              <span className="text-muted-foreground text-xs">Format CSV, kodowanie UTF-8</span>
             </>
           )}
         </label>
@@ -66,7 +67,11 @@ export default function UnitsUploadForm({ serverError }: Props) {
           }}
         />
 
-        {error && <p className="text-sm text-red-300">{error}</p>}
+        {error && (
+          <p className={FIELD_ERROR} role="alert">
+            {error}
+          </p>
+        )}
       </div>
 
       <ServerError message={serverError} />

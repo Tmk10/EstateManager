@@ -1,8 +1,26 @@
 ---
-import Layout from "@/layouts/Layout.astro";
+import AppShell from "@/components/AppShell.astro";
 import BuildingHeader from "@/components/buildings/BuildingHeader.astro";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps, formatSquareMetres, TOTAL_BPS } from "@/lib/shares";
+import {
+  SECTION_TITLE,
+  MUTED_TEXT,
+  FINE_PRINT,
+  BUTTON_PRIMARY,
+  ALERT_ERROR,
+  EMPTY_STATE,
+  TABLE_WRAP,
+  TABLE,
+  TABLE_HEAD,
+  TABLE_BODY,
+  TABLE_ROW,
+  TABLE_FOOT,
+  TH,
+  TH_NUMERIC,
+  TD,
+  TD_NUMERIC,
+} from "@/lib/ui";
 
 // The base module of a building (roadmap `S-09`, level 2): lokale and their właściciele. This
 // table lived on `/buildings/<id>` until the building page became the index of its modules.
@@ -77,123 +95,102 @@ if (!supabase) {
 const shareTotal = units.reduce((sum, unit) => sum + unit.share_bps, 0);
 ---
 
-<Layout title={building ? `Rejestr lokali — ${building.name}` : "Rejestr lokali"}>
-  <div class="bg-cosmic min-h-screen p-4 py-12">
-    <div
-      class="mx-auto w-full max-w-4xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
-    >
-      {
-        loadError ? (
-          <p class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300" role="alert">
-            {loadError}
-          </p>
-        ) : (
-          building && (
-            <>
-              <BuildingHeader building={building} activeModule="units" />
+<AppShell title={building ? `Rejestr lokali — ${building.name}` : "Rejestr lokali"} width="wide">
+  {
+    loadError ? (
+      <p class:list={ALERT_ERROR} role="alert">
+        {loadError}
+      </p>
+    ) : (
+      building && (
+        <>
+          <BuildingHeader building={building} activeModule="units" />
 
-              {error && (
-                <p
-                  class="mb-6 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
-                  role="alert"
-                >
-                  {error}
+          {error && (
+            <p class:list={[ALERT_ERROR, "mb-6"]} role="alert">
+              {error}
+            </p>
+          )}
+
+          {units.length > 0 ? (
+            <>
+              <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 class:list={SECTION_TITLE}>Rejestr lokali</h2>
+                <p class:list={MUTED_TEXT}>
+                  Lokali: <span class="text-foreground font-medium">{units.length}</span>
+                  {building.total_area_m2 !== null && (
+                    <>
+                      {" · "}Łączna powierzchnia:{" "}
+                      <span class="text-foreground font-medium">{formatSquareMetres(building.total_area_m2)} m²</span>
+                    </>
+                  )}
+                </p>
+              </div>
+
+              <div class:list={TABLE_WRAP}>
+                <table class:list={TABLE}>
+                  <thead class:list={TABLE_HEAD}>
+                    <tr>
+                      <th scope="col" class:list={TH}>
+                        Nr lokalu
+                      </th>
+                      <th scope="col" class:list={TH_NUMERIC}>
+                        Metraż
+                      </th>
+                      <th scope="col" class:list={TH_NUMERIC}>
+                        Udział
+                      </th>
+                      <th scope="col" class:list={TH}>
+                        Właściciel
+                      </th>
+                      <th scope="col" class:list={TH}>
+                        E-mail
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class:list={TABLE_BODY}>
+                    {units.map((unit) => (
+                      <tr class:list={TABLE_ROW}>
+                        <td class:list={[TD, "font-medium"]}>{unit.unit_number}</td>
+                        <td class:list={TD_NUMERIC}>{formatSquareMetres(unit.area_m2)} m²</td>
+                        <td class:list={TD_NUMERIC}>{formatShareBps(unit.share_bps)}</td>
+                        <td class:list={TD}>{unit.full_name}</td>
+                        <td class:list={TD}>{unit.email ?? <span class="text-muted-foreground">brak</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot class:list={TABLE_FOOT}>
+                    <tr>
+                      <td class:list={TD}>Razem</td>
+                      <td class:list={TD_NUMERIC}>
+                        {building.total_area_m2 !== null && `${formatSquareMetres(building.total_area_m2)} m²`}
+                      </td>
+                      <td class:list={TD_NUMERIC}>{formatShareBps(shareTotal)}</td>
+                      <td class:list={TD} colspan="2" />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {shareTotal !== TOTAL_BPS && (
+                <p class:list={[ALERT_ERROR, "mt-4"]} role="alert">
+                  Suma udziałów wynosi {formatShareBps(shareTotal)} zamiast 100,00%. Zgłoś to jako błąd.
                 </p>
               )}
-
-              {units.length > 0 ? (
-                <>
-                  <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-                    <h2 class="text-lg font-semibold">Rejestr lokali</h2>
-                    <p class="text-sm text-blue-100/60">
-                      Lokali: <span class="font-medium text-white">{units.length}</span>
-                      {building.total_area_m2 !== null && (
-                        <>
-                          {" · "}Łączna powierzchnia:{" "}
-                          <span class="font-medium text-white">{formatSquareMetres(building.total_area_m2)} m²</span>
-                        </>
-                      )}
-                    </p>
-                  </div>
-
-                  <div class="overflow-x-auto rounded-xl border border-white/10">
-                    <table class="w-full text-left text-sm">
-                      <thead class="bg-white/5 text-xs tracking-wide text-blue-100/60 uppercase">
-                        <tr>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            Nr lokalu
-                          </th>
-                          <th scope="col" class="px-4 py-3 text-right font-medium">
-                            Metraż
-                          </th>
-                          <th scope="col" class="px-4 py-3 text-right font-medium">
-                            Udział
-                          </th>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            Właściciel
-                          </th>
-                          <th scope="col" class="px-4 py-3 font-medium">
-                            E-mail
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-white/5">
-                        {units.map((unit) => (
-                          <tr>
-                            <td class="px-4 py-3 font-medium">{unit.unit_number}</td>
-                            <td class="px-4 py-3 text-right tabular-nums">{formatSquareMetres(unit.area_m2)} m²</td>
-                            <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(unit.share_bps)}</td>
-                            <td class="px-4 py-3">{unit.full_name}</td>
-                            <td class="px-4 py-3">{unit.email ?? <span class="text-blue-100/40">brak</span>}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot class="border-t border-white/10 bg-white/5 font-medium">
-                        <tr>
-                          <td class="px-4 py-3">Razem</td>
-                          <td class="px-4 py-3 text-right tabular-nums">
-                            {building.total_area_m2 !== null && `${formatSquareMetres(building.total_area_m2)} m²`}
-                          </td>
-                          <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(shareTotal)}</td>
-                          <td class="px-4 py-3" colspan="2" />
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-
-                  {shareTotal !== TOTAL_BPS && (
-                    <p class="mt-4 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
-                      Suma udziałów wynosi {formatShareBps(shareTotal)} zamiast 100,00%. Zgłoś to jako błąd.
-                    </p>
-                  )}
-                </>
-              ) : (
-                <div class="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-10 text-center">
-                  <p class="text-blue-100/80">Ten budynek nie ma jeszcze rejestru lokali.</p>
-                  <p class="mt-1 text-sm text-blue-100/50">
-                    Wczytaj listę lokali z pliku CSV, żeby policzyć udziały właścicieli.
-                  </p>
-                  <a
-                    href={`/buildings/${building.id}/units/import`}
-                    class="mt-5 inline-block rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-purple-500"
-                  >
-                    Wczytaj lokale z pliku CSV
-                  </a>
-                </div>
-              )}
             </>
-          )
-        )
-      }
-
-      <p class="mt-8 text-center text-sm">
-        <a
-          href={building ? `/buildings/${building.id}` : "/buildings"}
-          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
-        >
-          Wróć do budynku
-        </a>
-      </p>
-    </div>
-  </div>
-</Layout>
+          ) : (
+            <div class:list={EMPTY_STATE}>
+              <p class="text-foreground text-sm">Ten budynek nie ma jeszcze rejestru lokali.</p>
+              <p class:list={["mt-1", FINE_PRINT]}>
+                Wczytaj listę lokali z pliku CSV, żeby policzyć udziały właścicieli.
+              </p>
+              <a href={`/buildings/${building.id}/units/import`} class:list={[BUTTON_PRIMARY, "mt-5"]}>
+                Wczytaj lokale z pliku CSV
+              </a>
+            </div>
+          )}
+        </>
+      )
+    )
+  }
+</AppShell>

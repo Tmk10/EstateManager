@@ -1,6 +1,19 @@
 ---
-import Layout from "@/layouts/Layout.astro";
+import AppShell from "@/components/AppShell.astro";
 import { createClient } from "@/lib/supabase";
+import {
+  CARD_PADDED,
+  PAGE_TITLE,
+  MUTED_TEXT,
+  FINE_PRINT,
+  LABEL,
+  INPUT,
+  BUTTON_PRIMARY_BLOCK,
+  BUTTON_PRIMARY,
+  ALERT_ERROR,
+  EMPTY_STATE,
+  NAV_LINK,
+} from "@/lib/ui";
 
 const { id } = Astro.params;
 
@@ -49,123 +62,98 @@ if (!supabase) {
     }
   }
 }
-
-const inputClass =
-  "w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white placeholder-white/40 transition-colors focus:border-purple-400/50 focus:ring-2 focus:ring-purple-400 focus:outline-none";
 ---
 
-<Layout title="Nowa uchwała">
-  <div class="bg-cosmic min-h-screen p-4 py-12">
-    <div
-      class="mx-auto w-full max-w-2xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
-    >
-      {
-        loadError ? (
-          <p class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300" role="alert">
-            {loadError}
-          </p>
-        ) : (
-          building && (
-            <>
-              <div class="mb-6">
-                <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
-                  Nowa uchwała
-                </h1>
-                <p class="mt-1 text-sm text-blue-100/60">
-                  {building.name} — {building.street}, {building.city}
-                </p>
-              </div>
-
-              {hasRegistry ? (
-                <>
-                  <p class="mb-6 text-sm text-blue-100/80">
-                    Uchwała powstaje jako wersja robocza — nikt jej nie widzi i można ją poprawiać. Linki do głosowania
-                    powstaną dopiero po uruchomieniu głosowania.
-                  </p>
-
-                  {error && (
-                    <p
-                      class="mb-6 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
-                      role="alert"
-                    >
-                      {error}
-                    </p>
-                  )}
-
-                  <form method="POST" action={`/api/buildings/${building.id}/resolutions`} class="space-y-4">
-                    <div>
-                      <label for="number" class="mb-1 block text-sm text-blue-100/80">
-                        Numer uchwały
-                      </label>
-                      <input
-                        id="number"
-                        name="number"
-                        type="text"
-                        maxlength="50"
-                        required
-                        placeholder="1/2026"
-                        class:list={inputClass}
-                      />
-                    </div>
-
-                    <div>
-                      <label for="title" class="mb-1 block text-sm text-blue-100/80">
-                        Tytuł
-                      </label>
-                      <input
-                        id="title"
-                        name="title"
-                        type="text"
-                        maxlength="200"
-                        required
-                        placeholder="Remont dachu"
-                        class:list={inputClass}
-                      />
-                    </div>
-
-                    <div>
-                      <label for="body" class="mb-1 block text-sm text-blue-100/80">
-                        Treść uchwały
-                      </label>
-                      <textarea id="body" name="body" rows="10" maxlength="20000" required class:list={inputClass} />
-                    </div>
-
-                    <button
-                      type="submit"
-                      class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
-                    >
-                      Zapisz wersję roboczą
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <div class="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-10 text-center">
-                  <p class="text-blue-100/80">Ten budynek nie ma jeszcze rejestru lokali.</p>
-                  <p class="mt-1 text-sm text-blue-100/50">
-                    Bez rejestru nie wiadomo, komu wystawić link do głosowania i jaki ma udział. Wczytaj lokale, zanim
-                    napiszesz uchwałę.
-                  </p>
-                  <a
-                    href={`/buildings/${building.id}/units/import`}
-                    class="mt-5 inline-block rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-purple-500"
-                  >
-                    Wczytaj lokale z pliku CSV
-                  </a>
-                </div>
-              )}
-            </>
-          )
-        )
-      }
-
-      <p class="mt-8 text-center text-sm">
-        <a
-          href={building ? `/buildings/${building.id}/resolutions` : "/buildings"}
-          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
-        >
-          Wróć do uchwał
-        </a>
+<AppShell title="Nowa uchwała">
+  {
+    loadError ? (
+      <p class:list={ALERT_ERROR} role="alert">
+        {loadError}
       </p>
-    </div>
-  </div>
-</Layout>
+    ) : (
+      building && (
+        <>
+          <div class="mb-6">
+            <h1 class:list={PAGE_TITLE}>Nowa uchwała</h1>
+            <p class:list={["mt-1", MUTED_TEXT]}>
+              {building.name} — {building.street}, {building.city}
+            </p>
+          </div>
+
+          {hasRegistry ? (
+            <div class:list={CARD_PADDED}>
+              <p class:list={["mb-6", MUTED_TEXT]}>
+                Uchwała powstaje jako wersja robocza — nikt jej nie widzi i można ją poprawiać. Linki do głosowania
+                powstaną dopiero po uruchomieniu głosowania.
+              </p>
+
+              {error && (
+                <p class:list={[ALERT_ERROR, "mb-6"]} role="alert">
+                  {error}
+                </p>
+              )}
+
+              <form method="POST" action={`/api/buildings/${building.id}/resolutions`} class="space-y-5">
+                <div>
+                  <label for="number" class:list={LABEL}>
+                    Numer uchwały
+                  </label>
+                  <input
+                    id="number"
+                    name="number"
+                    type="text"
+                    maxlength="50"
+                    required
+                    placeholder="1/2026"
+                    class:list={INPUT}
+                  />
+                </div>
+
+                <div>
+                  <label for="title" class:list={LABEL}>
+                    Tytuł
+                  </label>
+                  <input
+                    id="title"
+                    name="title"
+                    type="text"
+                    maxlength="200"
+                    required
+                    placeholder="Remont dachu"
+                    class:list={INPUT}
+                  />
+                </div>
+
+                <div>
+                  <label for="body" class:list={LABEL}>
+                    Treść uchwały
+                  </label>
+                  <textarea id="body" name="body" rows="10" maxlength="20000" required class:list={INPUT} />
+                </div>
+
+                <button type="submit" class:list={BUTTON_PRIMARY_BLOCK}>
+                  Zapisz wersję roboczą
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div class:list={EMPTY_STATE}>
+              <p class="text-foreground text-sm">Ten budynek nie ma jeszcze rejestru lokali.</p>
+              <p class:list={["mt-1", FINE_PRINT]}>
+                Bez rejestru nie wiadomo, komu wystawić link do głosowania i jaki ma udział. Wczytaj lokale, zanim
+                napiszesz uchwałę.
+              </p>
+              <a href={`/buildings/${building.id}/units/import`} class:list={[BUTTON_PRIMARY, "mt-5"]}>
+                Wczytaj lokale z pliku CSV
+              </a>
+            </div>
+          )}
+        </>
+      )
+    )
+  }
+
+  <p class="mt-6 text-center text-sm">
+    <a href={building ? `/buildings/${building.id}/resolutions` : "/buildings"} class:list={NAV_LINK}>Wróć do uchwał</a>
+  </p>
+</AppShell>

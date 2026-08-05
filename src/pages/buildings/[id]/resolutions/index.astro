@@ -1,8 +1,9 @@
 ---
-import Layout from "@/layouts/Layout.astro";
+import AppShell from "@/components/AppShell.astro";
 import BuildingHeader from "@/components/buildings/BuildingHeader.astro";
 import { createClient } from "@/lib/supabase";
 import { formatResolutionDate, describeResolutionStatus, isResolutionDecided } from "@/lib/resolutions";
+import { SECTION_TITLE, FINE_PRINT, BUTTON_PRIMARY, ALERT_ERROR, EMPTY_STATE, BADGE, CARD } from "@/lib/ui";
 
 // The voting module of a building (roadmap `S-09`, level 2). This file was written twice: once
 // here by `S-05`, once on the `S-09` branch, which had been cut before `S-05` existed. `S-05`'s
@@ -86,114 +87,88 @@ if (!supabase) {
 }
 ---
 
-<Layout title={building ? `Uchwały — ${building.name}` : "Uchwały"}>
-  <div class="bg-cosmic min-h-screen p-4 py-12">
-    <div
-      class="mx-auto w-full max-w-4xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
-    >
-      {
-        loadError ? (
-          <p class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300" role="alert">
-            {loadError}
-          </p>
-        ) : (
-          building && (
-            <>
-              <BuildingHeader building={building} activeModule="resolutions" />
-
-              {error && (
-                <p
-                  class="mb-6 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
-                  role="alert"
-                >
-                  {error}
-                </p>
-              )}
-
-              <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 class="text-lg font-semibold">
-                  Uchwały <span class="ml-1 text-sm font-normal text-blue-100/60">{resolutions.length}</span>
-                </h2>
-                {hasRegistry && (
-                  <a
-                    href={`/buildings/${building.id}/resolutions/new`}
-                    class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-purple-500"
-                  >
-                    Nowa uchwała
-                  </a>
-                )}
-              </div>
-
-              {!hasRegistry ? (
-                <div class="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-10 text-center">
-                  <p class="text-blue-100/80">Ten budynek nie ma jeszcze rejestru lokali.</p>
-                  <p class="mt-1 text-sm text-blue-100/50">
-                    Bez rejestru nie wiadomo, komu wystawić link do głosowania i jaki ma udział. Wczytaj lokale, zanim
-                    napiszesz uchwałę.
-                  </p>
-                  <a
-                    href={`/buildings/${building.id}/units/import`}
-                    class="mt-5 inline-block rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-purple-500"
-                  >
-                    Wczytaj lokale z pliku CSV
-                  </a>
-                </div>
-              ) : resolutions.length > 0 ? (
-                <ul class="divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10">
-                  {resolutions.map((item) => {
-                    const badge = describeResolutionStatus(item.status);
-                    // A decided uchwała is dated by when it was decided; one still running, by
-                    // when it opened. Never both, and never the difference between them:
-                    // opened_at carries the Worker's clock and decided_at the database's.
-                    const timestamp = isResolutionDecided(item.status) ? item.decided_at : item.opened_at;
-                    const timestampLabel = isResolutionDecided(item.status) ? "rozstrzygnięta" : "od";
-
-                    return (
-                      <li>
-                        <a
-                          href={`/buildings/${building.id}/resolutions/${item.id}`}
-                          class="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 transition-colors hover:bg-white/5"
-                        >
-                          <span class="text-sm">
-                            <span class="font-medium">{item.number}</span>
-                            <span class="text-blue-100/70"> — {item.title}</span>
-                          </span>
-                          <span class="flex items-baseline gap-3 text-xs">
-                            {timestamp !== null && (
-                              <span class="text-blue-100/50">
-                                {timestampLabel} {formatResolutionDate(timestamp)}
-                              </span>
-                            )}
-                            <span class:list={["rounded-full px-2.5 py-0.5 font-medium", badge.className]}>
-                              {badge.label}
-                            </span>
-                          </span>
-                        </a>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <div class="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-8 text-center">
-                  <p class="text-blue-100/80">Ten budynek nie ma jeszcze żadnej uchwały.</p>
-                  <p class="mt-1 text-sm text-blue-100/50">
-                    Napisz uchwałę, a po uruchomieniu głosowania każdy właściciel dostanie własny link.
-                  </p>
-                </div>
-              )}
-            </>
-          )
-        )
-      }
-
-      <p class="mt-8 text-center text-sm">
-        <a
-          href={building ? `/buildings/${building.id}` : "/buildings"}
-          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
-        >
-          Wróć do budynku
-        </a>
+<AppShell title={building ? `Uchwały — ${building.name}` : "Uchwały"} width="wide">
+  {
+    loadError ? (
+      <p class:list={ALERT_ERROR} role="alert">
+        {loadError}
       </p>
-    </div>
-  </div>
-</Layout>
+    ) : (
+      building && (
+        <>
+          <BuildingHeader building={building} activeModule="resolutions" />
+
+          {error && (
+            <p class:list={[ALERT_ERROR, "mb-6"]} role="alert">
+              {error}
+            </p>
+          )}
+
+          <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 class:list={SECTION_TITLE}>
+              Uchwały <span class="text-muted-foreground ml-1 text-sm font-normal">{resolutions.length}</span>
+            </h2>
+            {hasRegistry && (
+              <a href={`/buildings/${building.id}/resolutions/new`} class:list={BUTTON_PRIMARY}>
+                Nowa uchwała
+              </a>
+            )}
+          </div>
+
+          {!hasRegistry ? (
+            <div class:list={EMPTY_STATE}>
+              <p class="text-foreground text-sm">Ten budynek nie ma jeszcze rejestru lokali.</p>
+              <p class:list={["mt-1", FINE_PRINT]}>
+                Bez rejestru nie wiadomo, komu wystawić link do głosowania i jaki ma udział. Wczytaj lokale, zanim
+                napiszesz uchwałę.
+              </p>
+              <a href={`/buildings/${building.id}/units/import`} class:list={[BUTTON_PRIMARY, "mt-5"]}>
+                Wczytaj lokale z pliku CSV
+              </a>
+            </div>
+          ) : resolutions.length > 0 ? (
+            <ul class:list={[CARD, "divide-border divide-y overflow-hidden"]}>
+              {resolutions.map((item) => {
+                const badge = describeResolutionStatus(item.status);
+                // A decided uchwała is dated by when it was decided; one still running, by
+                // when it opened. Never both, and never the difference between them:
+                // opened_at carries the Worker's clock and decided_at the database's.
+                const timestamp = isResolutionDecided(item.status) ? item.decided_at : item.opened_at;
+                const timestampLabel = isResolutionDecided(item.status) ? "rozstrzygnięta" : "od";
+
+                return (
+                  <li>
+                    <a
+                      href={`/buildings/${building.id}/resolutions/${item.id}`}
+                      class="hover:bg-muted/50 flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 transition-colors"
+                    >
+                      <span class="text-sm">
+                        <span class="text-foreground font-medium">{item.number}</span>
+                        <span class="text-muted-foreground"> — {item.title}</span>
+                      </span>
+                      <span class="flex items-center gap-3">
+                        {timestamp !== null && (
+                          <span class:list={FINE_PRINT}>
+                            {timestampLabel} {formatResolutionDate(timestamp)}
+                          </span>
+                        )}
+                        <span class:list={[BADGE, badge.className]}>{badge.label}</span>
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div class:list={EMPTY_STATE}>
+              <p class="text-foreground text-sm">Ten budynek nie ma jeszcze żadnej uchwały.</p>
+              <p class:list={["mt-1", FINE_PRINT]}>
+                Napisz uchwałę, a po uruchomieniu głosowania każdy właściciel dostanie własny link.
+              </p>
+            </div>
+          )}
+        </>
+      )
+    )
+  }
+</AppShell>

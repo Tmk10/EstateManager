@@ -1,6 +1,16 @@
 ---
-import Layout from "@/layouts/Layout.astro";
+import AppShell from "@/components/AppShell.astro";
 import { createClient } from "@/lib/supabase";
+import {
+  CARD,
+  PAGE_TITLE,
+  SECTION_TITLE,
+  MUTED_TEXT,
+  BUTTON_PRIMARY,
+  ALERT_ERROR,
+  EMPTY_STATE,
+  FINE_PRINT,
+} from "@/lib/ui";
 
 // Middleware has already bounced anonymous visitors (PROTECTED_ROUTES), so reaching
 // this line means there is a signed-in administrator. The client can still be null
@@ -13,60 +23,37 @@ const { data: buildings, error } = supabase
   : { data: null, error: { message: "Baza danych nie jest skonfigurowana." } };
 ---
 
-<Layout title="Budynki">
-  <div class="bg-cosmic min-h-screen p-4 py-12">
-    <div
-      class="mx-auto w-full max-w-2xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
-    >
-      <div class="mb-6 flex items-center justify-between gap-4">
-        <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
-          Budynki
-        </h1>
-        <a
-          href="/buildings/new"
-          class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-purple-500"
-        >
-          Dodaj budynek
-        </a>
-      </div>
-
-      {
-        error ? (
-          <p class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300" role="alert">
-            Nie udało się wczytać listy budynków: {error.message}
-          </p>
-        ) : buildings.length > 0 ? (
-          <ul class="space-y-3">
-            {buildings.map((building) => (
-              <li>
-                <a
-                  href={`/buildings/${building.id}`}
-                  class="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition-colors hover:border-purple-400/40 hover:bg-white/10"
-                >
-                  <p class="font-medium">{building.name}</p>
-                  <p class="mt-1 text-sm text-blue-100/60">
-                    {building.street}, {building.city}
-                  </p>
-                </a>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div class="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-10 text-center">
-            <p class="text-blue-100/80">Nie ma jeszcze żadnego budynku.</p>
-            <p class="mt-1 text-sm text-blue-100/50">Dodaj pierwszy, żeby zacząć.</p>
-          </div>
-        )
-      }
-
-      <p class="mt-8 text-center text-sm">
-        <a
-          href="/dashboard"
-          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
-        >
-          Wróć do panelu
-        </a>
-      </p>
-    </div>
+<AppShell title="Budynki">
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <h1 class:list={PAGE_TITLE}>Budynki</h1>
+    <a href="/buildings/new" class:list={BUTTON_PRIMARY}>Dodaj budynek</a>
   </div>
-</Layout>
+
+  {
+    error ? (
+      <p class:list={ALERT_ERROR} role="alert">
+        Nie udało się wczytać listy budynków: {error.message}
+      </p>
+    ) : buildings.length > 0 ? (
+      <ul class="grid gap-3 sm:grid-cols-2">
+        {buildings.map((building) => (
+          <li class:list={[CARD, "hover:border-ring hover:bg-accent/40 relative p-5 transition-colors"]}>
+            <h2 class:list={SECTION_TITLE}>
+              <a href={`/buildings/${building.id}`} class="after:absolute after:inset-0">
+                {building.name}
+              </a>
+            </h2>
+            <p class:list={["mt-1", MUTED_TEXT]}>
+              {building.street}, {building.city}
+            </p>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <div class:list={EMPTY_STATE}>
+        <p class="text-foreground text-sm">Nie ma jeszcze żadnego budynku.</p>
+        <p class:list={["mt-1", FINE_PRINT]}>Dodaj pierwszy, żeby zacząć.</p>
+      </div>
+    )
+  }
+</AppShell>

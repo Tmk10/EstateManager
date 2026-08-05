@@ -1,5 +1,6 @@
 ---
 import { BUILDING_MODULES, buildingModuleHref } from "@/lib/building-modules";
+import { PAGE_TITLE, MUTED_TEXT, NAV_LINK } from "@/lib/ui";
 
 // The building context every level-2 screen carries. The roadmap (`S-09`) names this — not the
 // cards — as the substance of the slice: navigation has to hold the state "I am in building X",
@@ -7,6 +8,10 @@ import { BUILDING_MODULES, buildingModuleHref } from "@/lib/building-modules";
 //
 // `activeModule` is omitted on the module index itself: there the cards are the navigation, and
 // a strip repeating them above would be the same list twice.
+//
+// The strip is drawn as underlined tabs rather than as pills. Tabs read as "these are the
+// sections of the thing named above" and pills read as "these are buttons"; the distinction
+// matters here because the building's name sits directly above them and is what they belong to.
 
 interface Props {
   building: { id: string; name: string; city: string; street: string };
@@ -16,34 +21,29 @@ interface Props {
 const { building, activeModule } = Astro.props;
 ---
 
-<div class="mb-6">
-  <nav aria-label="Ścieżka nawigacji" class="mb-3 text-sm text-blue-100/50">
-    <a href="/buildings" class="underline-offset-4 transition-colors hover:text-blue-100 hover:underline"> Budynki </a>
-    <span aria-hidden="true" class="px-1.5">/</span>
+<div class="mb-8">
+  <nav aria-label="Ścieżka nawigacji" class="mb-3 flex items-center gap-1.5 text-sm">
+    <a href="/buildings" class:list={NAV_LINK}>Budynki</a>
+    <span aria-hidden="true" class="text-muted-foreground/50">/</span>
     {
       activeModule ? (
-        <a
-          href={`/buildings/${building.id}`}
-          class="underline-offset-4 transition-colors hover:text-blue-100 hover:underline"
-        >
+        <a href={`/buildings/${building.id}`} class:list={NAV_LINK}>
           {building.name}
         </a>
       ) : (
-        <span class="text-blue-100/70">{building.name}</span>
+        <span class="text-foreground">{building.name}</span>
       )
     }
   </nav>
 
-  <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
-    {building.name}
-  </h1>
-  <p class="mt-1 text-sm text-blue-100/60">
+  <h1 class:list={PAGE_TITLE}>{building.name}</h1>
+  <p class:list={["mt-1", MUTED_TEXT]}>
     {building.street}, {building.city}
   </p>
 
   {
     activeModule && (
-      <nav aria-label="Moduły budynku" class="mt-5 flex flex-wrap gap-2">
+      <nav aria-label="Moduły budynku" class="border-border mt-6 flex flex-wrap gap-6 border-b">
         {BUILDING_MODULES.map((module) => {
           const isActive = module.id === activeModule;
           return (
@@ -51,10 +51,10 @@ const { building, activeModule } = Astro.props;
               href={buildingModuleHref(building.id, module)}
               aria-current={isActive ? "page" : undefined}
               class:list={[
-                "rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                "-mb-px border-b-2 pb-2.5 text-sm transition-colors",
                 isActive
-                  ? "border-purple-400/50 bg-purple-500/20 font-medium text-white"
-                  : "border-white/10 bg-white/5 text-blue-100/70 hover:bg-white/10 hover:text-white",
+                  ? "border-primary text-primary font-medium"
+                  : "text-muted-foreground hover:border-border hover:text-foreground border-transparent",
               ]}
             >
               {module.label}

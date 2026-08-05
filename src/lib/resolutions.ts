@@ -14,8 +14,11 @@
  *     correct only while `open` was the only other value; with four statuses a copy left
  *     behind would tell an administrator that a settled uchwała is still collecting votes.
  *
- * Dependency-free apart from the Intl global, like the other src/lib modules.
+ * Dependency-free apart from the Intl global, like the other src/lib modules. The one import
+ * below does not change that: src/lib/ui.ts is string constants and imports nothing itself.
  */
+
+import { BADGE_TONES } from "@/lib/ui";
 
 export interface ResolutionValues {
   number: string;
@@ -98,12 +101,17 @@ export interface ResolutionStatusBadge {
  *   - `passed` takes the green.
  *   - `rejected` is rose. Not styled as an error: an uchwała that fell is an ordinary,
  *     expected outcome — per the PRD it is what happens to roughly 85% of them.
+ *
+ * The four tones themselves live in src/lib/ui.ts, where the rest of the application reads
+ * them from. That indirection is the point: the vote page's outcome panel and the trail's
+ * per-vote pills have to be the same green and the same rose as this badge, or a colour means
+ * one thing at the top of a page and another halfway down it.
  */
 const STATUS_BADGES: Record<ResolutionStatus, ResolutionStatusBadge> = {
-  draft: { label: "Wersja robocza", className: "border border-white/20 bg-white/10 text-blue-100/70" },
-  open: { label: "Głosowanie otwarte", className: "border border-sky-400/40 bg-sky-500/10 text-sky-100" },
-  passed: { label: "Podjęta", className: "border border-green-400/40 bg-green-500/10 text-green-200" },
-  rejected: { label: "Upadła", className: "border border-rose-400/40 bg-rose-500/10 text-rose-100" },
+  draft: { label: "Wersja robocza", className: BADGE_TONES.neutral },
+  open: { label: "Głosowanie otwarte", className: BADGE_TONES.info },
+  passed: { label: "Podjęta", className: BADGE_TONES.success },
+  rejected: { label: "Upadła", className: BADGE_TONES.danger },
 };
 
 /**
@@ -132,7 +140,7 @@ export function describeResolutionStatus(status: string): ResolutionStatusBadge 
 
   return {
     label: "Nieznany status",
-    className: "border border-amber-400/40 bg-amber-500/10 text-amber-100",
+    className: BADGE_TONES.warning,
   };
 }
 
