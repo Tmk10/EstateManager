@@ -503,4 +503,4 @@ schema.
 - [x] 4.4 An owner who voted sees the outcome and their own receipt — 18d0080
 - [x] 4.5 An unknown token still renders the neutral page unchanged — 18d0080
 - [x] 4.6 Production migration applied by hand BEFORE the code is deployed
-- [ ] 4.7 `/api/health` returns 200 after deploy and a production resolution shows its tally
+- [x] 4.7 `/api/health` returns 200 after deploy and a production resolution shows its tally — 6f73637
