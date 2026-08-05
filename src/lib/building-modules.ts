@@ -55,3 +55,41 @@ export const BUILDING_MODULES: BuildingModule[] = [
 export function buildingModuleHref(buildingId: string, module: BuildingModule): string {
   return `/buildings/${buildingId}/${module.path}`;
 }
+
+/**
+ * The building a path is inside, or `null` when it is not inside one.
+ *
+ * Navigation needs this and nothing else about the building: the left rail draws the submodules
+ * of the building being read, and the id is all a link needs. Reading it from the path rather
+ * than taking it as a prop is what keeps every page free of navigation plumbing — eight screens
+ * live under `/buildings/<id>/`, and each of them would otherwise have to hand the shell a
+ * building it has already loaded for its own reasons.
+ *
+ * `/buildings/new` is the create form, not a building; a path with a segment that is not a
+ * building id yet — a mistyped uuid — still reports one, because the answer to "which building
+ * is this page about" belongs to the page, which says so itself when the row is missing.
+ */
+export function currentBuildingId(pathname: string): string | null {
+  const segments = pathname.split("/").filter((segment) => segment.length > 0);
+  if (segments.length < 2 || segments[0] !== "buildings") return null;
+
+  const id = segments[1];
+  if (id === "new") return null;
+
+  return id;
+}
+
+/**
+ * The building module a path is inside, or `null` on the building's own index — where no module
+ * is open yet. Matched against the registry, so a path segment that is not a module (`import`
+ * under the registry, a resolution id under uchwały) resolves to the module it hangs under.
+ */
+export function currentBuildingModuleId(pathname: string): string | null {
+  if (currentBuildingId(pathname) === null) return null;
+
+  const segments = pathname.split("/").filter((segment) => segment.length > 0);
+  if (segments.length < 3) return null;
+
+  const segment = segments[2];
+  return BUILDING_MODULES.find((module) => module.path === segment)?.id ?? null;
+}

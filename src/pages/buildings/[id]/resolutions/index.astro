@@ -96,7 +96,7 @@ if (!supabase) {
     ) : (
       building && (
         <>
-          <BuildingHeader building={building} activeModule="resolutions" />
+          <BuildingHeader building={building} inModule />
 
           {error && (
             <p class:list={[ALERT_ERROR, "mb-6"]} role="alert">

@@ -1,0 +1,273 @@
+---
+// The one picture in the product: a row of blocks of flats, drawn as if with a pencil.
+//
+// It sits on `/` and nowhere else. The reason it is a drawing rather than a photograph or an
+// icon set is the same reason `src/styles/global.css` spends no colour on the chrome — this is
+// a registry of udziały that an administrator reads in long sittings, and a saturated hero
+// image would be the loudest thing in a product whose only meaningful colours are the four
+// states of an uchwała. Graphite on paper says "budynki" without spending any of them.
+//
+// Three things about how it is built:
+//
+// 1. **It is generated, not hand-drawn markup.** The blocks below are data; the windows, the
+//    shading and the roofs come out of them. Nudging the skyline is an edit to BLOCKS, not to
+//    two hundred hand-written `<rect>`s that have to stay in agreement.
+// 2. **The pencil look is one filter plus one pattern.** `feTurbulence` + `feDisplacementMap`
+//    puts a wobble in every straight line, and the whole scene is stroked twice — once firmly,
+//    once faintly and offset — which is what a hand does when it goes back over a line. No
+//    raster asset, no font, no external request: the CSP on this app forbids all three anyway.
+// 3. **It is decorative and says so.** `aria-hidden` — the page's heading already names the
+//    product, and a screen reader gaining "rysunek pięciu budynków" would be noise. The stroke
+//    is `currentColor`, so it follows the text colour rather than pinning a grey of its own.
+
+interface Block {
+  /** Left edge, in viewBox units. */
+  x: number;
+  width: number;
+  /** Top of the facade. The roof is drawn above it. */
+  top: number;
+  roof: "flat" | "gable";
+  /** Window grid. Rows run downwards from just under the roof. */
+  cols: number;
+  rows: number;
+  door?: boolean;
+  chimney?: boolean;
+}
+
+/** Where the street is. Every facade stands on this line. */
+const GROUND = 262;
+
+const BLOCKS: Block[] = [
+  { x: 34, width: 118, top: 138, roof: "gable", cols: 2, rows: 3, door: true },
+  { x: 160, width: 146, top: 92, roof: "flat", cols: 3, rows: 4 },
+  { x: 314, width: 124, top: 120, roof: "gable", cols: 2, rows: 3, chimney: true },
+  { x: 446, width: 158, top: 58, roof: "flat", cols: 3, rows: 5, door: true },
+  { x: 612, width: 104, top: 156, roof: "gable", cols: 2, rows: 2 },
+];
+
+const WINDOW_W = 17;
+const WINDOW_H = 21;
+const ROW_PITCH = 30;
+/** Clear space under the roof line before the first row of windows. */
+const ROOF_CLEARANCE = 26;
+const DOOR_W = 26;
+const DOOR_H = 42;
+
+const facades: string[] = [];
+const roofs: string[] = [];
+const details: string[] = [];
+const shading: { x: number; y: number; width: number; height: number }[] = [];
+const windows: { x: number; y: number; lit: boolean }[] = [];
+
+let windowIndex = 0;
+
+for (const block of BLOCKS) {
+  const { x, width, top } = block;
+  const right = x + width;
+
+  // Open at the bottom: the ground line closes every facade, so a shared street reads as one
+  // stroke rather than as five stacked ones.
+  facades.push(
+    `M ${String(x)} ${String(GROUND)} L ${String(x)} ${String(top)} L ${String(right)} ${String(top)} L ${String(right)} ${String(GROUND)}`,
+  );
+
+  if (block.roof === "gable") {
+    const peak = top - 34;
+    const eaveL = x - 11;
+    const eaveR = right + 11;
+    roofs.push(
+      `M ${String(eaveL)} ${String(top)} L ${String(x + width / 2)} ${String(peak)} L ${String(eaveR)} ${String(top)} L ${String(eaveL)} ${String(top)}`,
+    );
+    if (block.chimney) {
+      const cx = x + width * 0.72;
+      roofs.push(
+        `M ${String(cx)} ${String(top - 14)} L ${String(cx)} ${String(top - 34)} L ${String(cx + 12)} ${String(top - 34)} L ${String(cx + 12)} ${String(top - 21)}`,
+      );
+    }
+  } else {
+    // A parapet, which is what a flat roof of this period actually shows from the street.
+    const parapetTop = top - 10;
+    roofs.push(
+      `M ${String(x - 8)} ${String(top)} L ${String(x - 8)} ${String(parapetTop)} L ${String(right + 8)} ${String(parapetTop)} L ${String(right + 8)} ${String(top)}`,
+    );
+  }
+
+  // Shading down the right-hand side of each facade, as if the light came from the left. One
+  // strip per block, filled with the hatch pattern — the whole reason the scene reads as
+  // graphite rather than as a wireframe.
+  shading.push({ x: right - 24, y: top + 4, width: 24, height: GROUND - top - 4 });
+
+  const gridWidth = width - 32;
+  const gap = block.cols > 1 ? (gridWidth - block.cols * WINDOW_W) / (block.cols - 1) : 0;
+  const firstX = x + 16 + (block.cols > 1 ? 0 : (gridWidth - WINDOW_W) / 2);
+
+  for (let row = 0; row < block.rows; row += 1) {
+    const y = top + ROOF_CLEARANCE + row * ROW_PITCH;
+    // The bottom row would collide with the door, and a window sunk into the pavement reads as
+    // a mistake rather than as a basement.
+    if (y + WINDOW_H > GROUND - (block.door ? DOOR_H + 6 : 10)) break;
+    for (let col = 0; col < block.cols; col += 1) {
+      windows.push({ x: firstX + col * (WINDOW_W + gap), y, lit: windowIndex % 3 === 1 });
+      windowIndex += 1;
+    }
+  }
+
+  if (block.door) {
+    const dx = x + (width - DOOR_W) / 2;
+    details.push(
+      `M ${String(dx)} ${String(GROUND)} L ${String(dx)} ${String(GROUND - DOOR_H)} L ${String(dx + DOOR_W)} ${String(GROUND - DOOR_H)} L ${String(dx + DOOR_W)} ${String(GROUND)}`,
+    );
+    // The step, and the line down the middle of a double door.
+    details.push(
+      `M ${String(dx + DOOR_W / 2)} ${String(GROUND)} L ${String(dx + DOOR_W / 2)} ${String(GROUND - DOOR_H)}`,
+    );
+    details.push(`M ${String(dx - 6)} ${String(GROUND)} L ${String(dx + DOOR_W + 6)} ${String(GROUND)}`);
+  }
+}
+
+/**
+ * Two trees, one at each end of the row — they frame the block rather than stand in front of
+ * it. The gaps between the facades are eight units wide, so a tree placed *between* two of them
+ * covers the windows of both and reads as a balloon on a string.
+ *
+ * The canopy is three overlapping lobes rather than one circle, for the same reason: a single
+ * outlined circle over a facade is a shape, and three that overlap are a tree.
+ */
+const TREES = [
+  { x: 26, canopy: 208, radius: 17 },
+  { x: 742, canopy: 214, radius: 15 },
+];
+
+/** The street itself: one long stroke, plus a few dashes that suggest a kerb without drawing one. */
+const GROUND_LINE = `M 10 ${String(GROUND)} L 760 ${String(GROUND)}`;
+const KERB = [
+  `M 48 ${String(GROUND + 9)} L 118 ${String(GROUND + 9)}`,
+  `M 168 ${String(GROUND + 13)} L 268 ${String(GROUND + 13)}`,
+  `M 330 ${String(GROUND + 8)} L 392 ${String(GROUND + 8)}`,
+  `M 470 ${String(GROUND + 14)} L 604 ${String(GROUND + 14)}`,
+  `M 640 ${String(GROUND + 9)} L 706 ${String(GROUND + 9)}`,
+];
+---
+
+<svg
+  viewBox="0 0 770 300"
+  role="presentation"
+  aria-hidden="true"
+  focusable="false"
+  class="text-foreground/80 h-auto w-full"
+>
+  <defs>
+    <!-- The wobble. Two seeds, so the firm stroke and the faint one do not wander together —
+         a doubled line that displaces identically reads as a printing error, not as a hand. -->
+    <filter id="pencil-graphite" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="11" result="n"></feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"
+      ></feDisplacementMap>
+    </filter>
+    <filter id="pencil-ghost" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="47" result="n"></feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.4" xChannelSelector="R" yChannelSelector="G"
+      ></feDisplacementMap>
+    </filter>
+
+    <!-- Hatching, at the angle a right-handed pencil naturally falls. -->
+    <pattern id="pencil-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(38)">
+      <line x1="0" y1="0" x2="0" y2="7" stroke="currentColor" stroke-width="1.1" opacity="0.34"></line>
+    </pattern>
+    <pattern
+      id="pencil-hatch-dense"
+      width="4.5"
+      height="4.5"
+      patternUnits="userSpaceOnUse"
+      patternTransform="rotate(38)"
+    >
+      <line x1="0" y1="0" x2="0" y2="4.5" stroke="currentColor" stroke-width="1" opacity="0.5"></line>
+    </pattern>
+
+    <!-- Drawn once, stamped twice: the firm pass and the faint one differ only by filter,
+         opacity and a hair of offset, which is the whole trick. -->
+    <g id="pencil-scene" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      {
+        shading.map((strip) => (
+          <rect
+            x={strip.x}
+            y={strip.y}
+            width={strip.width}
+            height={strip.height}
+            fill="url(#pencil-hatch)"
+            stroke="none"
+          />
+        ))
+      }
+
+      {facades.map((d) => <path d={d} stroke-width="2.1" />)}
+      {roofs.map((d) => <path d={d} stroke-width="2.1" />)}
+      {details.map((d) => <path d={d} stroke-width="1.7" />)}
+
+      {
+        windows.map((w) => (
+          <>
+            <rect
+              x={w.x}
+              y={w.y}
+              width={WINDOW_W}
+              height={WINDOW_H}
+              stroke-width="1.5"
+              fill={w.lit ? "url(#pencil-hatch-dense)" : "none"}
+            />
+            {!w.lit && (
+              <path
+                d={`M ${String(w.x)} ${String(w.y + WINDOW_H / 2)} L ${String(w.x + WINDOW_W)} ${String(w.y + WINDOW_H / 2)} M ${String(w.x + WINDOW_W / 2)} ${String(w.y)} L ${String(w.x + WINDOW_W / 2)} ${String(w.y + WINDOW_H)}`}
+                stroke-width="1"
+                opacity="0.65"
+              />
+            )}
+          </>
+        ))
+      }
+
+      {
+        TREES.map((tree) => (
+          <>
+            <path
+              d={`M ${String(tree.x)} ${String(GROUND)} L ${String(tree.x)} ${String(tree.canopy + tree.radius * 0.4)}`}
+              stroke-width="1.8"
+            />
+            <path
+              d={`M ${String(tree.x)} ${String(tree.canopy + tree.radius * 1.1)} L ${String(tree.x - tree.radius * 0.6)} ${String(tree.canopy + tree.radius * 0.5)} M ${String(tree.x)} ${String(tree.canopy + tree.radius * 1.5)} L ${String(tree.x + tree.radius * 0.6)} ${String(tree.canopy + tree.radius * 0.9)}`}
+              stroke-width="1.3"
+              opacity="0.8"
+            />
+            <circle
+              cx={tree.x - tree.radius * 0.55}
+              cy={tree.canopy + tree.radius * 0.25}
+              r={tree.radius * 0.78}
+              stroke-width="1.5"
+              fill="url(#pencil-hatch-dense)"
+            />
+            <circle
+              cx={tree.x + tree.radius * 0.55}
+              cy={tree.canopy + tree.radius * 0.3}
+              r={tree.radius * 0.72}
+              stroke-width="1.5"
+              fill="url(#pencil-hatch-dense)"
+            />
+            <circle
+              cx={tree.x}
+              cy={tree.canopy - tree.radius * 0.4}
+              r={tree.radius * 0.9}
+              stroke-width="1.6"
+              fill="url(#pencil-hatch-dense)"
+            />
+          </>
+        ))
+      }
+
+      <path d={GROUND_LINE} stroke-width="2.2"></path>
+      {KERB.map((d) => <path d={d} stroke-width="1.2" opacity="0.6" />)}
+    </g>
+  </defs>
+
+  <use href="#pencil-scene" filter="url(#pencil-ghost)" opacity="0.4" transform="translate(1.6 1.2)"></use>
+  <use href="#pencil-scene" filter="url(#pencil-graphite)" opacity="0.92"></use>
+</svg>

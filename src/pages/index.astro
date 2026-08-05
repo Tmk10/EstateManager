@@ -1,5 +1,6 @@
 ---
 import AppShell from "@/components/AppShell.astro";
+import PencilSkyline from "@/components/PencilSkyline.astro";
 
 // The start page names the product and says what it is for (`S-08`). It still says nothing
 // else: no feature cards, no second sign-in button — the topbar already carries that, so the
@@ -7,12 +8,22 @@ import AppShell from "@/components/AppShell.astro";
 //
 // What changed here on 2026-08-05 is only the paint. `S-08` recorded "the cosmic styling
 // stays" as an explicit decision; the product owner reversed it, and the orbs, the star field
-// and the gradient-clipped wordmark went with the rest of the starter's vocabulary.
+// and the gradient-clipped wordmark went with the rest of the starter's vocabulary. The pencil
+// drawing below arrived the same day and is the one picture in the product — the component
+// carries the argument for why it is a drawing rather than a photograph.
+//
+// `nav={false}` keeps the module rail off this page even for a signed-in reader: this is the
+// public face of the product, and the drawing is the only thing here that should be competing
+// for attention.
 ---
 
-<AppShell title="EstateManager">
-  <div class="flex flex-col items-center py-20 text-center sm:py-28">
+<AppShell title="EstateManager" nav={false}>
+  <div class="flex flex-col items-center py-16 text-center sm:py-20">
     <h1 class="text-foreground text-4xl font-semibold tracking-tight sm:text-5xl">EstateManager</h1>
     <p class="text-muted-foreground mt-4 max-w-xl text-lg">Twój portal do zarządzania nieruchomościami</p>
+
+    <div class="mt-12 w-full max-w-2xl">
+      <PencilSkyline />
+    </div>
   </div>
 </AppShell>

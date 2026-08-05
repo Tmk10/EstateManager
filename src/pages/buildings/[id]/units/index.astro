@@ -104,7 +104,7 @@ const shareTotal = units.reduce((sum, unit) => sum + unit.share_bps, 0);
     ) : (
       building && (
         <>
-          <BuildingHeader building={building} activeModule="units" />
+          <BuildingHeader building={building} inModule />
 
           {error && (
             <p class:list={[ALERT_ERROR, "mb-6"]} role="alert">
