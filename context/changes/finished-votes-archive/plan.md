@@ -426,13 +426,13 @@ the table. It also cannot be rolled back by `wrangler rollback`, which reverts c
 
 #### Automated
 
-- [x] 3.1 `npx astro sync && npm run lint && npm test && npm run build` all pass
-- [x] 3.2 `git status` shows no unintended files
+- [x] 3.1 `npx astro sync && npm run lint && npm test && npm run build` all pass — 14bbcd1
+- [x] 3.2 `git status` shows no unintended files — 14bbcd1
 
 #### Manual
 
-- [x] 3.3 `7/2026` renders the trail with `za` at 50,01% and reconciliation at 100,00%
-- [x] 3.4 `6/2026` renders the trail with `przeciw` at 74,99%
-- [x] 3.5 An open uchwała shows no trail
-- [x] 3.6 roadmap.md S-06 status reads `done` and its Unknowns record the decision
-- [x] 3.7 CLAUDE.md "Current state" describes what is now built, with the slice count corrected
+- [x] 3.3 `7/2026` renders the trail with `za` at 50,01% and reconciliation at 100,00% — 14bbcd1
+- [x] 3.4 `6/2026` renders the trail with `przeciw` at 74,99% — 14bbcd1
+- [x] 3.5 An open uchwała shows no trail — 14bbcd1
+- [x] 3.6 roadmap.md S-06 status reads `done` and its Unknowns record the decision — 14bbcd1
+- [x] 3.7 CLAUDE.md "Current state" describes what is now built, with the slice count corrected — 14bbcd1
