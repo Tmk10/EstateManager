@@ -24,7 +24,7 @@ Full script list is in `@package.json`. What it doesn't tell you:
 
 - `npm run dev` boots the Cloudflare workerd runtime, not plain Node — runtime differences from Node show up here, not at deploy time.
 - `npm run lint` is type-aware and needs `npx astro sync` first (see above).
-- `npx supabase start` needs Docker and ~7 GB RAM. On this machine Docker Desktop puts its socket at `~/.docker/run/docker.sock` and creates no `/var/run/docker.sock`, so every `supabase` command needs `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock` — or enable _Settings → Advanced → Allow the default Docker socket_ once and forget about it. The `docker` CLI itself lives in `/Applications/Docker.app/Contents/Resources/bin` and is not on `PATH` by default.
+- `npx supabase start` needs Docker and ~7 GB RAM, and on this machine the daemon is not where the CLI looks — the socket path, the `DOCKER_HOST` workaround and where the `docker` binary hides are in `@README.md` (§Supabase Configuration → First-time setup). That section is the single home for local-stack setup; do not restate it here.
 - `npm run db:types` regenerates `src/db/database.types.ts` from the **local** stack, so the stack must be up and migrated first.
 - `npx wrangler deploy` is rarely needed — pushing to `main` deploys. It works locally (`wrangler login` is done), but a manual deploy publishes a tree CI never validated, which is exactly what `deploy.yml`'s ordering exists to prevent.
 - **`wrangler deploy` does not read `wrangler.jsonc`.** It reads `dist/server/wrangler.json`, which the Astro adapter generates at build time — wrangler announces this as _"Using redirected Wrangler configuration"_ and it is easy to read past. **Editing `wrangler.jsonc` changes nothing until you `npm run build`**; deploy without rebuilding and you ship the previous build's bindings. This cost three unintended production e-mails on 2026-08-04, when the `EMAIL` binding was removed from the source to exercise `S-04`'s failure path, deployed without a rebuild, and the fanout ran with a live binding. Second trap in the same file: when the binding is gone the generated config still carries the key with an **empty** value (`"send_email": []`), so `'send_email' in config` is true — test the value, not the key.
@@ -56,7 +56,7 @@ The request path is the part worth knowing:
 - `context/foundation/` — durable product docs: `prd.md`, `tech-stack.md`, `infrastructure.md`, `shape-notes.md`.
 - `context/changes/` — change-scoped work, e.g. `deployment/deployment.md` — the deployment runbook: prerequisites, current state, steps as executed, and the append-only deployment log.
 - `context/docs/` — explanatory material for contributors.
-- Local dev setup, auth routes, and Supabase configuration are documented in `@README.md`; don't duplicate them here.
+- Local dev setup, auth routes, and Supabase configuration are documented in `@README.md`; don't duplicate them here. The split that keeps this honest: **`@README.md` owns procedure** (how to stand the stack up, which commands in which order, what to paste where), **this file owns failure modes** (what breaks, what it looks like when it does, and which incident proved it). A paragraph that is neither is in the wrong file. This line was aspirational until 2026-08-05 — the Docker socket paragraph lived in both files at once — so check it when adding, rather than assuming it held.
 
 ## Current state
 

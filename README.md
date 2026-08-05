@@ -4,19 +4,17 @@ Głosowanie nad uchwałami wspólnoty mieszkaniowej z wagą według udziałów �
 
 Wymagania produktowe i reguły domenowe: [`context/foundation/prd.md`](./context/foundation/prd.md).
 
-## Tech Stack
+## Never do this
 
-- [Astro](https://astro.build/) v6 - Modern web framework with server-first rendering
-- [React](https://react.dev/) v19 - UI library for interactive components
-- [TypeScript](https://www.typescriptlang.org/) v5 - Type-safe JavaScript
-- [Tailwind CSS](https://tailwindcss.com/) v4 - Utility-first CSS framework
-- [Supabase](https://supabase.com/) - Authentication and backend-as-a-service
-- [Cloudflare Workers](https://workers.cloudflare.com/) - Edge deployment runtime
+Each of these is irreversible or reaches production. They are stated in full in the sections linked beside them.
 
-## Prerequisites
+- **Never commit `"remote": true`** on the `send_email` binding — it makes local dev send real mail. Check `git diff wrangler.jsonc` before committing. → [Sending from local dev](#sending-from-local-dev)
+- **Never `npx supabase db push --include-seed`** — the seed mints an administrator account, and against production that is the one code path this project refuses to have. → [Applying migrations to production](#applying-migrations-to-production)
+- **Never `npx supabase db push --include-all`** — it pushes everything missing from the remote history table, which is not what you just read in the dry run. → [Applying migrations to production](#applying-migrations-to-production)
+- **Never use the service-role key**, only the `anon` key — service-role bypasses Row Level Security entirely, on an app whose guardrail is that owners' data never leaves their building. → [Using a cloud Supabase project instead](#using-a-cloud-supabase-project-instead)
+- **Never run `npx wrangler email routing enable`** — inbound routing on the root domain makes it receive *all* mail addressed to it. This project only sends. → [Transactional email · one-time setup](#one-time-setup-manual-not-automated-here)
 
-- Node.js v22.14.0 (as specified in `.nvmrc`)
-- npm (comes with Node.js)
+Built on [Astro](https://astro.build/) (`output: "server"` — every route is server-rendered), [React](https://react.dev/) islands, TypeScript, [Tailwind](https://tailwindcss.com/), [Supabase](https://supabase.com/) for auth and Postgres, and [Cloudflare Workers](https://workers.cloudflare.com/) for hosting. Versions are in [`package.json`](./package.json); the Node version is in [`.nvmrc`](./.nvmrc) and CI holds you to it.
 
 ## Getting Started
 
@@ -42,37 +40,12 @@ npm run dev
 
 Without Supabase credentials the app still builds and runs, but authentication is disabled and a banner says so — the env vars are declared `optional` in `astro.config.mjs`.
 
-## Available Scripts
+## Scripts and layout
 
-- `npm run dev` - Start development server (Cloudflare workerd runtime)
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint with type-checked rules
-- `npm run lint:fix` - Auto-fix ESLint issues
-- `npm run format` - Run Prettier
+The script list lives in [`package.json`](./package.json) and the layout is `src/` — neither is copied here, because both copies had drifted before anyone noticed. Two things `package.json` does not tell you:
 
-On a fresh clone run `npx astro sync` before `npm run lint` — the type-checked rules need Astro's generated types.
-
-## Project Structure
-
-```md
-.
-├── src/
-│ ├── layouts/ # Astro layouts
-│ ├── pages/ # Astro pages
-│ │ ├── api/ # API endpoints
-│ │ └── auth/ # Sign-in page
-│ ├── components/ # UI components (Astro & React)
-│ │ ├── auth/ # Auth form islands (React)
-│ │ └── ui/ # shadcn/ui components
-│ ├── lib/ # Supabase client, helpers
-│ ├── styles/ # Global Tailwind styles
-│ └── middleware.ts # Session resolution + route protection
-├── supabase/ # Local Supabase config, migrations
-├── context/ # Product docs (PRD, tech stack, infrastructure)
-├── public/ # Public assets
-├── wrangler.jsonc # Cloudflare Workers config
-```
+- On a fresh clone run `npx astro sync` before `npm run lint` — the type-checked rules need Astro's generated types.
+- `src/middleware.ts` resolves the session and gates protected routes — a new page is not protected until its path is added to the `PROTECTED_ROUTES` array there.
 
 ## Supabase Configuration
 
@@ -162,7 +135,7 @@ npx supabase db push
 
 Three rules, each of which has a reason rather than a preference behind it:
 
-- **Schema first, then code.** Push the migration, confirm it applied, and only then push to `main`. Reversed, the deploy puts live code in front of a table that does not exist yet.
+- **Schema first, then code.** Push the migration, confirm it landed with `npx supabase migration list --linked` — the timestamp must appear in the **Remote** column, not only in Local — and only then push to `main`. Reversed, the deploy puts live code in front of a table that does not exist yet.
 - **Never `--include-seed`.** The seed mints an administrator account; against production that is exactly the code path this project refuses to have (see the section above).
 - **Never `--include-all`.** It pushes everything missing from the remote history table, which is not necessarily what you just reviewed in the dry run.
 
@@ -182,11 +155,6 @@ If you prefer to use a hosted Supabase project, add these variables to your `.en
 | -------------- | ---------------------------------------------------------- |
 | `SUPABASE_URL` | Project URL from Supabase dashboard → Settings → API       |
 | `SUPABASE_KEY` | `anon` public key from Supabase dashboard → Settings → API |
-
-```
-SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_KEY=<anon-key>
-```
 
 Two constraints on the hosted project, both load-bearing:
 
@@ -223,7 +191,7 @@ This exists because both Supabase vars are `optional: true` in `astro.config.mjs
 
 ## Transactional email
 
-Mail is sent through **Cloudflare Email Service** using the native Workers `send_email` binding — there is no API key and no secret to rotate. `src/lib/email.ts` is the only module that imports `cloudflare:workers`; reach the binding through it rather than directly.
+Mail is sent through **Cloudflare Email Service** using the native Workers `send_email` binding — there is no API key and no secret to rotate. **No module other than `src/lib/email.ts` may import `cloudflare:workers`** — reach the binding through that module. Check with `grep -rn 'from "cloudflare:workers"' src/`; it must return exactly one line, in `src/lib/email.ts`. (Match the import, not the bare string — four other modules mention it in comments explaining why they don't import it.)
 
 > On Astro 6 with `@astrojs/cloudflare` 13, `Astro.locals.runtime.env` **no longer exists**. Bindings come from `import { env } from "cloudflare:workers"`. Tutorials showing the old accessor are wrong for this repo.
 
@@ -247,11 +215,7 @@ The daily quota is **200 messages/day**. It is not settable and `wrangler` does 
 
 ### The binding
 
-`wrangler.jsonc` declares it, locked to the single sending identity so a send from any other address fails at the binding instead of reaching an owner from a wrong `From`:
-
-```jsonc
-"send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["glosowanie@estatemanager.dev"] }]
-```
+The binding is declared in [`wrangler.jsonc`](./wrangler.jsonc) — read its current shape there, not from a copy in this file. Two properties are load-bearing: it is named `EMAIL`, which is the name `src/lib/email.ts` reaches for, and `allowed_sender_addresses` is locked to the single sending identity, so a send from any other address fails at the binding instead of reaching an owner from a wrong `From`.
 
 **After any `wrangler.jsonc` change, regenerate the types and commit them in the same commit:**
 
@@ -276,29 +240,36 @@ curl -s -b cookies.txt -X POST "$BASE/api/email/test" -H "Origin: $BASE" \
 # → {"status":"sent","messageId":"<…@estatemanager.dev>"}
 ```
 
-> **The `Origin` header is required.** Astro's `security.checkOrigin` is on by default and runs *before* middleware, so a form POST without it returns `403 Cross-site POST form submissions are forbidden` — not the auth redirect you may be testing for. This applies to `/api/auth/signin` too.
+> **The `-H "Origin: $BASE"` above is required, not decoration** — on `/api/auth/signin` too. Why it fails the way it does is in `CLAUDE.md`.
 
 Responses: `200 {"status":"sent","messageId":"…"}`, `400 {"status":"error","error":"missing-recipient"}`, `502 {"status":"error","code":"E_…","message":"…"}`.
 
 ### Sending from local dev
 
-Add `"remote": true` to the binding and run `npm run dev`:
+Add one key to the `send_email` binding in `wrangler.jsonc` and run `npm run dev`:
 
 ```jsonc
-"send_email": [{ "name": "EMAIL", "remote": true, "allowed_sender_addresses": ["glosowanie@estatemanager.dev"] }]
+// wrangler.jsonc → send_email[0] — add this key, change nothing else:
+"remote": true
 ```
 
 **This sends real mail** — use only inboxes you control, and **never commit the flag**. Check `git diff wrangler.jsonc` before committing. Note what a passing local run does and does not prove: it proves the account and domain, not that the *deployed* Worker resolves the binding. Only a production send proves that.
 
 ### When the binding is missing
 
-A binding absent from `wrangler.jsonc` is `undefined` at runtime and does **not** throw at deploy time. Two surfaces make that visible: the config-status banner on every page, and `"email":"missing"` in `/api/health`. Neither fails the deploy — `deploy.yml`'s `curl --fail` still passes, deliberately, so a beta channel cannot block shipping the rest of the app. That is a knowing step down from the Supabase treatment, and it should be revisited once mail becomes load-bearing.
+A binding absent from `wrangler.jsonc` is `undefined` at runtime and does **not** throw at deploy time. Two surfaces make that visible: the config-status banner on every page, and `"email":"missing"` in `/api/health`. Neither fails the deploy — `deploy.yml`'s `curl --fail` still passes, deliberately, so a beta channel cannot block shipping the rest of the app.
+
+**That decision is now overdue for revisit, and this is the open question, not a settled position.** It was argued for a channel nothing depended on. Since `S-04` (2026-08-04) the voting-link fanout mails every owner their own link, so a missing binding no longer means "a smoke-test endpoint is down" — it means a building full of owners never receives a ballot, while the deploy reports green. The failure mode was demonstrated on production the same day: with the binding removed, `/api/health` returned `200 {"status":"ok","email":"missing"}` and every owner recorded `E_BINDING_MISSING`. Revisiting means deciding whether `email:"missing"` should return `503` and fail `deploy.yml`.
+
+Also note the propagation lag seen that day: `/api/health` kept reporting the previous binding state for ~15 s after a deploy. Retry before believing it.
 
 ## Deployment
 
 Production runs on [Cloudflare Workers](https://workers.cloudflare.com/) as the Worker named `estate-manager`.
 
-Deployment is automatic: every push to `main` runs `.github/workflows/deploy.yml`, which does `npm ci → astro sync → lint → build` and only then `wrangler deploy`. Any failing step fails the job and nothing ships — that in-job sequence *is* the gate, since branch protection would not cover direct pushes.
+Deployment is automatic: every push to `main` runs `.github/workflows/deploy.yml`, which does `npm ci → astro sync → lint → build` and only then `wrangler deploy`. Any failing step fails the job and nothing ships. That in-job ordering was demonstrated on 2026-08-01 with a deliberate lint error: the job stopped at `npm run lint` with build, deploy and the health assertion all skipped.
+
+**`deploy.yml` is not the only way code reaches production, so do not read the above as a gate.** The Cloudflare dashboard is connected to this GitHub repo directly (Workers Builds, GitHub App `cloudflare-workers-and-pages`) — configuration that exists in neither `.github/workflows/` nor `wrangler.jsonc`, so nothing in a checkout hints at it. It builds and deploys on every push to `main`, independently, and **it does not run `npm run lint`**: on the commit carrying that deliberate lint error, `deploy.yml` failed and `Workers Builds: estate-manager` reported success. Which of the two ends up serving traffic is a race — both have landed last on different days. Tell them apart by author in `npx wrangler deployments list`: `deploy.yml` lands with an empty author, Workers Builds under the account owner's e-mail. Full evidence in the [deployment runbook](./context/changes/deployment/deployment.md).
 
 Manual deploy, rarely needed:
 
