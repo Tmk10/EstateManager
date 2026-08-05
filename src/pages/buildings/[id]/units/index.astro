@@ -1,0 +1,199 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import BuildingHeader from "@/components/buildings/BuildingHeader.astro";
+import { createClient } from "@/lib/supabase";
+import { formatShareBps, formatSquareMetres, TOTAL_BPS } from "@/lib/shares";
+
+// The base module of a building (roadmap `S-09`, level 2): lokale and their właściciele. This
+// table lived on `/buildings/<id>` until the building page became the index of its modules.
+// Behaviour moved with it unchanged — the collation-aware sort, the totals row and the alarm
+// below all predate this route.
+
+const { id } = Astro.params;
+
+// The client can be null when SUPABASE_URL / SUPABASE_KEY are unset — those are optional: true
+// in astro.config.mjs.
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+const error = Astro.url.searchParams.get("error");
+
+let loadError: string | null = null;
+let building: { id: string; name: string; city: string; street: string; total_area_m2: number | null } | null = null;
+let units: {
+  id: string;
+  unit_number: string;
+  area_m2: number;
+  share_bps: number;
+  full_name: string;
+  email: string | null;
+}[] = [];
+
+if (!supabase) {
+  loadError = "Baza danych nie jest skonfigurowana.";
+} else if (!id) {
+  loadError = "Nie znaleziono budynku.";
+} else {
+  const { data, error: buildingError } = await supabase
+    .from("buildings")
+    .select("id, name, city, street, total_area_m2")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (buildingError) {
+    // 22P02 is invalid_text_representation — the id in the URL is not a uuid at all, which is a
+    // wrong address rather than a database problem.
+    loadError = buildingError.code === "22P02" ? "Nie znaleziono budynku." : buildingError.message;
+  } else if (!data) {
+    loadError = "Nie znaleziono budynku.";
+  } else {
+    building = data;
+
+    const { data: unitRows, error: unitsError } = await supabase
+      .from("units")
+      .select("id, unit_number, area_m2, share_bps, owners(full_name, email)")
+      .eq("building_id", id);
+
+    if (unitsError) {
+      loadError = unitsError.message;
+    } else {
+      units = unitRows.map((row) => ({
+        id: row.id,
+        unit_number: row.unit_number,
+        area_m2: row.area_m2,
+        share_bps: row.share_bps,
+        full_name: row.owners.full_name,
+        email: row.owners.email,
+      }));
+
+      // Sorted here rather than in the query because unit numbers are text: ordering them
+      // in SQL puts "10" between "1" and "2", which is visibly wrong to anyone reading
+      // their own registry. Numeric-aware collation gives 1, 2, ... 10 while still
+      // handling "3A" and "12/1".
+      units.sort((a, b) => a.unit_number.localeCompare(b.unit_number, "pl", { numeric: true }));
+    }
+  }
+}
+
+const shareTotal = units.reduce((sum, unit) => sum + unit.share_bps, 0);
+---
+
+<Layout title={building ? `Rejestr lokali — ${building.name}` : "Rejestr lokali"}>
+  <div class="bg-cosmic min-h-screen p-4 py-12">
+    <div
+      class="mx-auto w-full max-w-4xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
+    >
+      {
+        loadError ? (
+          <p class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300" role="alert">
+            {loadError}
+          </p>
+        ) : (
+          building && (
+            <>
+              <BuildingHeader building={building} activeModule="units" />
+
+              {error && (
+                <p
+                  class="mb-6 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              )}
+
+              {units.length > 0 ? (
+                <>
+                  <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 class="text-lg font-semibold">Rejestr lokali</h2>
+                    <p class="text-sm text-blue-100/60">
+                      Lokali: <span class="font-medium text-white">{units.length}</span>
+                      {building.total_area_m2 !== null && (
+                        <>
+                          {" · "}Łączna powierzchnia:{" "}
+                          <span class="font-medium text-white">{formatSquareMetres(building.total_area_m2)} m²</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  <div class="overflow-x-auto rounded-xl border border-white/10">
+                    <table class="w-full text-left text-sm">
+                      <thead class="bg-white/5 text-xs tracking-wide text-blue-100/60 uppercase">
+                        <tr>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            Nr lokalu
+                          </th>
+                          <th scope="col" class="px-4 py-3 text-right font-medium">
+                            Metraż
+                          </th>
+                          <th scope="col" class="px-4 py-3 text-right font-medium">
+                            Udział
+                          </th>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            Właściciel
+                          </th>
+                          <th scope="col" class="px-4 py-3 font-medium">
+                            E-mail
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-white/5">
+                        {units.map((unit) => (
+                          <tr>
+                            <td class="px-4 py-3 font-medium">{unit.unit_number}</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{formatSquareMetres(unit.area_m2)} m²</td>
+                            <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(unit.share_bps)}</td>
+                            <td class="px-4 py-3">{unit.full_name}</td>
+                            <td class="px-4 py-3">{unit.email ?? <span class="text-blue-100/40">brak</span>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot class="border-t border-white/10 bg-white/5 font-medium">
+                        <tr>
+                          <td class="px-4 py-3">Razem</td>
+                          <td class="px-4 py-3 text-right tabular-nums">
+                            {building.total_area_m2 !== null && `${formatSquareMetres(building.total_area_m2)} m²`}
+                          </td>
+                          <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(shareTotal)}</td>
+                          <td class="px-4 py-3" colspan="2" />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {shareTotal !== TOTAL_BPS && (
+                    <p class="mt-4 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+                      Suma udziałów wynosi {formatShareBps(shareTotal)} zamiast 100,00%. Zgłoś to jako błąd.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div class="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-10 text-center">
+                  <p class="text-blue-100/80">Ten budynek nie ma jeszcze rejestru lokali.</p>
+                  <p class="mt-1 text-sm text-blue-100/50">
+                    Wczytaj listę lokali z pliku CSV, żeby policzyć udziały właścicieli.
+                  </p>
+                  <a
+                    href={`/buildings/${building.id}/units/import`}
+                    class="mt-5 inline-block rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-purple-500"
+                  >
+                    Wczytaj lokale z pliku CSV
+                  </a>
+                </div>
+              )}
+            </>
+          )
+        )
+      }
+
+      <p class="mt-8 text-center text-sm">
+        <a
+          href={building ? `/buildings/${building.id}` : "/buildings"}
+          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
+        >
+          Wróć do budynku
+        </a>
+      </p>
+    </div>
+  </div>
+</Layout>
