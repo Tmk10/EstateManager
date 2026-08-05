@@ -275,6 +275,10 @@ export type Database = {
         Args: { p_building_id: string }
         Returns: undefined
       }
+      assert_owner_holds_units: {
+        Args: { p_owner_id: string }
+        Returns: undefined
+      }
       building_units_area_total: {
         Args: { p_building_id: string }
         Returns: number

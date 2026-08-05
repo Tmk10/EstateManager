@@ -3,6 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps } from "@/lib/shares";
 import { formatResolutionDate, describeResolutionStatus, isResolutionDecided } from "@/lib/resolutions";
+import { assembleResolutionTrail, type ResolutionTrail } from "@/lib/resolution-trail";
 // Safe to import here precisely because it is dependency-free: it does NOT import
 // src/lib/email.ts, which would pull `cloudflare:workers` into this component's graph.
 import { describeSendFailure } from "@/lib/voting-link-email";
@@ -79,12 +80,22 @@ let tally: {
 /**
  * How many owners have voted -- a count of *people*, not of udziały. The outcome rule
  * (FR-008) counts only shares, so this number never decides anything; it exists so the
- * administrator can see votes landing before S-05 puts the share balance on this page and
- * replaces it. Deliberately a bare count: no per-owner marker, no choice, no percentage --
- * those carry the question of whether an administrator may see *how* someone voted, which
- * S-06 is scoped to answer and this slice is not.
+ * administrator can see votes landing beside the share balance.
+ *
+ * It used to be a bare PostgREST count, because whether an administrator may see *how*
+ * someone voted was S-06's open question and the answer until then was no. S-06 has now
+ * answered it: an administrator may, on a **settled** uchwała only, per owner and by name.
+ * So this is a length rather than a count. The boundary that still holds is the other one --
+ * an owner never learns another owner's vote, which is a PRD guardrail and is enforced by
+ * `resolve_voting_link` returning only the reader's own row, not by anything on this page.
  */
 let voteCount = 0;
+/**
+ * The audit trail, assembled only for a settled uchwała (FR-009 is scoped to *zakończone*
+ * głosowania). Null while a vote is still running: a live per-owner attribution is a
+ * different product decision and was not taken.
+ */
+let trail: ResolutionTrail | null = null;
 
 if (!supabase) {
   loadError = "Baza danych nie jest skonfigurowana.";
@@ -144,17 +155,29 @@ if (!supabase) {
             .from("voting_links")
             .select("owner_id, sent_at, last_error_code, attempt_count")
             .eq("resolution_id", resolutionId),
-          // head: true — the rows themselves are never wanted here. A vote row carries the
-          // owner and the choice, and neither belongs on this page (see voteCount above);
-          // asking only for the count means the browser cannot receive them by accident.
-          // "id" rather than "*" for the same reason the links read names its column: a
-          // later column-level revoke on this table would turn "*" into a 42501.
-          supabase.from("votes").select("id", { count: "exact", head: true }).eq("resolution_id", resolutionId),
-          // The balance, aggregated in the database. Note what is NOT read anywhere on this
-          // page: a vote row joined to an owner. The function returns sums and nothing that
-          // could be attributed to a person, so there is no shape of this page that can say
-          // how anyone voted — that is S-06's question, and until it is answered the answer
-          // is no.
+          // The vote rows themselves, since S-06. Until then this was `head: true` and a
+          // bare count, because who may see how an owner voted was undecided; it is decided
+          // now — administrator, settled uchwała, per owner and by name — and the rows are
+          // what the trail below is reconstructed from. `share_bps` is the weight the vote
+          // carried when it was cast and is authoritative over any re-sum of the registry
+          // (see the comment on the table), which is why it is read rather than recomputed.
+          // Columns named rather than "*" for the same reason the links read names its own:
+          // a later column-level revoke on this table would turn "*" into a 42501.
+          supabase.from("votes").select("owner_id, choice, share_bps, created_at").eq("resolution_id", resolutionId),
+          // The balance, aggregated in the database. It stays an aggregate even now that the
+          // trail sits below it: `resolution_tally` reports sums and nothing attributable to
+          // a person, and the trail is assembled separately from the vote rows. That
+          // separation is the point — the reconciliation under the trail sums what the trail
+          // itself holds, so a discrepancy between the two panels is visible rather than
+          // impossible by construction.
+          //
+          // Note for whoever reads the SQL: `resolution_tally`'s own `comment on function`
+          // (20260804213630) still says per-owner attribution "is S-06's question and not
+          // answerable here". The first half is stale — S-06 answered it, above — while the
+          // second half remains exactly true of that function. It is not corrected in place
+          // because that would mean a migration whose entire content is a comment, and
+          // migrations here reach production by hand and are forward-only. The correction
+          // rides along with the next migration that has a reason of its own.
           supabase.rpc("resolution_tally", { p_resolution_id: resolutionId }),
         ]);
 
@@ -196,9 +219,19 @@ if (!supabase) {
 
           ownerRows.sort((a, b) => a.fullName.localeCompare(b.fullName, "pl", { numeric: true }));
 
-          // null count means PostgREST answered without one; 0 is the honest reading, and
-          // it renders as "Zagłosowało 0 z N", not as a missing figure.
-          voteCount = votesResult.count ?? 0;
+          voteCount = votesResult.data.length;
+
+          // Assembled only for a settled uchwała, and from the raw reads rather than from
+          // ownerRows above: the assembler is dependency-free and does its own folding, so
+          // it takes the PostgREST rows as they arrive. All of the trail's arithmetic lives
+          // there and none of it here — this page renders what it returns.
+          if (isResolutionDecided(resolution.status)) {
+            trail = assembleResolutionTrail({
+              owners: ownersResult.data,
+              units: unitsResult.data,
+              votes: votesResult.data,
+            });
+          }
 
           // `returns table` over one row arrives as an array of one. Guarded rather than
           // indexed blind: a missing balance must render as absent, never as zeroes, because
@@ -503,6 +536,121 @@ const inputClass =
                       </>
                     )}
                   </div>
+
+                  {/* The audit trail (S-06, FR-009). Rendered for a settled uchwała only --
+                      `trail` is null while a vote is running, so the gate is the assembly
+                      above rather than a second status test here. */}
+                  {trail !== null && (
+                    <div class="mt-8">
+                      <h2 class="text-lg font-semibold">Jak zagłosowano</h2>
+                      <p class="mt-1 mb-4 text-sm text-blue-100/70">
+                        Głosy w kolejności, w jakiej wpłynęły. Udział przy każdym głosie to waga, jaką ten głos miał w
+                        chwili oddania — to ona złożyła się na wynik, niezależnie od tego, co rejestr pokazuje dziś.
+                      </p>
+
+                      {trail.cast.length === 0 ? (
+                        <p class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-blue-100/80">
+                          Nikt nie oddał głosu.
+                        </p>
+                      ) : (
+                        <div class="overflow-x-auto rounded-xl border border-white/10">
+                          <table class="w-full text-left text-sm">
+                            <thead class="bg-white/5 text-xs tracking-wide text-blue-100/60 uppercase">
+                              <tr>
+                                <th scope="col" class="px-4 py-3 font-medium">
+                                  Właściciel
+                                </th>
+                                <th scope="col" class="px-4 py-3 font-medium">
+                                  Lokale
+                                </th>
+                                <th scope="col" class="px-4 py-3 text-right font-medium">
+                                  Udział
+                                </th>
+                                <th scope="col" class="px-4 py-3 font-medium">
+                                  Głos
+                                </th>
+                                <th scope="col" class="px-4 py-3 font-medium">
+                                  Kiedy
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5">
+                              {trail.cast.map((row) => (
+                                <tr>
+                                  {/* A null name means the vote's owner is missing from the
+                                      registry read -- unreachable while the composite foreign
+                                      key holds. Said plainly rather than left blank: an empty
+                                      cell reads as a formatting slip, and this would be a
+                                      broken invariant worth chasing. */}
+                                  <td class="px-4 py-3 font-medium">
+                                    {row.fullName ?? <span class="text-amber-200">Właściciel spoza rejestru</span>}
+                                  </td>
+                                  <td class="px-4 py-3">{row.unitNumbers.join(", ")}</td>
+                                  <td class="px-4 py-3 text-right tabular-nums">{formatShareBps(row.shareBps)}</td>
+                                  <td class="px-4 py-3">
+                                    {/* The same green/rose vocabulary describeResolutionStatus
+                                        gives `passed` / `rejected`, for the same reason: a
+                                        colour that means one thing at the top of the page
+                                        must not mean another halfway down it. */}
+                                    {row.choice === "for" && (
+                                      <span class="rounded-full border border-green-400/40 bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-200">
+                                        Za
+                                      </span>
+                                    )}
+                                    {row.choice === "against" && (
+                                      <span class="rounded-full border border-rose-400/40 bg-rose-500/10 px-2.5 py-0.5 text-xs font-medium text-rose-100">
+                                        Przeciw
+                                      </span>
+                                    )}
+                                    {row.choice !== "for" && row.choice !== "against" && (
+                                      <span class="rounded-full border border-amber-400/40 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-100">
+                                        Nieznany głos
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td class="px-4 py-3 text-blue-100/80">{formatResolutionDate(row.castAt)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {trail.notCast.length > 0 && (
+                        <div class="mt-6 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
+                          <h3 class="text-sm font-medium text-amber-100">Kto nie oddał głosu</h3>
+                          <p class="mt-1 text-sm text-amber-100/80">
+                            Ci właściciele nie zagłosowali. Próg liczy się od wszystkich udziałów w budynku, więc ich
+                            udziały zadziałały w skutku jak głos przeciw uchwale — i tak zostały policzone w wyniku
+                            powyżej.
+                          </p>
+                          <ul class="mt-3 space-y-1 text-sm text-amber-100/90">
+                            {trail.notCast.map((owner) => (
+                              <li>
+                                {owner.fullName} — {owner.unitNumbers.join(", ")} ({formatShareBps(owner.shareBps)})
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* The reconciliation, summed from the rows above and NOT copied from
+                          resolution_tally. That is what gives it something to say: if it
+                          disagreed with the balance panel, or failed to reach 100,00%, an
+                          owner would be missing or double-counted and this line is where it
+                          would show. Echoing the tally would make it agree by construction. */}
+                      <p class="mt-4 text-xs text-blue-100/60">
+                        Rozliczenie śladu: za <span class="font-medium text-white">{formatShareBps(trail.forBps)}</span>
+                        {" + "}przeciw <span class="font-medium text-white">{formatShareBps(trail.againstBps)}</span>
+                        {" + "}nieoddane <span class="font-medium text-white">{formatShareBps(trail.notCastBps)}</span>
+                        {" = "}
+                        <span class="font-medium text-white">
+                          {formatShareBps(trail.forBps + trail.againstBps + trail.notCastBps)}
+                        </span>{" "}
+                        — wszystkie udziały w budynku są rozliczone.
+                      </p>
+                    </div>
+                  )}
 
                   <div class="mt-8 mb-4 flex flex-wrap items-baseline justify-between gap-2">
                     <h2 class="text-lg font-semibold">Linki do głosowania</h2>
