@@ -3,73 +3,111 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * The palette of a business application, not of a landing page.
+ *
+ * Until 2026-08-05 every screen was painted by hand on a dark `bg-cosmic` gradient with
+ * white/10 surfaces and purple accents — the Astro starter's vocabulary, kept by `S-08` as an
+ * explicit decision. That decision is reversed here on the product owner's instruction. What
+ * replaces it is a light, low-chroma surface with one institutional blue accent, chosen for
+ * what this product actually is: a registry of lokale, udziały and votes that an administrator
+ * reads in long sittings, often prints, and must never misread.
+ *
+ * Three rules govern every value below, and they are why this file is the only place a colour
+ * is decided:
+ *
+ * 1. **Colour carries meaning or it is grey.** The chrome — background, card, border, muted
+ *    text — is near-neutral (chroma <= 0.02). Saturated colour is spent only on the accent and
+ *    on the four states the domain already assigns meaning to (see BADGE_TONES in
+ *    `src/lib/ui.ts`). A decorative gradient competes with the one green that means *podjęta*.
+ * 2. **Contrast is checked, not eyeballed.** oklch's L is near-perceptual, so the pairs are
+ *    picked to clear WCAG AA (4.5:1 body, 3:1 large/UI): `--muted-foreground` at L 0.505 on a
+ *    white card, `--primary` at L 0.44 under white text and as link text on white.
+ * 3. **Pages name tokens, never raw colours.** A screen writes `bg-card` / `text-muted-foreground`,
+ *    so re-tuning the product's look stays an edit to this file. The old screens hard-coded
+ *    `bg-white/10 text-blue-100/60` in thirteen files, which is why they drifted apart.
+ *
+ * The `.dark` block is kept coherent but nothing toggles it — there is no theme switch in the
+ * product. It is maintained so the tokens stay honest, not because a dark theme ships.
+ */
+
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.5rem;
+
+  --background: oklch(0.978 0.003 247);
+  --foreground: oklch(0.23 0.02 255);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.23 0.02 255);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.23 0.02 255);
+
+  /* The one saturated colour in the chrome: actions, the current page, focus. */
+  --primary: oklch(0.44 0.105 258);
+  --primary-foreground: oklch(0.99 0.002 247);
+  --secondary: oklch(0.955 0.006 247);
+  --secondary-foreground: oklch(0.3 0.02 255);
+  --muted: oklch(0.965 0.005 247);
+  --muted-foreground: oklch(0.505 0.02 255);
+  --accent: oklch(0.945 0.012 250);
+  --accent-foreground: oklch(0.3 0.03 258);
+
+  --destructive: oklch(0.51 0.185 27);
+  --border: oklch(0.905 0.007 247);
+  --input: oklch(0.885 0.008 247);
+  --ring: oklch(0.55 0.09 258);
+
+  --chart-1: oklch(0.44 0.105 258);
+  --chart-2: oklch(0.55 0.11 162);
+  --chart-3: oklch(0.6 0.13 55);
+  --chart-4: oklch(0.55 0.15 25);
+  --chart-5: oklch(0.5 0.08 290);
+
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.23 0.02 255);
+  --sidebar-primary: oklch(0.44 0.105 258);
+  --sidebar-primary-foreground: oklch(0.99 0.002 247);
+  --sidebar-accent: oklch(0.945 0.012 250);
+  --sidebar-accent-foreground: oklch(0.3 0.03 258);
+  --sidebar-border: oklch(0.905 0.007 247);
+  --sidebar-ring: oklch(0.55 0.09 258);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.19 0.015 255);
+  --foreground: oklch(0.96 0.004 247);
+  --card: oklch(0.235 0.017 255);
+  --card-foreground: oklch(0.96 0.004 247);
+  --popover: oklch(0.235 0.017 255);
+  --popover-foreground: oklch(0.96 0.004 247);
+
+  --primary: oklch(0.65 0.12 255);
+  --primary-foreground: oklch(0.18 0.02 255);
+  --secondary: oklch(0.29 0.018 255);
+  --secondary-foreground: oklch(0.96 0.004 247);
+  --muted: oklch(0.29 0.018 255);
+  --muted-foreground: oklch(0.7 0.02 255);
+  --accent: oklch(0.32 0.025 255);
+  --accent-foreground: oklch(0.96 0.004 247);
+
+  --destructive: oklch(0.62 0.17 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.6 0.1 255);
+
+  --chart-1: oklch(0.65 0.12 255);
+  --chart-2: oklch(0.68 0.13 162);
+  --chart-3: oklch(0.72 0.14 55);
+  --chart-4: oklch(0.66 0.16 25);
+  --chart-5: oklch(0.64 0.1 290);
+
+  --sidebar: oklch(0.235 0.017 255);
+  --sidebar-foreground: oklch(0.96 0.004 247);
+  --sidebar-primary: oklch(0.65 0.12 255);
+  --sidebar-primary-foreground: oklch(0.18 0.02 255);
+  --sidebar-accent: oklch(0.32 0.025 255);
+  --sidebar-accent-foreground: oklch(0.96 0.004 247);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.6 0.1 255);
 }
 
 @theme inline {
@@ -110,15 +148,30 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@utility bg-cosmic {
-  background-image: linear-gradient(to bottom, #0a0e1a, #0f1529, #0a0e1a);
-}
-
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /*
+   * One focus treatment for the whole application, on the element the browser decides is
+   * keyboard-focused. Set here rather than per component because a screen that forgets it is
+   * a screen that cannot be operated without a mouse, and that omission is invisible to
+   * anyone testing with one.
+   */
+  :focus-visible {
+    @apply outline-ring outline-2 outline-offset-2;
+  }
+
+  /*
+   * Numbers in this product are compared down a column — udziały, metraże, bilans. Lining
+   * figures of equal width make a misaligned total visible; proportional ones hide it.
+   */
+  table {
+    font-variant-numeric: tabular-nums;
   }
 }

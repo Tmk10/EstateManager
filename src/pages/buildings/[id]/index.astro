@@ -1,9 +1,10 @@
 ---
-import Layout from "@/layouts/Layout.astro";
+import AppShell from "@/components/AppShell.astro";
 import BuildingHeader from "@/components/buildings/BuildingHeader.astro";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps, formatSquareMetres } from "@/lib/shares";
 import { BUILDING_MODULES, buildingModuleHref } from "@/lib/building-modules";
+import { CARD, SECTION_TITLE, MUTED_TEXT, BUTTON_PRIMARY, ALERT_ERROR, FINE_PRINT } from "@/lib/ui";
 
 // The index of this building's modules (roadmap `S-09`, level 2). This page used to *be* the
 // registry; the registry now lives at `/buildings/<id>/units` and the resolutions list at
@@ -122,75 +123,59 @@ if (building) {
 }
 ---
 
-<Layout title={building ? building.name : "Budynek"}>
-  <div class="bg-cosmic min-h-screen p-4 py-12">
-    <div
-      class="mx-auto w-full max-w-3xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
-    >
-      {
-        loadError ? (
-          <p class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300" role="alert">
-            {loadError}
-          </p>
-        ) : (
-          building && (
-            <>
-              <BuildingHeader building={building} />
-
-              {error && (
-                <p
-                  class="mb-6 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
-                  role="alert"
-                >
-                  {error}
-                </p>
-              )}
-
-              <ul class="grid gap-4 sm:grid-cols-2">
-                {BUILDING_MODULES.map((module) => {
-                  const summary = summaries[module.id];
-                  const notice = notices[module.id];
-                  return (
-                    <li class="relative flex flex-col rounded-xl border border-white/10 bg-white/5 p-5 transition-colors hover:border-purple-400/40 hover:bg-white/10">
-                      <h2 class="text-lg font-semibold">
-                        {/* The pseudo-element stretches the link over the whole card, so the card
-                            is one target. The call to action below sits above it with z-10. */}
-                        <a href={buildingModuleHref(building.id, module)} class="after:absolute after:inset-0">
-                          {module.label}
-                        </a>
-                      </h2>
-                      <p class="mt-1 text-sm text-blue-100/60">{module.description}</p>
-
-                      {summary && <p class="mt-4 text-sm text-blue-100/80 tabular-nums">{summary}</p>}
-
-                      {notice && (
-                        <>
-                          <p class="mt-4 text-sm text-blue-100/50">{notice.message}</p>
-                          <a
-                            href={notice.ctaHref}
-                            class="relative z-10 mt-3 self-start rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-purple-500"
-                          >
-                            {notice.ctaLabel}
-                          </a>
-                        </>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          )
-        )
-      }
-
-      <p class="mt-8 text-center text-sm">
-        <a
-          href="/buildings"
-          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
-        >
-          Wróć do listy budynków
-        </a>
+<AppShell title={building ? building.name : "Budynek"}>
+  {
+    loadError ? (
+      <p class:list={ALERT_ERROR} role="alert">
+        {loadError}
       </p>
-    </div>
-  </div>
-</Layout>
+    ) : (
+      building && (
+        <>
+          <BuildingHeader building={building} />
+
+          {error && (
+            <p class:list={[ALERT_ERROR, "mb-6"]} role="alert">
+              {error}
+            </p>
+          )}
+
+          <ul class="grid gap-4 sm:grid-cols-2">
+            {BUILDING_MODULES.map((module) => {
+              const summary = summaries[module.id];
+              const notice = notices[module.id];
+              return (
+                <li
+                  class:list={[
+                    CARD,
+                    "hover:border-ring hover:bg-accent/40 relative flex flex-col p-5 transition-colors",
+                  ]}
+                >
+                  <h2 class:list={SECTION_TITLE}>
+                    {/* The pseudo-element stretches the link over the whole card, so the card
+                        is one target. The call to action below sits above it with z-10. */}
+                    <a href={buildingModuleHref(building.id, module)} class="after:absolute after:inset-0">
+                      {module.label}
+                    </a>
+                  </h2>
+                  <p class:list={["mt-1", MUTED_TEXT]}>{module.description}</p>
+
+                  {summary && <p class="text-foreground mt-4 text-sm font-medium tabular-nums">{summary}</p>}
+
+                  {notice && (
+                    <>
+                      <p class:list={["mt-4", FINE_PRINT]}>{notice.message}</p>
+                      <a href={notice.ctaHref} class:list={[BUTTON_PRIMARY, "relative z-10 mt-3 self-start"]}>
+                        {notice.ctaLabel}
+                      </a>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )
+    )
+  }
+</AppShell>

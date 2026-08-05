@@ -1,4 +1,9 @@
 ---
+// The configuration banner: a full-width strip above everything, shown when a required
+// secret is missing (src/lib/config-status.ts). Deliberately not one of ui.ts's ALERT tones —
+// those are blocks *inside* a page, and this one sits outside the frame and above the topbar,
+// because the thing it reports makes every page below it unreliable.
+
 type Variant = "info" | "warning" | "error";
 
 interface Props {
@@ -6,37 +11,17 @@ interface Props {
 }
 
 const { variant = "info" } = Astro.props;
+
+const TONES: Record<Variant, string> = {
+  info: "border-sky-200 bg-sky-50 text-sky-900",
+  warning: "border-amber-200 bg-amber-50 text-amber-900",
+  error: "border-red-300 bg-red-50 text-red-900",
+};
 ---
 
-<div class:list={["banner", `banner--${variant}`]} role={variant === "error" ? "alert" : "status"}>
+<div
+  class:list={["border-b px-4 py-2.5 text-center text-sm [&_a]:font-semibold [&_a]:underline", TONES[variant]]}
+  role={variant === "error" ? "alert" : "status"}
+>
   <slot />
 </div>
-
-<style>
-  .banner {
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-    text-align: center;
-    border-bottom: 1px solid;
-  }
-  .banner :global(a) {
-    color: inherit;
-    text-decoration: underline;
-    font-weight: 600;
-  }
-  .banner--info {
-    background: #dbeafe;
-    color: #1e3a8a;
-    border-color: #3b82f6;
-  }
-  .banner--warning {
-    background: #fef3c7;
-    color: #78350f;
-    border-color: #f59e0b;
-  }
-  .banner--error {
-    background: #fee2e2;
-    color: #7f1d1d;
-    border-color: #dc2626;
-  }
-</style>

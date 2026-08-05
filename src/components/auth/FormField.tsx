@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 import { CircleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const inputBase =
-  "w-full rounded-lg bg-white/10 border px-3 py-2 pl-10 text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-colors";
+import { INPUT, INPUT_INVALID, LABEL, FIELD_ERROR } from "@/lib/ui";
 
 interface FormFieldProps {
   id: string;
@@ -32,13 +30,19 @@ export function FormField({
   icon,
   endContent,
 }: FormFieldProps) {
+  const errorId = `${id}-error`;
+
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm text-blue-100/80">
+      <label htmlFor={id} className={LABEL}>
         {label}
       </label>
       <div className="relative">
-        <span className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-white/40">{icon}</span>
+        {/* aria-hidden: the icon repeats the label, and a screen reader announcing "koperta
+            Adres e-mail" is noise rather than help. */}
+        <span aria-hidden="true" className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2">
+          {icon}
+        </span>
         <input
           id={id}
           name={name ?? id}
@@ -48,16 +52,18 @@ export function FormField({
             onChange(e.target.value);
           }}
           placeholder={placeholder}
-          className={cn(
-            inputBase,
-            error ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400",
-          )}
+          // The error is announced with the field rather than only drawn beside it: a red
+          // border is invisible to a screen reader and to anyone who cannot separate the two
+          // reds, which is roughly one man in twelve.
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          className={cn(error ? INPUT_INVALID : INPUT, "pl-10", endContent && "pr-10")}
         />
         {endContent}
       </div>
       {error ? (
-        <p className="mt-1 flex items-center gap-1 text-xs text-red-300">
-          <CircleAlert className="size-3" />
+        <p id={errorId} className={FIELD_ERROR}>
+          <CircleAlert className="size-3.5 shrink-0" />
           {error}
         </p>
       ) : (

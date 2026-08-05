@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useFormStatus } from "react-dom";
-import { Button } from "@/components/ui/button";
+import { BUTTON_PRIMARY_BLOCK } from "@/lib/ui";
 
 interface SubmitButtonProps {
   pendingText: string;
@@ -11,23 +11,25 @@ interface SubmitButtonProps {
 export function SubmitButton({ pendingText, icon, children }: SubmitButtonProps) {
   const { pending } = useFormStatus();
 
+  // A plain <button> rather than ui/button.tsx's <Button>: that component's `default` variant
+  // already paints itself from the same primary token, so wrapping it only to override its
+  // classes produced two sources for one button. The shared string is the source now.
   return (
-    <Button
-      type="submit"
-      disabled={pending}
-      className="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
-    >
+    <button type="submit" disabled={pending} className={BUTTON_PRIMARY_BLOCK}>
       {pending ? (
-        <span className="flex items-center gap-2">
-          <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        <>
+          <span
+            aria-hidden="true"
+            className="border-primary-foreground/30 border-t-primary-foreground size-4 animate-spin rounded-full border-2"
+          />
           {pendingText}
-        </span>
+        </>
       ) : (
-        <span className="flex items-center gap-2">
+        <>
           {icon}
           {children}
-        </span>
+        </>
       )}
-    </Button>
+    </button>
   );
 }

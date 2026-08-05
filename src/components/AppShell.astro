@@ -1,0 +1,32 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
+import { WIDTHS, type Width } from "@/lib/ui";
+
+// The frame every administrator screen sits in: the document, the persistent topbar, and one
+// centred column at one of three widths.
+//
+// Its job is to be the only place a page's outer geometry is decided. Before it, each of the
+// eleven pages opened with its own `min-h-screen p-4 py-12` wrapper and its own `max-w-*`,
+// and the eleven had drifted into three different paddings — so moving between two screens
+// shifted the content under the reader's eye for no reason they could see.
+//
+// The one screen that must not use this is /vote/<token>: it renders its own document because
+// Layout's configuration banner can carry an external documentation link, and a click on one
+// would put the voting token in a Referer header on its way off-site. That page's comment
+// carries the full argument; do not "unify" it in here.
+
+interface Props {
+  title: string;
+  width?: Width;
+}
+
+const { title, width = "default" } = Astro.props;
+---
+
+<Layout title={title}>
+  <Topbar />
+  <main class:list={["mx-auto w-full px-4 py-8 sm:px-6 sm:py-10", WIDTHS[width]]}>
+    <slot />
+  </main>
+</Layout>

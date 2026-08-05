@@ -1,34 +1,81 @@
 ---
+import { NAV_LINK } from "@/lib/ui";
+
+// The application's one persistent bar: who you are, what the product is called, and the
+// two places you can go from anywhere.
+//
+// It used to render on `/` alone, so every signed-in screen ended in a hand-written "Wróć do
+// panelu" link and getting from the registry to Pomoc meant three back-steps. The links below
+// are deliberately few — the product's claim is that it is simple, and a bar that lists
+// everything is how that claim stops being true.
+//
+// This is *not* the application-module registry the roadmap calls `S-09` level 1. That slice
+// makes /dashboard a list of application modules and is still unbuilt; these two links are
+// navigation, not that structure, and adding a third here is not a substitute for building it.
+
 const { user } = Astro.locals;
+const path = Astro.url.pathname;
+
+// startsWith, matching how src/middleware.ts decides what is protected, so /buildings/<id>/units
+// marks "Budynki" as current rather than nothing at all.
+const NAV = [
+  { href: "/buildings", label: "Budynki" },
+  { href: "/help", label: "Pomoc" },
+];
 ---
 
-<div
-  class="mb-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80"
->
-  {
-    user ? (
-      <>
-        <span class="text-blue-100/70">{user.email}</span>
-        <div class="flex items-center gap-3">
-          <a href="/dashboard" class="text-purple-300 transition-colors hover:text-purple-100 hover:underline">
-            Dashboard
+<header class="border-border bg-card/95 supports-[backdrop-filter]:bg-card/80 sticky top-0 z-20 border-b backdrop-blur">
+  <div class="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4 sm:px-6">
+    <a
+      href={user ? "/dashboard" : "/"}
+      class="text-foreground hover:text-primary text-sm font-semibold tracking-tight transition-colors"
+    >
+      EstateManager
+    </a>
+
+    {
+      user && (
+        <nav aria-label="Nawigacja główna" class="flex items-center gap-1">
+          {NAV.map((item) => {
+            const isCurrent = path.startsWith(item.href);
+            return (
+              <a
+                href={item.href}
+                aria-current={isCurrent ? "page" : undefined}
+                class:list={[
+                  "rounded-md px-3 py-1.5 text-sm transition-colors",
+                  isCurrent
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                ]}
+              >
+                {item.label}
+              </a>
+            );
+          })}
+        </nav>
+      )
+    }
+
+    <div class="ml-auto flex items-center gap-4 text-sm">
+      {
+        user ? (
+          <>
+            {/* Hidden on a phone: the address is context, not a control, and at this width the
+                sign-out button is what has to survive. */}
+            <span class="text-muted-foreground hidden sm:inline">{user.email}</span>
+            <form method="POST" action="/api/auth/signout">
+              <button type="submit" class:list={NAV_LINK}>
+                Wyloguj
+              </button>
+            </form>
+          </>
+        ) : (
+          <a href="/auth/signin" class="text-primary hover:text-primary/80 text-sm font-medium transition-colors">
+            Zaloguj się
           </a>
-          <form method="POST" action="/api/auth/signout">
-            <button type="submit" class="text-purple-300 transition-colors hover:text-purple-100 hover:underline">
-              Sign out
-            </button>
-          </form>
-        </div>
-      </>
-    ) : (
-      <>
-        <span class="text-blue-100/70">Not signed in</span>
-        <div class="flex gap-3">
-          <a href="/auth/signin" class="text-purple-300 transition-colors hover:text-purple-100 hover:underline">
-            Sign in
-          </a>
-        </div>
-      </>
-    )
-  }
-</div>
+        )
+      }
+    </div>
+  </div>
+</header>

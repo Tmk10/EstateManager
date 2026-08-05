@@ -15,15 +15,17 @@ export default function SignInForm({ serverError }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
+  // Polish, like every other string this application renders. These four were the last
+  // English copy in the product (CLAUDE.md: user-facing copy is Polish, code is English).
   function validate() {
     const next: typeof errors = {};
     if (!email.trim()) {
-      next.email = "Email is required";
+      next.email = "Podaj adres e-mail";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      next.email = "Enter a valid email address";
+      next.email = "To nie jest poprawny adres e-mail";
     }
     if (!password) {
-      next.password = "Password is required";
+      next.password = "Podaj hasło";
     }
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -44,27 +46,27 @@ export default function SignInForm({ serverError }: Props) {
       <FormField
         id="email"
         type="email"
-        label="Email"
+        label="Adres e-mail"
         value={email}
         onChange={(v) => {
           setEmail(v);
           clearError("email");
         }}
-        placeholder="you@example.com"
+        placeholder="jan.kowalski@example.com"
         error={errors.email}
         icon={<Mail className="size-4" />}
       />
 
       <FormField
         id="password"
-        label="Password"
+        label="Hasło"
         type={showPassword ? "text" : "password"}
         value={password}
         onChange={(v) => {
           setPassword(v);
           clearError("password");
         }}
-        placeholder="Your password"
+        placeholder="Twoje hasło"
         error={errors.password}
         icon={<Lock className="size-4" />}
         endContent={
@@ -79,8 +81,8 @@ export default function SignInForm({ serverError }: Props) {
 
       <ServerError message={serverError} />
 
-      <SubmitButton pendingText="Signing in..." icon={<LogIn className="size-4" />}>
-        Sign in
+      <SubmitButton pendingText="Logowanie…" icon={<LogIn className="size-4" />}>
+        Zaloguj się
       </SubmitButton>
     </form>
   );
