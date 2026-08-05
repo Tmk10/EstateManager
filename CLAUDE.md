@@ -4,89 +4,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-EstateManager — share-weighted resolution voting for Polish housing communities (_wspólnoty mieszkaniowe_). Read `context/foundation/prd.md` before building any feature; the domain rules (quorum, share weighting, per-unit voting links) live there, not in the code. The PRD and all user-facing copy are in **Polish**; keep code, comments, and commits in English.
+EstateManager — share-weighted resolution voting for Polish housing communities (_wspólnoty mieszkaniowe_). Read `context/foundation/prd.md` before building any feature; the domain rules (quorum, share weighting, per-unit voting links) live there, not in the code. The PRD and all user-facing copy are in **Polish**; code, comments and commits stay English.
 
-How far along the project actually is: see "Current state" at the bottom.
+Live at https://estate-manager.estate-manager.workers.dev. `/api/health` is the first thing to check when the app misbehaves (`@README.md` §Health check). Which slices are built is recorded in `context/foundation/roadmap.md` and nowhere else.
 
 ## Hard rules
 
-- **Every feature and every fix gets its own branch and its own pull request. Never commit to `main` directly.** Branch off up-to-date `main` as `feat|fix|docs|chore/<slug>`; `gh pr create --base main`; let `ci.yml` go green; `gh pr merge --squash --delete-branch`. Never ask which branch to target — always a new one off `main`. **`main` is not protected on GitHub** (verified 2026-08-02), so this rule _is_ the gate. Three separate opt-ins, each waited for rather than assumed: **commit**, **push / open the PR**, **merge** — the merge matters most, because it triggers `deploy.yml` and **deploys to production**. Run `git branch --show-current` immediately before every commit; never infer the branch from `git status`. Why, and what it cost: `context/foundation/lessons.md`.
-- **Worktrees are the workspace for agent work.** Anything that may edit code, and anything running agents in parallel, happens in a worktree under `.claude/worktrees/` — concurrent agents in one checkout clobber each other. The worktree branch **is** the PR branch: it ends in a merged PR and the worktree is removed after. Documentation-only work may skip the worktree, but still needs its branch and PR. Two failure modes: **"pushed" is not "landed"** — open the PR the day the work is done, and audit with `git worktree list` against `gh pr list`, because a branch with a worktree and no PR is the shape that grows a conflict; and **check the base ref**, which defaults to `origin/main` and can sit behind local `main` (`git log --oneline origin/main..main`). → `context/foundation/lessons.md`, `context/foundation/system-state.md` §Test environment
-- **Two test harnesses, and almost no tests — say which you ran, and never let "tests passed" stand in for "the domain is verified."** `npm test` runs **Vitest** over `src/**/*.test.ts`; `npm run test:db` runs **pgTAP** over `supabase/tests/database/*.test.sql` and needs Docker plus the local stack up. Both are green, and since `S-06` two modules are genuinely pinned — the audit trail's arithmetic and `EM015`. **Everything that matters most is still unpinned**: nothing asserts `computeShareBps` against an independent oracle, nothing asserts quorum, RLS, or the electorate guards. Reporting a green `npm test` as though the change is verified is the specific failure this rule exists to prevent. Full verification is `npm run lint && npm test && npm run build`, plus `npm run test:db` for anything touching `supabase/`. Which risks are still open, and how to write the tests: `context/foundation/test-plan.md` §2, §6.1, §6.2. Two traps that will otherwise cost an afternoon each — `getViteConfig()` and pgTAP-in-a-migration — are in `context/foundation/system-state.md` §Test environment.
-- **`context/archive/` is immutable.** Never write there. Open a new change under `context/changes/` instead.
-- **Supabase env vars are `optional: true`** in `astro.config.mjs`. When unset, `createClient()` in `src/lib/supabase.ts` returns `null` and every auth path silently no-ops — the build stays green and the app deploys broken. Any new code touching Supabase must handle the `null` client, and any new required secret should be surfaced through `src/lib/config-status.ts` (the banner shown by `src/components/Banner.astro`).
+- **Every feature and every fix gets its own branch and its own pull request. Never commit to `main` directly.** Branch off up-to-date `main` as `feat|fix|docs|chore/<slug>`; `gh pr create --base main`; let `ci.yml` go green; `gh pr merge --squash --delete-branch`. Never ask which branch to target — always a new one off `main`. **`main` is not protected on GitHub** (verified 2026-08-02), so this rule _is_ the gate. Three separate opt-ins, each waited for rather than assumed: **commit**, **push / open the PR**, **merge** — the merge matters most, because it triggers `deploy.yml` and **deploys to production**. Run `git branch --show-current` immediately before every commit; never infer the branch from `git status`.
+- **Worktrees are the workspace for agent work.** Anything that may edit code, and anything running agents in parallel, happens in a worktree under `.claude/worktrees/` — concurrent agents in one checkout clobber each other. The worktree branch **is** the PR branch: it ends in a merged PR and the worktree is removed after. Documentation-only work may skip the worktree, but still needs its branch and PR. Two failure modes: **"pushed" is not "landed"** — audit `git worktree list` against `gh pr list`, because a branch with a worktree and no PR is the shape that grows a conflict; and **check the base ref**, which defaults to `origin/main` and can sit behind local `main` (`git log --oneline origin/main..main`).
+- **Two test harnesses, and almost no tests — say which you ran, and never let "tests passed" stand in for "the domain is verified."** `npm test` runs Vitest over `src/**/*.test.ts`; `npm run test:db` runs pgTAP over `supabase/tests/database/*.test.sql` and needs Docker plus the local stack up. Both are green and two modules are genuinely pinned — the audit trail's arithmetic and `EM015` — but **everything that matters most is unpinned**: nothing asserts `computeShareBps` against an independent oracle, nothing asserts quorum, RLS, or the electorate guards. Full verification is `npm run lint && npm test && npm run build`, plus `npm run test:db` for anything touching `supabase/`. Which risks are still open, and how to write the tests: `context/foundation/test-plan.md` §2, §6.1, §6.2.
+- **Supabase env vars are `optional: true`** in `astro.config.mjs`. When unset, `createClient()` in `src/lib/supabase.ts` returns `null` and every auth path silently no-ops — the build stays green and the app deploys broken. New code touching Supabase must handle the `null` client, and any new required secret must be surfaced through `src/lib/config-status.ts` (the banner rendered by `src/components/Banner.astro`).
 - **Type-aware lint needs generated types.** Run `npx astro sync` before `npm run lint` on a fresh clone or after changing `astro.config.mjs` — ESLint uses `strictTypeChecked` with `projectService`, and CI does the sync explicitly for this reason.
+- **`context/archive/` is immutable.** Never write there. Open a new change under `context/changes/` instead.
 - **Never rename project identifiers piecemeal.** The rename to `estate-manager` is recorded in `context/changes/deployment/deployment.md` (step A1); touching one manifest without the others breaks the deploy. The Worker name is also the `*.workers.dev` hostname, so renaming it creates a second Worker rather than moving the first.
 
-## Commands
+## Hazards
 
-Full script list is in `@package.json`. What it doesn't tell you:
-
-- `npm run dev` boots the Cloudflare workerd runtime, not plain Node — runtime differences from Node show up here, not at deploy time.
-- `npm run lint` is type-aware and needs `npx astro sync` first (see above).
-- `npx supabase start` needs Docker and ~7 GB RAM, and on this machine the daemon is not where the CLI looks — the socket path, the `DOCKER_HOST` workaround and where the `docker` binary hides are in `@README.md` (§Supabase Configuration → First-time setup). That section is the single home for local-stack setup; do not restate it here.
-- `npm run db:types` regenerates `src/db/database.types.ts` from the **local** stack, so the stack must be up and migrated first.
-- `npm run test:db` runs pg_prove against the **running** local stack. It neither resets nor migrates it, and every test file ends in `rollback`, so hand-made local data survives a run. `npm test` needs nothing running. The one thing only CI proves is that the migration chain applies from **zero** — `ci.yml`'s `db-contract` job does a fresh `supabase start`, which a long-lived local stack cannot demonstrate.
-- `npx wrangler deploy` is rarely needed — pushing to `main` deploys. It works locally (`wrangler login` is done), but a manual deploy publishes a tree CI never validated, which is exactly what `deploy.yml`'s ordering exists to prevent.
-- **`wrangler deploy` does not read `wrangler.jsonc`.** It reads `dist/server/wrangler.json`, which the Astro adapter generates at build time — wrangler announces this as _"Using redirected Wrangler configuration"_ and it is easy to read past. **Editing `wrangler.jsonc` changes nothing until you `npm run build`**; deploy without rebuilding and you ship the previous build's bindings. This cost three unintended production e-mails on 2026-08-04, when the `EMAIL` binding was removed from the source to exercise `S-04`'s failure path, deployed without a rebuild, and the fanout ran with a live binding. Second trap in the same file: when the binding is gone the generated config still carries the key with an **empty** value (`"send_email": []`), so `'send_email' in config` is true — test the value, not the key.
-
-Node version is pinned in `@.nvmrc`. Commit hooks (husky + lint-staged, configured in `@package.json`) auto-fix with ESLint and Prettier, so don't hand-format before committing.
-
-## Architecture
-
-Astro 6 with `output: "server"` — **every route is server-rendered**; nothing declares `prerender`. Stack list is in `@README.md`.
-
-The request path is the part worth knowing:
-
-1. `src/middleware.ts` runs on every request, builds the Supabase SSR client from request headers + `AstroCookies`, and sets `context.locals.user` (typed in `src/env.d.ts`).
-2. The same file's `PROTECTED_ROUTES` array is the **only** auth gate — a new protected page is not protected until its path is added there. `src/pages/dashboard.astro` is the working example.
-3. `src/lib/supabase.ts` reads `SUPABASE_URL` / `SUPABASE_KEY` from `astro:env/server`. Sessions are cookie-based via `@supabase/ssr`.
-4. Auth endpoints in `src/pages/api/auth/{signin,signup,signout}.ts` take **form data, not JSON**, and respond with `context.redirect()` carrying `?error=<message>` — they do not return JSON error bodies. Match that shape for new auth endpoints.
-
-## Conventions
-
-- Import via the `@/*` alias (maps to `./src/*`). Never use `../` to reach outside the current directory; relative imports within one folder are fine.
-- `.astro` components for static markup; `.tsx` only where interactivity is required. No Next.js directives (`"use client"` etc.).
-- Merge Tailwind classes with `cn()` from `@/lib/utils` — never concatenate class strings.
-- shadcn/ui is configured in `@components.json`; generated components live in `src/components/ui/`.
-- Services and helpers in `src/lib/`. Shared types belong in `src/types.ts` and hooks in `src/components/hooks/` — neither exists yet; create on first use.
-- Supabase migrations: `supabase/migrations/YYYYMMDDHHmmss_short_description.sql`. Enable RLS on every new table, with one policy per operation (`select` / `insert` / `update` / `delete`) × role (`anon`, `authenticated`), each scoped to the caller's building. A single `FOR ALL` policy, or one that omits `anon`, does not pass review — per the PRD only administrators authenticate, while owners vote through an emailed per-unit link with **no session**.
-
-## Docs layout
-
-Five owners, and a paragraph that fits none of them is in the wrong file. This split was aspirational until 2026-08-05 — the Docker socket paragraph lived in two files at once, `ci.yml`'s job list in three — so check it when adding rather than assuming it held.
-
-| Owner | Holds | Never holds |
-| --- | --- | --- |
-| **this file** | the rules, one to three sentences each | evidence, procedure, build status |
-| `@README.md` | procedure — which commands in which order, what to paste where | why something broke |
-| `context/foundation/system-state.md` | the evidence behind each rule: reproductions, timestamps, residuals | anything not already a rule here |
-| `context/foundation/roadmap.md` | build status — the "At a glance" table is the **only** place a slice is marked done | rules |
-| `context/changes/<id>/` | one change: its plan, research, review | anything spanning changes |
-
-Also: `context/foundation/` holds the other durable product docs (`prd.md`, `tech-stack.md`, `infrastructure.md`, `test-plan.md`, `lessons.md`); `context/docs/` holds explanatory material addressed to a person, not to a skill.
-
-## Current state
-
-Nine of the PRD's slices are built and the voting loop closes on its own; **`context/foundation/roadmap.md` is the only place that says which** — do not restate slice status here. Live at https://estate-manager.estate-manager.workers.dev; `/api/health` is the first thing to check when the app misbehaves (`@README.md` §Health check).
-
-What follows is the hazard index: rules that are cheap to break and expensive to discover. Each links to its evidence in `context/foundation/system-state.md`.
+Rules that are cheap to break and expensive to discover. The evidence behind each — reproductions, timestamps, residuals — is in `context/foundation/system-state.md`, under the section named beside it.
 
 **Voting and the domain**
 
 - **Voting tokens are persisted in Workers Logs for 7 days, and no code change here stops it.** The token is in the URL path. Do not cite "the token never reaches a log line" as a fact about production. → §Workers Logs and voting tokens
 - **`resolve_voting_link` is the only crack in the schema for `anon`.** An unknown token and a real one must stay indistinguishable — no error page, header or redirect may differ between a hit and a miss. When a link "does not work", compare it byte-for-byte against the stored token **before** inspecting any read path. → §Resolutions and voting links
 - **`/vote/<token>` is deliberately not in `PROTECTED_ROUTES`** — the only route for which that is true. Do not "fix" it. → §Resolutions and voting links
-- **No token appears in any HTML response, and column grants enforce it.** `select=*` on `voting_links` is `42501`; a column added by a later migration is **invisible** until added to the grant. → §Resolutions and voting links
+- **No token appears in any HTML response, and column grants enforce it.** `select=*` on `voting_links` is `42501`; a column added by a later migration is invisible until added to the grant. → §Resolutions and voting links
 - **`public.votes` denies `insert`/`update`/`delete` to both roles** — _głos jest ostateczny_. Do not "fix" it back to consistency with the other tables. → §The vote write path
 - **`votes.share_bps` is a snapshot and outranks any recomputation.** Never re-sum an owner's units to weigh a vote already cast. → §The vote write path, §Audit trail
 - **The threshold exists once, in SQL.** No TypeScript computes `sum * 2 > 10000`; the denominator is the whole building, not the udziały cast. → §Outcome and threshold
 - **`votes_lock_resolution` takes `FOR UPDATE` in a `before insert` trigger** and will look like a redundant trigger. Moving it deadlocks two concurrent voters (`40P01`) and loses a vote. → §Outcome and threshold
-- **`import_building_units` is the only write path into `units`/`owners`, and it stays `invoker`.** The two registry *reads* are `definer` on purpose; do not "fix" either back. → §The unit registry and its arithmetic
+- **`import_building_units` is the only write path into `units`/`owners`, and it stays `invoker`.** The two registry _reads_ are `definer` on purpose; do not "fix" either back. → §The unit registry and its arithmetic
 - **`src/lib/shares.ts` tie-breaks by file order**, which is what lets the confirm endpoint recompute instead of trusting the browser. Never make it depend on anything float-derived or on iteration order. → §The unit registry and its arithmetic
 - **`EM001`–`EM015` are the domain's refusals.** Before adding a guard, check whether one already covers it. → §The unit registry and its arithmetic, §The vote write path, §Outcome and threshold, §Audit trail
 - **An owner never learns another owner's vote, on any surface.** Permanent, not pending. → §Audit trail
-- **The e-mail fanout sends sequentially and writes each owner's status before the next send.** Do not batch the writes and do not make it concurrent — both trade resumability for speed. Send status is derived from timestamps; there is deliberately no `status` column, and no per-owner "send again". → §Voting-link fanout
+- **The e-mail fanout sends sequentially and writes each owner's status before the next send.** Do not batch the writes and do not make it concurrent — both trade resumability for speed. Send status is derived from timestamps; there is deliberately no `status` column and no per-owner "send again". → §Voting-link fanout
 
 **Interface**
 
@@ -97,57 +47,59 @@ What follows is the hazard index: rules that are cheap to break and expensive to
 
 **Platform**
 
-- **Two deploy paths reach production, and one of them does not lint.** Cloudflare Workers Builds is dashboard-side config, invisible in any checkout, and wins the race about half the time. `deploy.yml` is therefore not *the* gate. → §Deploy paths
-- **A missing `EMAIL` binding does not fail the deploy — deliberately, and that decision is overdue for revisit** now that `S-04` mails ballots. → §Transactional mail
+- **Two deploy paths reach production, and one of them does not lint.** Cloudflare Workers Builds is dashboard-side config, invisible in any checkout, and wins the race about half the time. `deploy.yml` is therefore not _the_ gate. → §Deploy paths
+- **`wrangler deploy` does not read `wrangler.jsonc`.** It reads `dist/server/wrangler.json`, which the Astro adapter generates at build time. **Editing `wrangler.jsonc` changes nothing until you `npm run build`** — deploy without rebuilding and you ship the previous build's bindings, which cost three unintended production e-mails on 2026-08-04. When a binding is removed the generated config still carries the key with an empty value (`"send_email": []`), so `'send_email' in config` is true — test the value, not the key. → §Transactional mail
+- **A missing `EMAIL` binding returns `200 {"email":"missing"}` from `/api/health` and does not fail the deploy.** Do not change that without also changing `deploy.yml`'s health assertion — it is an open question, not a settled position, now that `S-04` mails ballots. → §Transactional mail
 - **`src/lib/email.ts` is the only module that may import `cloudflare:workers`.** `Astro.locals.runtime.env` does not exist on Astro 6 + adapter 13. → §Transactional mail
 - **Migrations are applied by hand, before the code that needs them, and are forward-only.** `wrangler rollback` reverts code, never schema. Procedure: `@README.md`. → §Schema, migrations and generated types
 - **`src/db/database.types.ts` and `worker-configuration.d.ts` are generated and never regenerated by CI.** Commit each in the **same commit** as the change that invalidates it. A wrong column inside a `.select("…")` string is not a compile error. → §Schema, migrations and generated types
-- **Every form endpoint needs `-H "Origin: <origin>"` when called with `curl`.** `security.checkOrigin` runs *before* middleware, so without it you get `403 Cross-site POST form submissions are forbidden` — not the auth redirect you were testing for.
+- **Every form endpoint needs `-H "Origin: <origin>"` when called with `curl`.** `security.checkOrigin` runs _before_ middleware, so without it you get `403 Cross-site POST form submissions are forbidden` — not the auth redirect you were testing for.
 - **Production accounts are made by hand in the Supabase dashboard; nothing in this repo creates them.** The asymmetry with the local seed is deliberate — do not script it. → §Auth and accounts
 - **RLS on every new table: eight policies, four `anon` at `false`.** `update` needs **both** `using` and `with check`. `authenticated` is still unscoped in v1 and that is a recorded decision, not an oversight. → §RLS shape
-- **`astro@6.3.1` carries an unfixed high-severity XSS advisory**, accepted for now. → §Known advisories
+- **`astro@6.3.1` carries an unfixed high-severity XSS advisory.** Do not bump Astro to fix it — no fixed release exists yet. `npm audit` reporting this one advisory is expected. → §Known advisories
 
-<!-- BEGIN @przeprogramowani/10x-cli -->
+## Commands
 
-## 10xDevs AI Toolkit - Module 2, Lesson 3
+Full script list is in `@package.json`; Node version is pinned in `@.nvmrc`. What the manifest does not tell you:
 
-Review AI-generated code before merge with the **implementation review chain**:
+- `npm run dev` boots the Cloudflare workerd runtime, not plain Node — runtime differences from Node show up here, not at deploy time.
+- `npx supabase start` needs Docker and ~7 GB RAM, and on this machine the daemon is not where the CLI looks. The socket path, the `DOCKER_HOST` workaround and where the `docker` binary hides are in `@README.md` (§Supabase Configuration → First-time setup) — the single home for local-stack setup.
+- `npm run db:types` regenerates `src/db/database.types.ts` from the **local** stack, so the stack must be up and migrated first.
+- `npm test` needs nothing running. `npm run test:db` runs pg_prove against the running local stack; it neither resets nor migrates it. The one thing only CI proves is that the migration chain applies from **zero** — `ci.yml`'s `db-contract` job does a fresh `supabase start`, which a long-lived local stack cannot demonstrate.
+- `npx wrangler deploy` is rarely needed — pushing to `main` deploys. A manual deploy publishes a tree CI never validated, which is exactly what `deploy.yml`'s ordering exists to prevent.
 
-```
-/10x-implement -> /10x-impl-review -> triage -> (/10x-lesson | fix | skip | disagree)
-```
+Commit hooks (husky + lint-staged, configured in `@package.json`) auto-fix with ESLint and Prettier, so don't hand-format before committing.
 
-`/10x-impl-review` is the lesson focus. Review is a quality gate, not an instruction to fix every finding.
+## Architecture
 
-### Task Router - Where to start
+Astro 6 with `output: "server"` — **every route is server-rendered**; nothing declares `prerender`. Stack list is in `@README.md`.
 
-| Skill                          | Use it when                                                                                                                                                                                                                             |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Code review (lesson focus)** |                                                                                                                                                                                                                                         |
-| `/10x-impl-review <change-id>` | You have implemented code and want a structured review before merge. The skill checks plan adherence, scope discipline, safety and quality, architecture, pattern consistency, and success criteria, then presents findings for triage. |
-| **Recurring lesson outcome**   |                                                                                                                                                                                                                                         |
-| `/10x-lesson`                  | A finding reveals a recurring project rule or agent failure pattern. Record it in `context/foundation/lessons.md` instead of treating it as a one-off note.                                                                             |
+The request path is the part worth knowing:
 
-### Triage discipline
+1. `src/middleware.ts` runs on every request, builds the Supabase SSR client from request headers + `AstroCookies`, and sets `context.locals.user` (typed in `src/env.d.ts`).
+2. The same file's `PROTECTED_ROUTES` array is the **only** auth gate — a new protected page is not protected until its path is added there. `src/pages/dashboard.astro` is the working example.
+3. `src/lib/supabase.ts` reads `SUPABASE_URL` / `SUPABASE_KEY` from `astro:env/server`. Sessions are cookie-based via `@supabase/ssr`.
+4. Auth endpoints in `src/pages/api/auth/{signin,signout}.ts` take **form data, not JSON**, and respond with `context.redirect()` carrying `?error=<message>` — they do not return JSON error bodies. Match that shape for new auth endpoints.
 
-- Severity says how bad the finding is. Impact says how much the decision matters now.
-- Valid outcomes: fix now, fix differently, skip, accept as risk, record as recurring rule (`/10x-lesson`), disagree.
-- Fix critical findings. Do not burn hours on low-impact observations just because the agent found them.
-- Conscious skipping of low-impact findings is a valid review outcome, not negligence.
-- If you disagree with a finding, record why. Wrong agent reasoning is also signal.
+## Conventions
 
-### Review boundaries
+- Import via the `@/*` alias (maps to `./src/*`). Never use `../` to reach outside the current directory; relative imports within one folder are fine.
+- `.astro` components for static markup; `.tsx` only where interactivity is required. No Next.js directives (`"use client"` etc.).
+- Merge Tailwind classes with `cn()` from `@/lib/utils` — never concatenate class strings. Generated shadcn/ui components live in `src/components/ui/` (`@components.json`).
+- Services and helpers in `src/lib/`. Shared types belong in `src/types.ts` and hooks in `src/components/hooks/` — neither exists yet; create on first use.
+- Unit tests sit beside the module they exercise as `<module>.test.ts`. Database tests go in `supabase/tests/database/<subject>.test.sql` and must open with their own `begin;` and `create extension if not exists pgtap;` — pgTAP is deliberately never added to a migration.
+- Supabase migrations: `supabase/migrations/YYYYMMDDHHmmss_short_description.sql`. Enable RLS on every new table, with one policy per operation (`select` / `insert` / `update` / `delete`) × role (`anon`, `authenticated`), each scoped to the caller's building. A single `FOR ALL` policy, or one that omits `anon`, does not pass review — per the PRD only administrators authenticate, while owners vote through an emailed per-unit link with **no session**.
 
-- This lesson reviews implemented code. It does not create the plan, execute new phases, or teach CI review.
-- Testing strategy and quality gates are introduced in Module 3.
-- Do not use `/10x-contract` as a triage outcome in this lesson.
+## Where things are documented
 
-### Paths used by this lesson
+Five owners. A paragraph that fits none of them is in the wrong file; a paragraph that fits two is a duplicate — delete one.
 
-- `context/changes/<change-id>/plan.md` - expected implementation contract
-- `context/changes/<change-id>/reviews/` - review output
-- `context/foundation/lessons.md` - recurring lessons
+| Owner                                | Holds                                                                               | Never holds                       |
+| ------------------------------------ | ----------------------------------------------------------------------------------- | --------------------------------- |
+| **this file**                        | the rules, one to three sentences each                                              | evidence, procedure, build status |
+| `@README.md`                         | procedure — which commands in which order, what to paste where                      | why something broke               |
+| `context/foundation/system-state.md` | the evidence behind each rule above                                                 | anything not already a rule here  |
+| `context/foundation/roadmap.md`      | build status — the "At a glance" table is the **only** place a slice is marked done | rules                             |
+| `context/changes/<id>/`              | one change: its plan, research, review                                              | anything spanning changes         |
 
-Skills must not write to `context/archive/`. Archived changes are immutable; if a resolved target path starts with `context/archive/`, abort with: "This change is archived. Open a new change with `/10x-new` instead."
-
-<!-- END @przeprogramowani/10x-cli -->
+`context/foundation/` also holds the durable product docs (`prd.md`, `tech-stack.md`, `infrastructure.md`, `test-plan.md`, `lessons.md`); `context/docs/` holds explanatory material addressed to a person rather than to a tool.
