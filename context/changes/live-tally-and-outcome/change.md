@@ -60,6 +60,45 @@ The exact-half case is the one worth keeping: PRD `FR-007` says *przekroczy* —
 not half — and the local registry happens to hold owners at 2501 and 2499 bps, which sums to
 exactly 5000 and proves the boundary rather than approximating it.
 
+### The local test fixture now carries two decided uchwały — deliberately, and irreversibly
+
+2026-08-05, with the user's agreement. Verifying the decided state needed a decided
+resolution, and one cannot be made and unmade: `EM007` refuses `passed → open`, `EM010`
+refuses deleting a vote. So two of the four local resolutions were settled **through the
+application**, by posting to `/api/vote/<token>` — not by writing status directly:
+
+| Uchwała | Cast | Result |
+| --- | --- | --- |
+| `7/2026` | Tomek 2501 + Anna 2500 `za` | `passed` at **5001 bps** — the narrowest possible crossing, 50,01% against 49,99% uncast |
+| `6/2026` | Piotr 2500 + Anna 2500 + Maria 2499 `przeciw` | `rejected` at 7499 bps |
+
+`1/2026` and `2/2026` stay open. The two decided ones are worth more as fixtures than they
+were as spares: `S-06` needs exactly this, and `7/2026` in particular pins the boundary — a
+resolution that passed by a single basis point.
+
+### Phase 3: the page renders the balance and computes none of it
+
+`resolution_tally` is called alongside the four reads already in flight, and the panel prints
+what it returns. No `sum * 2 > 10000` exists in TypeScript, which is the whole point of the
+verification decision taken at planning time: one implementation of the rule, in SQL.
+
+Two copy decisions worth keeping:
+
+- A running uchwała is asked *how much further*; a decided one is not. Showing a distance
+  beside a settled result would invite the reading that it might still move — it cannot,
+  because `cast_vote` refuses every later vote.
+- The panel says outright that uncast udziały count towards the threshold and *"działają w
+  skutku jak głos przeciw"*. That is the product's central claim (PRD `## Business Logic`) and
+  the number an administrator would otherwise misread as neutral.
+
+Also: `Głosowanie otwarte od …` is a claim about now and stops being true once the vote is
+settled, so a decided resolution says `Głosowanie otwarto …` in the past tense.
+
+Verified against the local stack: figures matched `resolution_tally` exactly on a part-voted
+uchwała (33,34 / 33,33 / 33,33, missing 16,67 and 16,68), both outcome sentences render, the
+badges agree with the panel, and the response HTML carries no vote-to-owner mapping — the page
+never reads a vote row joined to an owner, only counts and sums.
+
 ### Phase 2: `open` stopped being green
 
 Not in the plan, and worth knowing before someone "restores" it. Before this slice `open` was

@@ -452,28 +452,28 @@ schema.
 
 #### Automated
 
-- [x] 2.1 `npx astro sync && npm run lint` passes
-- [x] 2.2 `npm run build` passes
+- [x] 2.1 `npx astro sync && npm run lint` passes — 6a212e8
+- [x] 2.2 `npm run build` passes — 6a212e8
 
 #### Manual
 
-- [x] 2.3 `/buildings/<id>/resolutions` lists all four states with correct badges
-- [x] 2.4 Signed-out visit to that route redirects to `/auth/signin`
-- [x] 2.5 Building page shows entry point + count, no list
-- [x] 2.6 A building with no resolutions shows the empty state
+- [x] 2.3 `/buildings/<id>/resolutions` lists all four states with correct badges — 6a212e8
+- [x] 2.4 Signed-out visit to that route redirects to `/auth/signin` — 6a212e8
+- [x] 2.5 Building page shows entry point + count, no list — 6a212e8
+- [x] 2.6 A building with no resolutions shows the empty state — 6a212e8
 
 ### Phase 3: The tally panel
 
 #### Automated
 
-- [ ] 3.1 `npx astro sync && npm run lint` passes
-- [ ] 3.2 `npm run build` passes
+- [x] 3.1 `npx astro sync && npm run lint` passes
+- [x] 3.2 `npm run build` passes
 
 #### Manual
 
-- [ ] 3.3 Three figures sum to 100,00% and the missing figures are arithmetically right
-- [ ] 3.4 After the threshold is crossed the panel states the outcome and agrees with the badge
-- [ ] 3.5 The response HTML contains no owner-to-choice mapping
+- [x] 3.3 Three figures sum to 100,00% and the missing figures are arithmetically right
+- [x] 3.4 After the threshold is crossed the panel states the outcome and agrees with the badge
+- [x] 3.5 The response HTML contains no owner-to-choice mapping
 
 ### Phase 4: The owner's link after the decision
 
