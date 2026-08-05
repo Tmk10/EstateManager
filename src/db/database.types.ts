@@ -73,6 +73,7 @@ export type Database = {
           body: string
           building_id: string
           created_at: string
+          decided_at: string | null
           id: string
           number: string
           opened_at: string | null
@@ -83,6 +84,7 @@ export type Database = {
           body: string
           building_id: string
           created_at?: string
+          decided_at?: string | null
           id?: string
           number: string
           opened_at?: string | null
@@ -93,6 +95,7 @@ export type Database = {
           body?: string
           building_id?: string
           created_at?: string
+          decided_at?: string | null
           id?: string
           number?: string
           opened_at?: string | null
@@ -287,6 +290,17 @@ export type Database = {
       import_building_units: {
         Args: { p_building_id: string; p_rows: Json }
         Returns: number
+      }
+      resolution_tally: {
+        Args: { p_resolution_id: string }
+        Returns: {
+          against_bps: number
+          against_missing_bps: number
+          for_bps: number
+          for_missing_bps: number
+          not_cast_bps: number
+          total_bps: number
+        }[]
       }
       resolve_voting_link: {
         Args: { p_token: string }
