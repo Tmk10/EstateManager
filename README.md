@@ -12,7 +12,7 @@ Each of these is irreversible or reaches production. They are stated in full in 
 - **Never `npx supabase db push --include-seed`** — the seed mints an administrator account, and against production that is the one code path this project refuses to have. → [Applying migrations to production](#applying-migrations-to-production)
 - **Never `npx supabase db push --include-all`** — it pushes everything missing from the remote history table, which is not what you just read in the dry run. → [Applying migrations to production](#applying-migrations-to-production)
 - **Never use the service-role key**, only the `anon` key — service-role bypasses Row Level Security entirely, on an app whose guardrail is that owners' data never leaves their building. → [Using a cloud Supabase project instead](#using-a-cloud-supabase-project-instead)
-- **Never run `npx wrangler email routing enable`** — inbound routing on the root domain makes it receive *all* mail addressed to it. This project only sends. → [Transactional email · one-time setup](#one-time-setup-manual-not-automated-here)
+- **Never run `npx wrangler email routing enable`** — inbound routing on the root domain makes it receive _all_ mail addressed to it. This project only sends. → [Transactional email · one-time setup](#one-time-setup-manual-not-automated-here)
 
 Built on [Astro](https://astro.build/) (`output: "server"` — every route is server-rendered), [React](https://react.dev/) islands, TypeScript, [Tailwind](https://tailwindcss.com/), [Supabase](https://supabase.com/) for auth and Postgres, and [Cloudflare Workers](https://workers.cloudflare.com/) for hosting. Versions are in [`package.json`](./package.json); the Node version is in [`.nvmrc`](./.nvmrc) and CI holds you to it.
 
@@ -47,6 +47,32 @@ The script list lives in [`package.json`](./package.json) and the layout is `src
 - On a fresh clone run `npx astro sync` before `npm run lint` — the type-checked rules need Astro's generated types.
 - `src/middleware.ts` resolves the session and gates protected routes — a new page is not protected until its path is added to the `PROTECTED_ROUTES` array there.
 
+## Running the tests
+
+Two suites, run separately.
+
+```bash
+npm test          # Vitest — src/**/*.test.ts. Needs nothing running.
+npm run test:watch
+npm run test:db   # pgTAP — supabase/tests/database/*.test.sql. Needs the local stack up.
+```
+
+`npm run test:db` shells out to the Supabase CLI, which runs pg_prove in Docker
+against the local stack (see [First-time setup](#first-time-setup-local-no-cloud-project-needed)
+below to stand it up). It does **not** reset or migrate the database, and every
+test file ends in `rollback`, so local data survives a run.
+
+Both suites currently contain **smoke tests only** — they prove the harnesses work
+and assert nothing about udziały, quorum, or access rules. The risks worth covering,
+and the patterns for covering them, are in
+[`context/foundation/test-plan.md`](./context/foundation/test-plan.md) §2 and §6.
+
+To add a test: unit tests go beside the module they exercise as `<module>.test.ts`;
+database tests go in `supabase/tests/database/<subject>.test.sql` and must open with
+their own `begin;` and `create extension if not exists pgtap;` — pgTAP is
+deliberately never added to a migration. §6.1 and §6.2 of the test plan have the
+full shape.
+
 ## Supabase Configuration
 
 This project uses [Supabase](https://supabase.com/) for authentication. Environment variables are declared via Astro's `astro:env` schema and are treated as **server-only secrets** — they are never exposed to the client.
@@ -55,7 +81,7 @@ This project uses [Supabase](https://supabase.com/) for authentication. Environm
 
 Requires [Docker](https://www.docker.com/) and ~7 GB RAM. Docker is a **real prerequisite** now, not an optional convenience: the schema lives in `supabase/migrations/` and `npm run db:types` reads it from the running local stack.
 
-If `supabase` cannot reach the Docker daemon, it is usually looking in the wrong place. Docker Desktop on macOS puts its socket at `~/.docker/run/docker.sock` and creates `/var/run/docker.sock` only when *Settings → Advanced → Allow the default Docker socket* is enabled. Either turn that on once, or prefix commands:
+If `supabase` cannot reach the Docker daemon, it is usually looking in the wrong place. Docker Desktop on macOS puts its socket at `~/.docker/run/docker.sock` and creates `/var/run/docker.sock` only when _Settings → Advanced → Allow the default Docker socket_ is enabled. Either turn that on once, or prefix commands:
 
 ```bash
 export DOCKER_HOST="unix://$HOME/.docker/run/docker.sock"
@@ -118,7 +144,7 @@ Local data is disposable and wants zero friction, so the seed above creates the 
 
 That asymmetry is deliberate, not an inconsistency waiting to be tidied up. A code path capable of minting administrators against production has no product justification — every account in the database is a full administrator with sight of the registry and of owners' contact details — and it is a standing risk to the guardrail that owners' data never leaves their building. Do not "fix" this by scripting production account creation.
 
-The two environments also behave differently underneath: `supabase/config.toml` sets `enable_confirmations = false` locally, so a seeded user can sign in immediately, while the hosted project reports `mailer_autoconfirm: false` — an account created there without an explicit confirmation flag lands unconfirmed and cannot sign in. That is what the dashboard's *Auto Confirm User* tickbox overrides.
+The two environments also behave differently underneath: `supabase/config.toml` sets `enable_confirmations = false` locally, so a seeded user can sign in immediately, while the hosted project reports `mailer_autoconfirm: false` — an account created there without an explicit confirmation flag lands unconfirmed and cannot sign in. That is what the dashboard's _Auto Confirm User_ tickbox overrides.
 
 Authentication itself needs no tables — it uses Supabase Auth's built-in `auth.users`. Domain tables for EstateManager go in `supabase/migrations/`, named `YYYYMMDDHHmmss_short_description.sql`, with RLS enabled on every table.
 
@@ -170,7 +196,7 @@ Two constraints on the hosted project, both load-bearing:
 
 Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_ROUTES` array there to require authentication.
 
-**Product decision (2026-08-01):** administrator accounts are created **directly in the database, through the Supabase dashboard** — the product has no self-service registration (`context/foundation/prd.md` §Access Control). To add one: Supabase dashboard → **Authentication → Users → Add user**, enter email and password, and tick *Auto Confirm User* so the account can sign in without a confirmation mail. Without that tick the account exists and cannot sign in, which fails identically to a missing one. For the MVP the database holds `test@test.com` with password `Test123!`, and `/auth/signin` states both facts on screen. The app has no registration screen: `/auth/signup`, `/auth/confirm-email` and `POST /api/auth/signup` were removed in roadmap item `F-01` and now return `404`.
+**Product decision (2026-08-01):** administrator accounts are created **directly in the database, through the Supabase dashboard** — the product has no self-service registration (`context/foundation/prd.md` §Access Control). To add one: Supabase dashboard → **Authentication → Users → Add user**, enter email and password, and tick _Auto Confirm User_ so the account can sign in without a confirmation mail. Without that tick the account exists and cannot sign in, which fails identically to a missing one. For the MVP the database holds `test@test.com` with password `Test123!`, and `/auth/signin` states both facts on screen. The app has no registration screen: `/auth/signup`, `/auth/confirm-email` and `POST /api/auth/signup` were removed in roadmap item `F-01` and now return `404`.
 
 This dashboard procedure is the **only** way a production account comes into existence — see [Local and production create accounts differently](#local-and-production-create-accounts-differently--on-purpose). Locally, `npx supabase db reset` does it for you.
 
@@ -178,16 +204,16 @@ This dashboard procedure is the **only** way a production account comes into exi
 
 `GET /api/health` reports whether the running Worker can actually reach Supabase. It is unauthenticated and deliberately excluded from `PROTECTED_ROUTES` — it has to answer before auth works.
 
-| Response | Meaning |
-| --- | --- |
-| `200 {"status":"ok","email":"ok"}` | Credentials present, Supabase answered its `/auth/v1/health` probe, and the `EMAIL` binding resolves |
-| `200 {"status":"ok","email":"missing"}` | Supabase is fine but the `EMAIL` binding is absent — the app is up and **cannot send mail**. Informational: this does **not** fail the deploy (see [Transactional email](#transactional-email)) |
-| `503 {"status":"misconfigured","supabase":"missing-credentials"}` | One or both env vars are unset |
-| `503 {"status":"degraded","supabase":"unreachable"}` | Credentials present but Supabase did not answer — covers a **rotated or revoked key**, which a presence check alone would miss |
+| Response                                                          | Meaning                                                                                                                                                                                         |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `200 {"status":"ok","email":"ok"}`                                | Credentials present, Supabase answered its `/auth/v1/health` probe, and the `EMAIL` binding resolves                                                                                            |
+| `200 {"status":"ok","email":"missing"}`                           | Supabase is fine but the `EMAIL` binding is absent — the app is up and **cannot send mail**. Informational: this does **not** fail the deploy (see [Transactional email](#transactional-email)) |
+| `503 {"status":"misconfigured","supabase":"missing-credentials"}` | One or both env vars are unset                                                                                                                                                                  |
+| `503 {"status":"degraded","supabase":"unreachable"}`              | Credentials present but Supabase did not answer — covers a **rotated or revoked key**, which a presence check alone would miss                                                                  |
 
 This exists because both Supabase vars are `optional: true` in `astro.config.mjs`. That is intentional — it lets local dev and preview builds degrade to the config-status banner instead of failing — but it also means a production deploy can go green while the app is non-functional. This route is what makes that condition loud. The endpoint never echoes the URL or the key.
 
-`deploy.yml` now enforces it: after `wrangler deploy` publishes, a final step curls this endpoint and fails the job on anything but `200`, retrying up to 5 times at 5-second intervals so edge propagation or a brief Supabase blip does not redden an otherwise good deploy. Because `503` means *either* "missing credentials" *or* "Supabase unreachable" — the endpoint cannot distinguish them without leaking the URL or key — a red run needs a human to interpret. There is deliberately **no auto-rollback**: the probe cannot tell a bad deploy from a dependency outage, so rollback stays a manual `wrangler rollback` (mind the warning in the deployment runbook about which versions are safe targets).
+`deploy.yml` now enforces it: after `wrangler deploy` publishes, a final step curls this endpoint and fails the job on anything but `200`, retrying up to 5 times at 5-second intervals so edge propagation or a brief Supabase blip does not redden an otherwise good deploy. Because `503` means _either_ "missing credentials" _or_ "Supabase unreachable" — the endpoint cannot distinguish them without leaking the URL or key — a red run needs a human to interpret. There is deliberately **no auto-rollback**: the probe cannot tell a bad deploy from a dependency outage, so rollback stays a manual `wrangler rollback` (mind the warning in the deployment runbook about which versions are safe targets).
 
 ## Transactional email
 
@@ -209,7 +235,7 @@ Like the Supabase dashboard procedure above, none of this is scripted. Each step
    npx wrangler email sending dns get <domain> # verify SPF + DKIM landed
    ```
 
-4. **Do not run `wrangler email routing enable`.** Inbound routing on the root domain makes it receive *all* mail addressed to it. This project only sends.
+4. **Do not run `wrangler email routing enable`.** Inbound routing on the root domain makes it receive _all_ mail addressed to it. This project only sends.
 
 The daily quota is **200 messages/day**. It is not settable and `wrangler` does not report it — read it in the dashboard under **Compute & AI → Email Service → Email Sending**.
 
@@ -253,7 +279,7 @@ Add one key to the `send_email` binding in `wrangler.jsonc` and run `npm run dev
 "remote": true
 ```
 
-**This sends real mail** — use only inboxes you control, and **never commit the flag**. Check `git diff wrangler.jsonc` before committing. Note what a passing local run does and does not prove: it proves the account and domain, not that the *deployed* Worker resolves the binding. Only a production send proves that.
+**This sends real mail** — use only inboxes you control, and **never commit the flag**. Check `git diff wrangler.jsonc` before committing. Note what a passing local run does and does not prove: it proves the account and domain, not that the _deployed_ Worker resolves the binding. Only a production send proves that.
 
 ### When the binding is missing
 
@@ -300,7 +326,12 @@ The full runbook — prerequisites, current state, and the deployment log — is
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs lint + build on every push and PR to `main`. Configure `SUPABASE_URL` and `SUPABASE_KEY` as repository secrets in GitHub for the build step.
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push and PR to `main`, in two parallel jobs:
+
+- **`ci`** — lint, `npm test`, build. Configure `SUPABASE_URL` and `SUPABASE_KEY` as repository secrets in GitHub for the build step.
+- **`db-contract`** — `supabase start` then `supabase test db`. Needs no secrets. Because `supabase start` applies every migration to a fresh database, this job also proves the migration chain applies from zero — the one check that a long-lived local stack cannot give you.
+
+`.github/workflows/deploy.yml` repeats lint, `npm test` and build before deploying, but deliberately not the database job — see the comment in that file.
 
 ## License
 

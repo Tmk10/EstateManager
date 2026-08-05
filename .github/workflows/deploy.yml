@@ -29,6 +29,16 @@ jobs:
       - run: npm ci
       - run: npx astro sync
       - run: npm run lint
+      # The unit gate runs here too, because on a direct push to main this job's
+      # in-job ordering is the only gate there is (see the note below `build`).
+      #
+      # The database contract gate deliberately does NOT run here. It lives in
+      # ci.yml, on pull requests, where it costs a reviewer nothing; putting a
+      # `supabase start` in front of every production deploy would add minutes to
+      # the path that matters most while re-proving what the PR already proved.
+      # The exposure that leaves is a direct push to main that never opened a PR
+      # — the same exposure the branch-and-PR rule in CLAUDE.md exists to close.
+      - run: npm test
       - run: npm run build
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
