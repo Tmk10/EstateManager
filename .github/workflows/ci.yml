@@ -21,7 +21,33 @@ jobs:
       - run: npm ci
       - run: npx astro sync
       - run: npm run lint
+      # The unit gate (test plan §5). Placed before `build` because it needs no
+      # build output and no secrets, so it is the cheapest step that can fail.
+      - run: npm test
       - run: npm run build
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
+  # The database contract gate (test plan §5), which that section flagged as
+  # needing "Docker and a migrated local stack inside CI, which no current
+  # workflow provides." This job is that provision.
+  #
+  # It is a separate job, not a step in `ci`, for two reasons: it needs no npm
+  # install and no repository secrets, and `supabase start` costs minutes that
+  # should not sit between a lint error and the developer who caused it. Running
+  # in parallel means the slow gate never delays the fast one.
+  #
+  # `supabase start` applies everything in supabase/migrations/ to a fresh
+  # database, so this job also proves the migrations apply cleanly from zero —
+  # something no other workflow checks, and which matters because migrations
+  # reach production by hand (`supabase db push`) and are forward-only.
+  db-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start
+      - run: supabase test db
