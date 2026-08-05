@@ -2,7 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import { createClient } from "@/lib/supabase";
 import { formatShareBps } from "@/lib/shares";
-import { formatResolutionDate } from "@/lib/resolutions";
+import { formatResolutionDate, describeResolutionStatus, isResolutionDecided } from "@/lib/resolutions";
 // Safe to import here precisely because it is dependency-free: it does NOT import
 // src/lib/email.ts, which would pull `cloudflare:workers` into this component's graph.
 import { describeSendFailure } from "@/lib/voting-link-email";
@@ -59,8 +59,23 @@ let resolution: {
   body: string;
   status: string;
   opened_at: string | null;
+  decided_at: string | null;
 } | null = null;
 let ownerRows: OwnerRow[] = [];
+/**
+ * The share balance, read from public.resolution_tally rather than computed here. The
+ * threshold rule lives in SQL and only in SQL: this page renders these figures and decides
+ * nothing with them, so there is no second implementation of `sum * 2 > 10000` to drift out
+ * of agreement with the trigger that actually settles the uchwała.
+ */
+let tally: {
+  total_bps: number;
+  for_bps: number;
+  against_bps: number;
+  not_cast_bps: number;
+  for_missing_bps: number;
+  against_missing_bps: number;
+} | null = null;
 /**
  * How many owners have voted -- a count of *people*, not of udziały. The outcome rule
  * (FR-008) counts only shares, so this number never decides anything; it exists so the
@@ -94,7 +109,7 @@ if (!supabase) {
     // "not found" here rather than a cross-building read.
     const { data: resolutionData, error: resolutionError } = await supabase
       .from("resolutions")
-      .select("id, number, title, body, status, opened_at")
+      .select("id, number, title, body, status, opened_at, decided_at")
       .eq("id", resolutionId)
       .eq("building_id", id)
       .maybeSingle();
@@ -107,12 +122,12 @@ if (!supabase) {
       resolution = resolutionData;
 
       if (resolution.status !== "draft") {
-        // Four reads joined in memory rather than one nested select. The registry is at
+        // Five reads joined in memory rather than one nested select. The registry is at
         // most ~70 owners and the alternative would be a projection string deep enough that
         // a wrong column in it would go unnoticed — supabase-js does not type-check the
-        // contents of .select(). They go out together: the vote count is one more round
-        // trip in parallel, not one more in sequence.
-        const [ownersResult, unitsResult, linksResult, votesResult] = await Promise.all([
+        // contents of .select(). They go out together: the vote count and the tally are one
+        // more round trip in parallel, not one more in sequence.
+        const [ownersResult, unitsResult, linksResult, votesResult, tallyResult] = await Promise.all([
           supabase.from("owners").select("id, full_name, email").eq("building_id", id),
           supabase.from("units").select("owner_id, unit_number, share_bps").eq("building_id", id),
           // owner_id only, deliberately: the token is NOT projected here and must not be.
@@ -135,9 +150,16 @@ if (!supabase) {
           // "id" rather than "*" for the same reason the links read names its column: a
           // later column-level revoke on this table would turn "*" into a 42501.
           supabase.from("votes").select("id", { count: "exact", head: true }).eq("resolution_id", resolutionId),
+          // The balance, aggregated in the database. Note what is NOT read anywhere on this
+          // page: a vote row joined to an owner. The function returns sums and nothing that
+          // could be attributed to a person, so there is no shape of this page that can say
+          // how anyone voted — that is S-06's question, and until it is answered the answer
+          // is no.
+          supabase.rpc("resolution_tally", { p_resolution_id: resolutionId }),
         ]);
 
-        const readError = ownersResult.error ?? unitsResult.error ?? linksResult.error ?? votesResult.error;
+        const readError =
+          ownersResult.error ?? unitsResult.error ?? linksResult.error ?? votesResult.error ?? tallyResult.error;
 
         if (readError) {
           loadError = readError.message;
@@ -177,13 +199,26 @@ if (!supabase) {
           // null count means PostgREST answered without one; 0 is the honest reading, and
           // it renders as "Zagłosowało 0 z N", not as a missing figure.
           voteCount = votesResult.count ?? 0;
+
+          // `returns table` over one row arrives as an array of one. Guarded rather than
+          // indexed blind: a missing balance must render as absent, never as zeroes, because
+          // "0,00% za" and "we could not read the balance" would look identical and only one
+          // of them is a reason to go chasing votes.
+          tally = tallyResult.data[0] ?? null;
         }
       }
     }
   }
 }
 
+// Still the gate for the edit form and the `Uruchom głosowanie` panel — those belong to the
+// draft state alone, and that has not changed. What has changed is the badge: it must no
+// longer read "everything that is not a draft is an open vote".
 const isDraft = resolution?.status === "draft";
+
+// The `?? "draft"` is inert: when there is no resolution the badge is not rendered at all.
+// It exists so this stays one call rather than two inside the markup.
+const statusBadge = describeResolutionStatus(resolution?.status ?? "draft");
 const linkedOwners = ownerRows.filter((owner) => owner.hasLink);
 
 // Two different reasons an owner has no link, split because the copy for each says
@@ -197,6 +232,12 @@ const ownersWithoutEmail = ownerRows.filter((owner) => !owner.hasLink && owner.e
 const ownersMissingLink = ownerRows.filter((owner) => !owner.hasLink && owner.email !== null);
 
 const openedAtLabel = resolution?.opened_at != null ? formatResolutionDate(resolution.opened_at) : null;
+
+const isDecided = isResolutionDecided(resolution?.status ?? "draft");
+// Displayed beside opened_at, never subtracted from it: decided_at carries the database's
+// clock and opened_at the Worker's, so their difference is a real duration plus an unknown
+// skew. See the comment on the column.
+const decidedAtLabel = resolution?.decided_at != null ? formatResolutionDate(resolution.decided_at) : null;
 
 /**
  * The three derived states, in the order the migration defines them. Kept as one function
@@ -242,21 +283,21 @@ const inputClass =
                   <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
                     Uchwała {resolution.number}
                   </h1>
-                  <span
-                    class:list={[
-                      "rounded-full px-2.5 py-0.5 text-xs font-medium",
-                      isDraft
-                        ? "border border-white/20 bg-white/10 text-blue-100/70"
-                        : "border border-green-400/40 bg-green-500/10 text-green-200",
-                    ]}
-                  >
-                    {isDraft ? "Wersja robocza" : "Głosowanie otwarte"}
+                  <span class:list={["rounded-full px-2.5 py-0.5 text-xs font-medium", statusBadge.className]}>
+                    {statusBadge.label}
                   </span>
                 </div>
                 <p class="mt-1 text-sm text-blue-100/60">
                   {building.name} — {building.street}, {building.city}
                 </p>
-                {openedAtLabel && <p class="mt-1 text-sm text-blue-100/60">Głosowanie otwarte od {openedAtLabel}</p>}
+                {/* "Głosowanie otwarte od" is a claim about now, and stops being true once the
+                    uchwała is settled — the vote is closed and cast_vote refuses every later
+                    ballot. A decided resolution states when voting opened, in the past tense. */}
+                {openedAtLabel && (
+                  <p class="mt-1 text-sm text-blue-100/60">
+                    {isDecided ? "Głosowanie otwarto" : "Głosowanie otwarte od"} {openedAtLabel}
+                  </p>
+                )}
               </div>
 
               {error && (
@@ -401,18 +442,66 @@ const inputClass =
                   </div>
 
                   {/* Sits in the non-draft branch only: before the vote is opened there are
-                      no links and no votes, and a "Zagłosowało 0 z 0" on a draft would read
-                      as a result rather than as an empty state. */}
+                      no links and no votes, and a "0,00% za" on a draft would read as a
+                      result rather than as an empty state. */}
                   <div class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
-                    <p class="text-sm text-blue-100/80">
-                      Zagłosowało <span class="font-medium text-white">{voteCount}</span> z
-                      <span class="font-medium text-white"> {linkedOwners.length} </span>
-                      właścicieli
-                    </p>
-                    <p class="mt-1 text-xs text-blue-100/60">
-                      To liczba osób, a nie udziałów. O przyjęciu uchwały decydują wyłącznie udziały — ten licznik
-                      pokazuje tylko, ilu właścicieli zdążyło oddać głos.
-                    </p>
+                    <h2 class="text-lg font-semibold">Bilans udziałów</h2>
+
+                    {tally === null ? (
+                      <p class="mt-2 text-sm text-amber-100">Nie udało się odczytać bilansu udziałów.</p>
+                    ) : (
+                      <>
+                        <dl class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <div class="rounded-lg border border-green-400/30 bg-green-500/10 px-3 py-2">
+                            <dt class="text-xs tracking-wide text-green-100/70 uppercase">Za</dt>
+                            <dd class="mt-1 text-xl font-semibold text-green-100 tabular-nums">
+                              {formatShareBps(tally.for_bps)}
+                            </dd>
+                          </div>
+                          <div class="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2">
+                            <dt class="text-xs tracking-wide text-rose-100/70 uppercase">Przeciw</dt>
+                            <dd class="mt-1 text-xl font-semibold text-rose-100 tabular-nums">
+                              {formatShareBps(tally.against_bps)}
+                            </dd>
+                          </div>
+                          <div class="rounded-lg border border-white/15 bg-white/5 px-3 py-2">
+                            <dt class="text-xs tracking-wide text-blue-100/60 uppercase">Jeszcze nie oddano</dt>
+                            <dd class="mt-1 text-xl font-semibold text-white tabular-nums">
+                              {formatShareBps(tally.not_cast_bps)}
+                            </dd>
+                          </div>
+                        </dl>
+
+                        {/* Two different sentences, because a decided uchwała and a running
+                            one answer different questions. A running one is asked "how much
+                            further?"; a decided one has no further to go, and showing a
+                            distance beside a settled result would invite the reading that it
+                            could still move. It cannot: cast_vote refuses every later vote. */}
+                        {isDecided ? (
+                          <p class="mt-4 text-sm text-blue-100/80">
+                            {resolution.status === "passed"
+                              ? "Uchwała została podjęta — udziały „za” przekroczyły połowę wszystkich udziałów w budynku."
+                              : "Uchwała upadła — udziały „przeciw” przekroczyły połowę wszystkich udziałów w budynku."}
+                            {decidedAtLabel !== null && ` Rozstrzygnięcie: ${decidedAtLabel}.`}
+                          </p>
+                        ) : (
+                          <p class="mt-4 text-sm text-blue-100/80">
+                            Do podjęcia uchwały brakuje jeszcze
+                            <span class="font-medium text-white"> {formatShareBps(tally.for_missing_bps)} </span>
+                            udziałów „za”; do jej upadku —
+                            <span class="font-medium text-white"> {formatShareBps(tally.against_missing_bps)} </span>
+                            udziałów „przeciw”.
+                          </p>
+                        )}
+
+                        <p class="mt-3 text-xs text-blue-100/60">
+                          Próg liczy się od <span class="font-medium">wszystkich</span> udziałów w budynku, a nie od
+                          oddanych — udziały, które jeszcze nie zagłosowały, działają w skutku jak głos przeciw.
+                          Zagłosowało {voteCount} z {linkedOwners.length} właścicieli; o wyniku decydują wyłącznie
+                          udziały, nie liczba osób.
+                        </p>
+                      </>
+                    )}
                   </div>
 
                   <div class="mt-8 mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -580,10 +669,10 @@ const inputClass =
 
       <p class="mt-8 text-center text-sm">
         <a
-          href={building ? `/buildings/${building.id}` : "/buildings"}
+          href={building ? `/buildings/${building.id}/resolutions` : "/buildings"}
           class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
         >
-          Wróć do budynku
+          Wróć do uchwał
         </a>
       </p>
     </div>

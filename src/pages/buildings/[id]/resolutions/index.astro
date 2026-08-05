@@ -1,0 +1,167 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { createClient } from "@/lib/supabase";
+import { formatResolutionDate, describeResolutionStatus, isResolutionDecided } from "@/lib/resolutions";
+
+const { id } = Astro.params;
+
+// Middleware has already bounced anonymous visitors: PROTECTED_ROUTES contains "/buildings"
+// and is matched with startsWith, so this route was protected the moment the file existed.
+// No entry had to be added for it — do not add one, it would be dead weight in the only auth
+// gate this application has.
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+const error = Astro.url.searchParams.get("error");
+
+let loadError: string | null = null;
+let building: { id: string; name: string; city: string; street: string } | null = null;
+let resolutions: {
+  id: string;
+  number: string;
+  title: string;
+  status: string;
+  opened_at: string | null;
+  decided_at: string | null;
+}[] = [];
+
+if (!supabase) {
+  loadError = "Baza danych nie jest skonfigurowana.";
+} else if (!id) {
+  loadError = "Nie znaleziono budynku.";
+} else {
+  const { data: buildingData, error: buildingError } = await supabase
+    .from("buildings")
+    .select("id, name, city, street")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (buildingError) {
+    // 22P02 is invalid_text_representation — the id in the URL is not a uuid at all.
+    loadError = buildingError.code === "22P02" ? "Nie znaleziono budynku." : buildingError.message;
+  } else if (!buildingData) {
+    loadError = "Nie znaleziono budynku.";
+  } else {
+    building = buildingData;
+
+    // One list, running and finished together — the status badge is what tells them apart.
+    // Splitting decided uchwały onto their own screen would make an administrator guess which
+    // screen to look on before knowing whether the vote had finished.
+    //
+    // Newest first: far more likely to be looking for the uchwała written a minute ago.
+    const { data: resolutionRows, error: resolutionsError } = await supabase
+      .from("resolutions")
+      .select("id, number, title, status, opened_at, decided_at")
+      .eq("building_id", id)
+      .order("created_at", { ascending: false });
+
+    if (resolutionsError) {
+      loadError = resolutionsError.message;
+    } else {
+      resolutions = resolutionRows;
+    }
+  }
+}
+---
+
+<Layout title={building ? `Uchwały — ${building.name}` : "Uchwały"}>
+  <div class="bg-cosmic min-h-screen p-4 py-12">
+    <div
+      class="mx-auto w-full max-w-4xl rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl"
+    >
+      {
+        loadError ? (
+          <p class="rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300" role="alert">
+            {loadError}
+          </p>
+        ) : (
+          building && (
+            <>
+              <div class="mb-6">
+                <h1 class="bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-2xl font-bold text-transparent">
+                  Uchwały
+                </h1>
+                <p class="mt-1 text-sm text-blue-100/60">
+                  {building.name} — {building.street}, {building.city}
+                </p>
+              </div>
+
+              {error && (
+                <p
+                  class="mb-6 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-sm text-red-300"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              )}
+
+              <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <p class="text-sm text-blue-100/60">
+                  Uchwał: <span class="font-medium text-white">{resolutions.length}</span>
+                </p>
+                <a
+                  href={`/buildings/${building.id}/resolutions/new`}
+                  class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-purple-500"
+                >
+                  Nowa uchwała
+                </a>
+              </div>
+
+              {resolutions.length > 0 ? (
+                <ul class="divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10">
+                  {resolutions.map((item) => {
+                    const badge = describeResolutionStatus(item.status);
+                    // A decided uchwała is dated by when it was decided; one still running, by
+                    // when it opened. Never both, and never the difference between them:
+                    // opened_at carries the Worker's clock and decided_at the database's.
+                    const timestamp = isResolutionDecided(item.status) ? item.decided_at : item.opened_at;
+                    const timestampLabel = isResolutionDecided(item.status) ? "rozstrzygnięta" : "od";
+
+                    return (
+                      <li>
+                        <a
+                          href={`/buildings/${building.id}/resolutions/${item.id}`}
+                          class="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 transition-colors hover:bg-white/5"
+                        >
+                          <span class="text-sm">
+                            <span class="font-medium">{item.number}</span>
+                            <span class="text-blue-100/70"> — {item.title}</span>
+                          </span>
+                          <span class="flex items-baseline gap-3 text-xs">
+                            {timestamp !== null && (
+                              <span class="text-blue-100/50">
+                                {timestampLabel} {formatResolutionDate(timestamp)}
+                              </span>
+                            )}
+                            <span class:list={["rounded-full px-2.5 py-0.5 font-medium", badge.className]}>
+                              {badge.label}
+                            </span>
+                          </span>
+                        </a>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div class="rounded-xl border border-dashed border-white/10 bg-white/5 px-4 py-8 text-center">
+                  <p class="text-blue-100/80">Ten budynek nie ma jeszcze żadnej uchwały.</p>
+                  <p class="mt-1 text-sm text-blue-100/50">
+                    Napisz uchwałę, a po uruchomieniu głosowania każdy właściciel dostanie własny link.
+                  </p>
+                </div>
+              )}
+            </>
+          )
+        )
+      }
+
+      <p class="mt-8 text-center text-sm">
+        <a
+          href={building ? `/buildings/${building.id}` : "/buildings"}
+          class="text-blue-200/80 underline-offset-4 transition-colors hover:text-white hover:underline"
+        >
+          Wróć do budynku
+        </a>
+      </p>
+    </div>
+  </div>
+</Layout>
