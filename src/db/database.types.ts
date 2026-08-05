@@ -291,6 +291,10 @@ export type Database = {
         Args: { p_building_id: string; p_rows: Json }
         Returns: number
       }
+      resolution_outcome_supported: {
+        Args: { p_resolution_id: string; p_status: string }
+        Returns: boolean
+      }
       resolution_tally: {
         Args: { p_resolution_id: string }
         Returns: {

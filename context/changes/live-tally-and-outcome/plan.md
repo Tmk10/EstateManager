@@ -114,6 +114,21 @@ The second transaction then blocks until the first commits and re-reads under a 
 snapshot that includes it. The trigger was going to touch that row anyway on the deciding vote,
 so the lock costs nothing extra, and contention is one building's voters on one resolution.
 
+> **Addendum, 2026-08-05 — the lock is right, its placement above is wrong.** Taking `FOR UPDATE`
+> inside the **after**-insert trigger **deadlocks**, and it was reproduced against the local stack
+> on the first attempt (40P01): `public.votes` carries a composite foreign key to
+> `public.resolutions`, so every insert already takes `FOR KEY SHARE` on the parent on its way in.
+> Two concurrent voters both hold it — they are compatible — and then each after-trigger waits for
+> the other's. The loser's vote is discarded and the endpoint tells them *"Nie udało się zapisać
+> głosu"*.
+>
+> The fix is lock **order**, not lock strength: the implementation takes `FOR UPDATE` in a separate
+> `before insert` trigger, `votes_lock_resolution` / `public.lock_resolution_for_outcome()`, so the
+> strongest lock is always acquired first and the FK's `KEY SHARE` second.
+> `apply_resolution_outcome` then takes **no** lock of its own. Full argument, with the interleaving
+> written out, in `supabase/migrations/20260804213630_resolution_outcome.sql:245-283`. **Do not
+> move the lock back into the after-trigger** — it will look like removing a redundant trigger.
+
 **Local migration must not reset the database.** The local stack carries hand-made test state
 (a building, a registry, an open resolution, real votes) that `npx supabase db reset` would
 destroy. Apply with `npx supabase migration up`, then `npm run db:types`.
@@ -479,13 +494,13 @@ schema.
 
 #### Automated
 
-- [x] 4.1 `npx astro sync && npm run lint` passes
-- [x] 4.2 `npm run build` passes
+- [x] 4.1 `npx astro sync && npm run lint` passes — 18d0080
+- [x] 4.2 `npm run build` passes — 18d0080
 
 #### Manual
 
-- [x] 4.3 An owner who never voted sees the outcome and no buttons
-- [x] 4.4 An owner who voted sees the outcome and their own receipt
-- [x] 4.5 An unknown token still renders the neutral page unchanged
-- [ ] 4.6 Production migration applied by hand BEFORE the code is deployed
+- [x] 4.3 An owner who never voted sees the outcome and no buttons — 18d0080
+- [x] 4.4 An owner who voted sees the outcome and their own receipt — 18d0080
+- [x] 4.5 An unknown token still renders the neutral page unchanged — 18d0080
+- [x] 4.6 Production migration applied by hand BEFORE the code is deployed
 - [ ] 4.7 `/api/health` returns 200 after deploy and a production resolution shows its tally

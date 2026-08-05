@@ -1,13 +1,53 @@
 ---
 change_id: live-tally-and-outcome
 title: Live tally and outcome
-status: implementing
+status: impl_reviewed
 created: 2026-08-04
 updated: 2026-08-05
 archived_at: null
 ---
 
 ## Notes
+
+### EM014: widening EM007 handed the outcome to every writer, not just to the trigger
+
+Found by the implementation review on 2026-08-05, after all four phases had been committed and
+after `20260804213630` was already live on production.
+
+`EM007` is a trigger on `public.resolutions`, not a permission on one function. Teaching it
+`open -> passed` and `open -> rejected` — which `apply_resolution_outcome` needs — taught it
+those transitions for **everybody**, and `resolutions_update_authenticated` is
+`using (true) with check (true)` with no `force row level security` anywhere in this schema. So a
+signed-in administrator could `PATCH` a resolution to `passed` through PostgREST with no vote
+behind it, supplying `decided_at` in the same payload to satisfy
+`resolutions_decided_at_matches_status`. Reproduced as role `authenticated` inside a rolled-back
+transaction: `for_bps = 0`, `for_missing_bps = 5001`, `UPDATE 1`, no error.
+
+Two things put it outside this project's ordinary "v1 has no roles model" posture:
+
+- **It was impossible the day before.** Until this slice, `EM007` refused every status change
+  except `draft -> open`. S-05 introduced it.
+- **It also closes the vote.** `cast_vote` gates on `status = 'open'`, so a forged flip silently
+  stops every owner who has not yet voted, on the neutral zero-row path. A forged outcome and a
+  disenfranchised electorate are one keystroke.
+
+`20260805084000_assert_outcome_matches_tally.sql` adds `EM014`: the two outcome transitions are
+refused unless that side's `*_missing_bps` has reached zero. The honest flip satisfies it by
+construction, because `apply_resolution_outcome` only issues its update after reading the same
+figure from the same function.
+
+**The read is `security definer` while `resolution_tally` is not, and that is the same argument
+`assert_building_registry` settled in `20260802101500`:** an *assertion* that aggregates only the
+caller's visible rows passes by not seeing the problem. Today `votes_select_authenticated` is
+`using (true)` so it changes nothing; the moment it is scoped, an invoker assertion would start
+approving outcomes a subset of the electorate supports. `public.resolution_outcome_supported`
+wraps the call so the threshold constant still appears exactly once, inside `resolution_tally`.
+
+Verified locally, every check inside a rolled-back transaction: both forges raise `EM014`;
+`draft -> passed` is still `EM007` (precedence is right); `draft -> open` still works; three real
+votes totalling 7499 bps still flip the resolution to `passed` with no `EM014`; a late vote on it
+still returns zero rows. Applied to production the same day, before the code, and confirmed there
+by `resolution_outcome_supported` answering and `/api/health` returning `200`.
 
 ### The lock has to be taken BEFORE the insert, and the first version got it wrong
 
@@ -59,6 +99,32 @@ rolled back, and the four resolutions are still `open` with `decided_at` null.
 The exact-half case is the one worth keeping: PRD `FR-007` says *przekroczy* — more than half,
 not half — and the local registry happens to hold owners at 2501 and 2499 bps, which sums to
 exactly 5000 and proves the boundary rather than approximating it.
+
+### Production migration applied 2026-08-05, BEFORE the code
+
+`npx supabase db push` against `swsvohyahbamfonekvaa`, from the worktree after copying
+`supabase/.temp/` across (a `git worktree` does not carry gitignored files, so a fresh worktree
+is never linked). Dry run first: `20260804213630_resolution_outcome.sql` was the only pending
+migration — S-04's was already there.
+
+Verified afterwards, against the **real** project rather than the local one:
+
+- All five production resolutions are still `open` with `decided_at` null. **Nothing
+  auto-decided**, so the risk below did not materialise on this deploy.
+- `public.resolution_tally` answers on production: `10000 / 0 / 0 / 10000 / 5001 / 5001`.
+- `/api/health` → `200 {"status":"ok","email":"ok"}`.
+
+**The window this opens, for next time.** The trigger begins deciding uchwały the moment the
+migration lands, but the UI that explains a decided one ships only at merge. Between the two, a
+resolution that crosses the threshold would render as *Głosowanie otwarte* on the old badge and
+would show owners the dead buttons Phase 4 removes. It was safe here because no production
+resolution was near the threshold — that was checked, not assumed. A slice that changes
+behaviour before its UI lands should keep that gap short.
+
+**Trap worth naming:** `.env` copied into the worktree points at the **local** stack, so a
+`curl` against `$SUPABASE_URL` reads local data while `supabase db push` writes production.
+The first check of "did anything decide on production" was made this way and read local rows
+back; production must be reached by its own URL and key (`supabase projects api-keys`).
 
 ### Phase 4: the defect this slice would have shipped
 
