@@ -112,6 +112,12 @@ both, and a Vitest suite that fails if the assembler stops reconciling.
 - **No pgTAP test.** Decided in planning: the policies this slice relies on already exist, so a
   contract test could only be written after the fact and would not be TDD. It belongs to
   test-plan §3 Phase 2, not here.
+  - **Partially overtaken 2026-08-05, and the reasoning survives intact.** The rule was about
+    testing *existing* policies after the fact. `EM015` is a **new** constraint, so it could be —
+    and was — driven red-before-green: `supabase/tests/database/owner_holds_units.test.sql` failed
+    with `caught: no exception, wanted: EM015` before the migration existed. What the plan ruled
+    out is still ruled out: nothing here tests `votes`' pre-existing policies or what `anon` may
+    read, and that remains test-plan §3 Phase 2's job.
 - **No per-lokal attribution.** Votes carry a summed per-owner weight by design (`S-02`); breaking
   it back down would re-derive from the registry the snapshot exists to be independent of.
 
@@ -420,13 +426,13 @@ the table. It also cannot be rolled back by `wrangler rollback`, which reverts c
 
 #### Automated
 
-- [ ] 3.1 `npx astro sync && npm run lint && npm test && npm run build` all pass
-- [ ] 3.2 `git status` shows no unintended files
+- [x] 3.1 `npx astro sync && npm run lint && npm test && npm run build` all pass
+- [x] 3.2 `git status` shows no unintended files
 
 #### Manual
 
-- [ ] 3.3 `7/2026` renders the trail with `za` at 50,01% and reconciliation at 100,00%
-- [ ] 3.4 `6/2026` renders the trail with `przeciw` at 74,99%
-- [ ] 3.5 An open uchwała shows no trail
-- [ ] 3.6 roadmap.md S-06 status reads `done` and its Unknowns record the decision
-- [ ] 3.7 CLAUDE.md "Current state" describes what is now built, with the slice count corrected
+- [x] 3.3 `7/2026` renders the trail with `za` at 50,01% and reconciliation at 100,00%
+- [x] 3.4 `6/2026` renders the trail with `przeciw` at 74,99%
+- [x] 3.5 An open uchwała shows no trail
+- [x] 3.6 roadmap.md S-06 status reads `done` and its Unknowns record the decision
+- [x] 3.7 CLAUDE.md "Current state" describes what is now built, with the slice count corrected
