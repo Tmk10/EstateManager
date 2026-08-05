@@ -436,31 +436,31 @@ schema.
 
 #### Automated
 
-- [x] 1.1 `npx supabase migration up` applies cleanly against the local stack
-- [x] 1.2 `npm run db:types` regenerates and the diff shows `decided_at` and `resolution_tally`
-- [x] 1.3 `npx astro sync && npm run lint` passes
-- [x] 1.4 `npm run build` passes
+- [x] 1.1 `npx supabase migration up` applies cleanly against the local stack — f84f3fe
+- [x] 1.2 `npm run db:types` regenerates and the diff shows `decided_at` and `resolution_tally` — f84f3fe
+- [x] 1.3 `npx astro sync && npm run lint` passes — f84f3fe
+- [x] 1.4 `npm run build` passes — f84f3fe
 
 #### Manual
 
-- [ ] 1.5 `za` past 50% flips to `passed`, stamps `decided_at`, and a later vote is silently refused
-- [ ] 1.6 `przeciw` past 50% flips to `rejected`
-- [ ] 1.7 `EM007` still refuses `passed → open` and `open → draft` through PostgREST
-- [ ] 1.8 `resolution_tally` figures sum to 10000 on a part-voted resolution
+- [x] 1.5 `za` past 50% flips to `passed`, stamps `decided_at`, and a later vote is silently refused — f84f3fe
+- [x] 1.6 `przeciw` past 50% flips to `rejected` — f84f3fe
+- [x] 1.7 `EM007` still refuses `passed → open` and `open → draft` through PostgREST — f84f3fe
+- [x] 1.8 `resolution_tally` figures sum to 10000 on a part-voted resolution — f84f3fe
 
 ### Phase 2: The resolutions route and the four-status badge
 
 #### Automated
 
-- [ ] 2.1 `npx astro sync && npm run lint` passes
-- [ ] 2.2 `npm run build` passes
+- [x] 2.1 `npx astro sync && npm run lint` passes
+- [x] 2.2 `npm run build` passes
 
 #### Manual
 
-- [ ] 2.3 `/buildings/<id>/resolutions` lists all four states with correct badges
-- [ ] 2.4 Signed-out visit to that route redirects to `/auth/signin`
-- [ ] 2.5 Building page shows entry point + count, no list
-- [ ] 2.6 A building with no resolutions shows the empty state
+- [x] 2.3 `/buildings/<id>/resolutions` lists all four states with correct badges
+- [x] 2.4 Signed-out visit to that route redirects to `/auth/signin`
+- [x] 2.5 Building page shows entry point + count, no list
+- [x] 2.6 A building with no resolutions shows the empty state
 
 ### Phase 3: The tally panel
 

@@ -3,7 +3,7 @@ change_id: live-tally-and-outcome
 title: Live tally and outcome
 status: implementing
 created: 2026-08-04
-updated: 2026-08-04
+updated: 2026-08-05
 archived_at: null
 ---
 
@@ -59,6 +59,37 @@ rolled back, and the four resolutions are still `open` with `decided_at` null.
 The exact-half case is the one worth keeping: PRD `FR-007` says *przekroczy* — more than half,
 not half — and the local registry happens to hold owners at 2501 and 2499 bps, which sums to
 exactly 5000 and proves the boundary rather than approximating it.
+
+### Phase 2: `open` stopped being green
+
+Not in the plan, and worth knowing before someone "restores" it. Before this slice `open` was
+the only non-draft status, so its badge was green and green just meant *live*. With four
+statuses green has to mean **Podjęta**, and an open vote a shade away from a passed one is the
+single most expensive confusion this screen could produce. So: `draft` neutral, `open` sky,
+`passed` green, `rejected` rose — the last deliberately not styled as an error, because an
+uchwała that falls is the ordinary outcome for roughly 85% of them.
+
+`describeResolutionStatus` takes `string`, not the union, because that is what a database read
+hands over, and its fallback says *Nieznany status* rather than guessing. Falling back to
+`open` would be the dangerous default: it would report an unknown state as one still accepting
+votes. The lookup uses `Object.hasOwn` rather than `in` — with `in`, a status of `toString`
+indexes onto a function and reports as known. Both cases are covered by the check below.
+
+**Phase 2 verification** (dev server against the local stack):
+
+| Check | Result |
+| --- | --- |
+| Signed-out `GET /buildings/<id>/resolutions` | `302` → `/auth/signin`, with **no** `PROTECTED_ROUTES` entry added — `/buildings` is matched with `startsWith` |
+| Signed-in list | `200`, four `Głosowanie otwarte` badges for the four open uchwały |
+| Building page | entry point present, list and `Nowa uchwała` gone |
+| Empty state | `200` on a throwaway building, "Ten budynek nie ma jeszcze żadnej uchwały" (building deleted afterwards; counts back to 1 / 4 / 2) |
+| `describeResolutionStatus` over all four statuses + `wat`, `toString`, `__proto__` | correct labels; all three unknowns → *Nieznany status* |
+
+The `Podjęta` / `Upadła` badges are verified at the helper, not end to end, because **no decided
+resolution exists yet and one cannot be made and unmade** — `EM007` refuses `passed → open` and
+`EM010` refuses deleting a vote, so manufacturing one would leave permanent junk in the local
+database. They render through the identical code path as the other two; the end-to-end sighting
+happens in Phase 3, where real votes cross the threshold.
 
 ### RESOLVED 2026-08-05: was blocked on S-04, which landed
 
