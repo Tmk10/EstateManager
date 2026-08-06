@@ -21,6 +21,14 @@ pnpm-debug.log*
 .dev.vars
 .wrangler/
 
+# e2e. The session file holds a real access token for whatever database the suite ran
+# against, so it never gets committed; `auth.setup.ts` regenerates it on demand. The
+# report, the raw results and the Playwright CLI's snapshots are all per-run scratch.
+playwright/.auth/
+playwright-report/
+test-results/
+.playwright-cli/
+
 # macOS-specific files
 .DS_Store
 

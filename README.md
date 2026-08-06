@@ -49,18 +49,45 @@ The script list lives in [`package.json`](./package.json) and the layout is `src
 
 ## Running the tests
 
-Two suites, run separately.
+Three suites, run separately.
 
 ```bash
 npm test          # Vitest — src/**/*.test.ts. Needs nothing running.
 npm run test:watch
 npm run test:db   # pgTAP — supabase/tests/database/*.test.sql. Needs the local stack up.
+npm run test:e2e  # Playwright — e2e/*.spec.ts. Needs the local stack up; starts the app itself.
 ```
 
 `npm run test:db` shells out to the Supabase CLI, which runs pg_prove in Docker
 against the local stack (see [First-time setup](#first-time-setup-local-no-cloud-project-needed)
 below to stand it up). It does **not** reset or migrate the database, and every
 test file ends in `rollback`, so local data survives a run.
+
+`npm run test:e2e` drives a real browser against the real app. It needs the local
+stack up (same [First-time setup](#first-time-setup-local-no-cloud-project-needed)),
+and it starts `npm run dev` itself — if you already have one running on
+`http://localhost:4321` it reuses that. The administrator it signs in as is the
+`supabase/seed.sql` account, so a database that was never seeded will fail at the
+first spec.
+
+```bash
+npm run test:e2e -- e2e/seed.spec.ts   # one spec
+npm run test:e2e -- --headed           # watch it happen
+npm run test:e2e -- --ui               # pick and re-run interactively
+```
+
+Sign-in happens once per run, in `e2e/auth.setup.ts`, and the session is handed to
+every other spec through `playwright/.auth/user.json`. That file holds a real access
+token for whatever database the run pointed at, so it is gitignored and regenerated
+on demand — never commit it, and never copy one between machines. Tests clean up
+after themselves through `e2e/fixtures/db.ts` rather than through the UI, because the
+product has no delete path anywhere (PRD `## Non-Goals`: bez edycji rejestru); that
+fixture holds a `service_role` key and is for setup and teardown only.
+
+What the browser layer covers, and what it does not, is
+[`context/foundation/test-plan.md`](./context/foundation/test-plan.md) §3 Phase 3 and
+§5 — two risks today (#7, and the visible half of #8), with the confirm flow still
+uncovered at every layer.
 
 Two modules are genuinely pinned — the audit trail's arithmetic
 (`src/lib/resolution-trail.test.ts`) and `EM015`
