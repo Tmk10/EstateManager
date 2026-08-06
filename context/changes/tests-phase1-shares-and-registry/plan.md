@@ -531,27 +531,27 @@ is where they get pinned.
 
 #### Automated
 
-- [x] 3.1 `npm test` green with both new suites
-- [x] 3.2 `npm run lint` and `npm run build` pass
-- [x] 3.3 Completeness test goes red on `continue` → `break` at `:353` and `:362`, restored
+- [x] 3.1 `npm test` green with both new suites — 38da304
+- [x] 3.2 `npm run lint` and `npm run build` pass — 38da304
+- [x] 3.3 Completeness test goes red on `continue` → `break` at `:353` and `:362`, restored — 38da304
 
 #### Manual
 
-- [x] 3.4 No test asserts a full Polish sentence
-- [x] 3.5 Every `line: 1` assertion carries its justification
-- [x] 3.6 Every trait of the mess fixture is actually exercised
+- [x] 3.4 No test asserts a full Polish sentence — 38da304
+- [x] 3.5 Every `line: 1` assertion carries its justification — 38da304
+- [x] 3.6 Every trait of the mess fixture is actually exercised — 38da304
 
 ### Phase 4: Round-trip invariance
 
 #### Automated
 
-- [ ] 4.1 `npm test` green
-- [ ] 4.2 Six-presentation test goes red when CR handling is narrowed, restored
+- [x] 4.1 `npm test` green
+- [x] 4.2 Six-presentation test goes red when CR handling is narrowed, restored
 
 #### Manual
 
-- [ ] 4.3 Round-trip test reads as the real call path, with line references
-- [ ] 4.4 No byte-equality assertion anywhere
+- [x] 4.3 Round-trip test reads as the real call path, with line references
+- [x] 4.4 No byte-equality assertion anywhere
 
 ### Phase 5: Correct the two byte-stability comments
 

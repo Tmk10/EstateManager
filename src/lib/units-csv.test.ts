@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { computeShareBps } from "@/lib/shares";
 import { parseUnitsCsv, type ParseError, type ParsedRow, type ParseResult } from "@/lib/units-csv";
 import {
   COMPLETENESS_DEFECTS_LINES,
@@ -10,6 +11,7 @@ import {
   MANAGER_EXPORT_LINES,
   MISSING_HEADER_COLUMN_LINES,
   ONE_EMAIL_TWO_NAMES_LINES,
+  SIMPLE_REGISTRY_LINES,
   UNCLOSED_QUOTE_LINES,
   WINDOWS_1250_EXPORT,
 } from "@/lib/units-csv.fixtures";
@@ -223,5 +225,91 @@ describe("one pass over the file", () => {
       expect(() => parseUnitsCsv(bytes), name).not.toThrow();
       expect(errorsOf(parseUnitsCsv(bytes)).length, name).toBeGreaterThan(0);
     }
+  });
+});
+
+/** The udziały a set of rows earns, failing the test if the rejestr was refused an allocation. */
+function sharesOf(rows: ParsedRow[]): number[] {
+  const shares = computeShareBps(rows.map((row) => row.areaHundredths));
+  if (!Array.isArray(shares)) {
+    throw new Error(`Expected udziały, got a refusal: ${shares.error}`);
+  }
+  return shares;
+}
+
+/**
+ * How a form submission rewrites the newlines in a field's value.
+ *
+ * Per the URL-encoded serialiser: every CR not followed by LF, and every LF not preceded by
+ * CR, becomes CRLF. So the text the confirm endpoint receives is never byte-identical to the
+ * text the preview put into the hidden input unless the file already used CRLF throughout.
+ */
+function normaliseNewlinesAsFormSubmission(text: string): string {
+  return text.replace(/\r\n|\r|\n/g, "\r\n");
+}
+
+const PRESENTATIONS = [
+  { name: "LF, bez BOM-u", newline: "\n", bom: false },
+  { name: "LF, z BOM-em", newline: "\n", bom: true },
+  { name: "CRLF, bez BOM-u", newline: "\r\n", bom: false },
+  { name: "CRLF, z BOM-em — jak zapisuje polski Excel", newline: "\r\n", bom: true },
+  { name: "CR, bez BOM-u", newline: "\r", bom: false },
+  { name: "CR, z BOM-em", newline: "\r", bom: true },
+] as const;
+
+describe("one rejestr, however the file happens to be written down", () => {
+  // What this group protects is not the parser for its own sake -- it is the promise
+  // `src/pages/api/buildings/[id]/units.ts:49-59` makes: the confirm endpoint recomputes the
+  // udziały from the CSV instead of trusting the ones the browser posts back, so a client
+  // cannot hand its own lokal whatever voting weight it likes. That promise is only worth
+  // anything if the second parse agrees with the first -- and the two parses do not see the
+  // same bytes.
+  it("yields the same lokale and the same udziały in all six presentations", () => {
+    const readings = PRESENTATIONS.map(({ name, newline, bom }) => {
+      const rows = rowsOf(parseUnitsCsv(encodeCsv(SIMPLE_REGISTRY_LINES, { newline, bom })));
+      return { name, rows, shares: sharesOf(rows) };
+    });
+
+    const [first, ...rest] = readings;
+
+    // Guard against the whole comparison being vacuous: three lokale must actually have been
+    // read, and they must actually have been allocated udziały.
+    expect(first.rows).toHaveLength(3);
+    expect(first.shares).toHaveLength(3);
+
+    for (const reading of rest) {
+      expect(reading.rows, reading.name).toEqual(first.rows);
+      expect(reading.shares, reading.name).toEqual(first.shares);
+    }
+  });
+
+  it("survives the trip through the preview and back, though the bytes do not", () => {
+    // The path, as it actually runs:
+    //
+    //   1. the administrator uploads a file -- here one saved with a BOM and lone LFs
+    //   2. `import.astro:115` parses those bytes for the preview
+    //   3. `import.astro:141` decodes them with `TextDecoder("utf-8")`, which drops the BOM,
+    //      and puts the text into a hidden input (`import.astro:228`)
+    //   4. submitting that form normalises every lone LF and lone CR to CRLF
+    //   5. `units.ts:54` re-encodes with `TextEncoder` and parses again
+    //
+    // So the bytes the confirm endpoint parses differ from the uploaded ones in both of the
+    // ways bytes can differ here: the BOM is gone and every terminator has changed. That is
+    // expected and it is not a defect -- what has to hold is that neither difference reaches
+    // the lokale or the udziały.
+    const uploaded = encodeCsv(SIMPLE_REGISTRY_LINES, { newline: "\n", bom: true });
+    const preview = rowsOf(parseUnitsCsv(uploaded));
+
+    const inTheHiddenInput = new TextDecoder("utf-8").decode(uploaded);
+    const posted = new TextEncoder().encode(normaliseNewlinesAsFormSubmission(inTheHiddenInput));
+    const confirm = rowsOf(parseUnitsCsv(posted));
+
+    // Not an assertion about the bytes being equal -- the opposite. If a later change made the
+    // round trip byte-preserving after all, this test would still be true but would no longer
+    // be testing anything, and this line is what would notice.
+    expect(posted).not.toEqual(uploaded);
+
+    expect(confirm).toEqual(preview);
+    expect(sharesOf(confirm)).toEqual(sharesOf(preview));
   });
 });
