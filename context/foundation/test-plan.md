@@ -100,7 +100,7 @@ orchestrator updates Status as artifacts appear on disk.
 
 | #   | Phase name                            | Goal (one line)                                                                                                                                                                                                                                                                                           | Risks covered                                        | Test types                                                                                       | Status      | Change folder                                           |
 | --- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ----------- | ------------------------------------------------------- |
-| 1   | Runner bootstrap and share arithmetic | Prove a real-world registry file parses or is refused legibly — nothing downstream is reachable until it does — and pin the udział allocation that parse feeds; the threshold comparison that turns those udziały into an outcome is Phase 2's                                                            | #8 (parse half), #2 (allocation half)                | unit                                                                                             | not started | `context/changes/test-environment-bootstrap/` (runner)  |
+| 1   | Runner bootstrap and share arithmetic | Prove a real-world registry file parses or is refused legibly — nothing downstream is reachable until it does — and pin the udział allocation that parse feeds; the threshold comparison that turns those udziały into an outcome is Phase 2's                                                            | #8 (parse half), #2 (allocation half)                | unit                                                                                             | complete    | `context/changes/tests-phase1-shares-and-registry/`     |
 | 2   | Database contract tests               | Prove the electorate, vote finality, own-data-only, and registry-import atomicity rules hold as `anon` and as `authenticated`, that the outcome threshold is measured against the whole building rather than against the udziały cast, and that two owners voting at the same moment both end up recorded | #2 (threshold half), #3, #4, #6, #8 (atomicity half) | contract                                                                                         | not started | `context/changes/test-environment-bootstrap/` (harness) |
 | 3   | Voting-path integration               | Prove a vote round-trips with the choice the właściciel pressed, that a hit and a miss stay indistinguishable, and that no branch of these routes emits a token                                                                                                                                           | #5, #7, #9                                           | integration (e2e only if no cheaper layer reaches the two-step confirm); static assertion for #9 | not started | —                                                       |
 | 4   | Quality gates and fanout retrofit     | Prove the send-state and owner↔link pairing rules hold against the fanout as it shipped, and lock the floor in CI                                                                                                                                                                                         | #1, cross-cutting                                    | integration, gates, AI-native PR review                                                          | not started | —                                                       |
@@ -110,16 +110,34 @@ direction, `context/changes/test-environment-bootstrap/` installed _both_ harnes
 — Vitest for Phases 1 and 3, pgTAP for Phase 2 — and wired both CI gates, without
 writing the tests either phase exists to buy. Each layer carries a smoke test that
 proves the harness and deliberately asserts nothing about the domain. Both Status
-cells above therefore read `not started`, and they mean it literally: **no risk in
-§2 is covered yet.** Their Change-folder cells name the change that bought the
-harness, not one that bought a test. What changed is that covering a risk is now a
-matter of writing a test rather than of choosing a tool, and the §5 gates are
-already in place to enforce it the moment one exists. The status cell this replaced
+cells read `not started` from that day until a phase actually bought a test, and
+they meant it literally. Phase 1 closed that gap on 2026-08-06 (see below); **Phase 2
+still means it — no risk it covers is asserted yet.** What the harness change bought
+was that covering a risk became a matter of writing a test rather than of choosing a
+tool, with the §5 gates already in place to enforce it the moment one exists.
+The status cell this replaced
 claimed Phase 1 was `change opened` against
 `context/changes/testing-share-arithmetic/`, a folder that existed on no branch;
 correcting that was one of the two defects `context/changes/test-plan-refresh-2026-08-05/`
 was opened to fix, and it is fixed here instead because this change is what made the
 cell answerable.
+
+**Phase 1 complete, 2026-08-06 — and what `complete` does not mean.** 33 tests
+across `src/lib/shares.test.ts`, `src/lib/units-csv.test.ts` and
+`src/lib/units-template.test.ts`, on fixtures built byte-by-byte in
+`src/lib/units-csv.fixtures.ts` rather than round-tripped from the project's own
+template — the anti-pattern §2 names for Risk #8. Every assertion was checked by
+breaking the code under it; the log is `mutations.md` in the change folder, and it
+records the two mutations that killed nothing along with the four that did.
+The allocation half asserts what §2 asks and no more: the udziały total exactly
+10000 bps, each one sits within floor/ceil of its proportional value computed
+independently in the test, and the same registry always yields the same result.
+**Which** unit receives a leftover basis point is deliberately not pinned — the PRD
+does not settle it, so an assertion would only mirror the implementation. The
+mutation log carries the consequence: re-ordering the leftover rule breaks the
+zero-udział refusal test, whose fixture leans on largest-remainder without saying
+so. Also out of scope by the same reasoning: Risk #2's threshold half and Risk #8's
+atomicity half, both Phase 2's, and both still unasserted.
 
 **Order rationale.** Phase 1 first because nothing was testable until a runner
 existed, and standing one up is the half of that phase which has since landed; and
@@ -182,8 +200,11 @@ likely a second Vitest project rather than a retry of `getViteConfig()`.
 rule that "There is no test runner… never report that tests passed." Phase 1's
 runner made that line false, and it was rewritten in the same change — an agent
 reading the stale rule would have refused to run the suite that exists. The
-replacement keeps the half that is still true: a green `npm test` currently proves
-the harness runs, not that any domain rule holds.
+replacement kept the half that was still true at the time: a green `npm test` proved
+the harness ran, not that any domain rule held. Phase 1 changed that on 2026-08-06 —
+`npm test` now proves the udział allocation and the registry parse. It still proves
+nothing about the threshold, the electorate guards, RLS, or import atomicity, all of
+which are Phase 2's and all of which live in SQL.
 
 **Stack grounding tools (current session):**
 
@@ -226,15 +247,48 @@ config exception. Reach the module under test through the `@/*` alias, same as
 application code. Run with `npm test`, or `npm run test:watch` while writing.
 `src/lib/smoke.test.ts` is the shortest complete example.
 
-**Substance — still owed, see §3 Phase 1.** The two patterns this section was
-opened for are not written yet: asserting udział allocation against an independent
-oracle (FR-006 / FR-007), including the rounding and the tie-break rule itself —
-what those udziały then decide is asserted in §6.2, because the threshold lives in
-the database layer; and asserting that a registry file parses or is refused
-legibly, with fixtures authored _against the format a zarządca actually uses_
-rather than round-tripped from the project's own downloadable template. The
-anti-pattern §2 names for Risk #2 applies to whoever writes the first one: the
-expected value must come from FR-006 / FR-007, never from the allocation code.
+**Substance (settled 2026-08-06, Phase 1).** Four patterns, all readable in
+`src/lib/shares.test.ts` and `src/lib/units-csv.test.ts`.
+
+**Get the oracle from outside the module.** The expected value comes from the PRD
+or from arithmetic the test does itself — never from the code under test. The
+allocation tests recompute each unit's proportional share in the test body and
+assert the result lands within floor/ceil of it; the sum comes from
+`## Success Criteria`, not from `TOTAL_BPS` being whatever `shares.ts` says. A test
+that reads its answer out of the implementation cannot fail for the right reason.
+
+**Assert a property, not a rule the product never settled.** Where the PRD is
+silent — which unit gets a leftover basis point — assert the property the callers
+actually stand on (the same registry always yields the same result) and say in a
+comment that the rule itself is deliberately unpinned. Pinning an unsettled rule
+turns a free implementation choice into a test failure.
+
+**One assertion is rarely enough for one risk.** "The udziały sum to 100%" survives
+a wrong denominator, because the leftover loop drags the total back to 10000. It is
+the per-unit floor/ceil bound beside it that catches that. When an assertion feels
+obviously sufficient, break the code under it and find out.
+
+**Build fixtures byte-by-byte, in a `.ts` file, never as a committed `.csv`.**
+`src/lib/units-csv.fixtures.ts` assembles `Uint8Array`s explicitly, because an
+editor or Prettier will normalise a BOM or a CRLF inside a real file invisibly and
+the fixture stops carrying the thing it was written to carry. Fixtures must also be
+authored against the format a zarządca actually exports — round-tripping the
+project's own downloadable template tests the generator against itself, which is
+the anti-pattern §2 names for Risk #8. The template does get one test, in
+`src/lib/units-template.test.ts`, and it asserts the opposite direction: that the
+bytes the template emits are refused by the parser as header-only.
+
+**Naming.** A test name is a sentence about the domain, not about the function:
+`it("refuses a lokal whose metraż would earn it no udział at all")`, not
+`it("returns an error")`. English sentences with Polish domain nouns, per the
+repository rule that code stays English — `src/lib/resolution-trail.test.ts` is the
+older example.
+
+**Prove the assertion protects something.** Before a suite counts as done, break
+the production code under each key assertion and confirm *that* test goes red, then
+restore. `context/changes/tests-phase1-shares-and-registry/mutations.md` is the
+worked example, including the two mutations that killed nothing and what each of
+those absences turned out to mean.
 
 ### 6.2 Adding a database contract test
 
@@ -292,6 +346,18 @@ refuses to run twice — what state a _failed_ run must leave behind.
 
 Filled in as phases land — two or three lines each, capturing anything a phase
 taught that the sections above do not already say.
+
+**Phase 1.** Research is what earns the assertions, and it moved two of them before
+a line of test was written: the sum assertion turned out to survive a wrong
+denominator, and the preview and the confirm endpoint turned out to parse *different
+bytes* — form serialisation normalises lone LF and CR to CRLF, and `TextDecoder`
+strips the BOM — so the property worth asserting is invariance across line endings,
+not the byte-stability two source comments claimed. Those two comments were corrected
+in the same change. Second lesson, from the mutation log: a mutation that kills
+nothing is a finding, not a failure. Removing the BOM strip in `units-csv.ts` breaks
+no test, because `TextDecoder` already drops a leading U+FEFF unless `ignoreBOM` is
+set — so the strip cannot be protected, and the suite says so out loud rather than
+implying coverage it does not have.
 
 ## 7. What We Deliberately Don't Test
 
