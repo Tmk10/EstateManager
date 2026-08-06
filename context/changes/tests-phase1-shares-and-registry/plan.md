@@ -504,28 +504,28 @@ is where they get pinned.
 
 #### Automated
 
-- [x] 1.1 `npx astro sync && npm run lint` passes with the new module
-- [x] 1.2 `npm test` still green
-- [x] 1.3 `npm run build` passes
+- [x] 1.1 `npx astro sync && npm run lint` passes with the new module — 82cabfb
+- [x] 1.2 `npm test` still green — 82cabfb
+- [x] 1.3 `npm run build` passes — 82cabfb
 
 #### Manual
 
-- [x] 1.4 `MANAGER_EXPORT_LINES` reads like a real zarządca's file
-- [x] 1.5 All nine traits present and identifiable
-- [x] 1.6 No fixture generated from `CSV_HEADERS` or the template endpoint
+- [x] 1.4 `MANAGER_EXPORT_LINES` reads like a real zarządca's file — 82cabfb
+- [x] 1.5 All nine traits present and identifiable — 82cabfb
+- [x] 1.6 No fixture generated from `CSV_HEADERS` or the template endpoint — 82cabfb
 
 ### Phase 2: The allocation oracle
 
 #### Automated
 
-- [ ] 2.1 `npm test` green with the new suite
-- [ ] 2.2 `npm run lint` and `npm run build` pass
+- [x] 2.1 `npm test` green with the new suite
+- [x] 2.2 `npm run lint` and `npm run build` pass
 
 #### Manual
 
-- [ ] 2.3 No expected value read out of `shares.ts`
-- [ ] 2.4 No test names the recipient of a leftover basis point
-- [ ] 2.5 The knife-edge test says nothing about 50%
+- [x] 2.3 No expected value read out of `shares.ts`
+- [x] 2.4 No test names the recipient of a leftover basis point
+- [x] 2.5 The knife-edge test says nothing about 50%
 
 ### Phase 3: The registry parse
 
