@@ -35,6 +35,11 @@ pnpm-debug.log*
 # except project-owned skills, which are part of the project
 !.claude/skills/roadmap-issues-sync/
 
+# and except the hook configuration, which is a project quality gate rather than
+# a per-machine preference — the checks that run on every edit belong to whoever
+# clones the repo, not to whoever happened to configure them
+!.claude/settings.json
+
 # the same tooling where it appears in subdirectories. The patterns above are
 # anchored to the repository root (a pattern containing a slash always is), so
 # nested .claude/ directories need their own rule — the plain `.claude/` this

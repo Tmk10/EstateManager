@@ -75,6 +75,42 @@ their own `begin;` and `create extension if not exists pgtap;` — pgTAP is
 deliberately never added to a migration. §6.1 and §6.2 of the test plan have the
 full shape.
 
+### Checks that run without you asking
+
+Three of these fire while an agent works, one fires when you commit. Both layers
+sit in front of CI, not instead of it.
+
+**Per edit** — `.claude/settings.json`, `PostToolUse` on `Write|Edit`. All three
+are scoped by the path the agent just wrote; a `.md` or `.sql` edit costs
+milliseconds because every hook exits at its guard.
+
+| Runs on                                                                                   | Command                        | Cost                    |
+| ----------------------------------------------------------------------------------------- | ------------------------------ | ----------------------- |
+| `*.ts` `*.tsx` `*.astro`                                                                  | `eslint --fix` on that file    | ~4 s                    |
+| `*.ts` `*.tsx` `*.astro`                                                                  | `astro check` (whole project)  | ~9 s                    |
+| `src/lib/{shares,resolution-trail,units-csv}.ts`, `src/pages/api/buildings/units-template.csv.ts` | `vitest related` on that file  | ~1,4 s, else 16 ms      |
+
+The test trigger's file list is the two highest-scoring risks in
+[`context/foundation/test-plan.md`](./context/foundation/test-plan.md) §2 that
+have unit tests to run — the udział arithmetic and the registry import. It follows
+the import graph, so editing `shares.ts` also runs the audit-trail tests that
+depend on it.
+
+Each hook raises its own failure to **exit 2**, which is what puts the compiler
+or test output into the agent's context instead of a one-line "something failed".
+A hook that exits 0 is silent by design — its output never reaches the transcript.
+
+**`astro check` is red on a clean checkout.** 13 pre-existing errors, none of them
+introduced by the hook and none caught by CI, which has no typecheck job. The first
+edit you make will look like it broke the build; read the paths in the output
+before believing that.
+
+**Per commit** — `.husky/pre-commit` → `lint-staged`, over staged files only:
+`eslint --fix` then `vitest related --run` for `*.{ts,tsx,astro}`, `prettier --write`
+for `*.{json,css,md}`. The two run in that order, not concurrently, so the tests
+read the code ESLint has already fixed. A failing test exits 1 and the commit
+never happens.
+
 ## Supabase Configuration
 
 This project uses [Supabase](https://supabase.com/) for authentication. Environment variables are declared via Astro's `astro:env` schema and are treated as **server-only secrets** — they are never exposed to the client.
