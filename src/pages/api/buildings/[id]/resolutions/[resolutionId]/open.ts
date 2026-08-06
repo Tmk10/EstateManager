@@ -69,15 +69,25 @@ export const POST: APIRoute = async (context) => {
   //    a plain select at its "Max rows" setting and says so nowhere in the response, so a
   //    truncated read would make step 4 compare a number against itself and pass. The count
   //    is the only side of that comparison the cap cannot silently shorten.
-  const [{ data: owners, error: ownersError }, { count: ownerCount, error: ownerCountError }] = await Promise.all([
+  const [ownersResult, ownerCountResult] = await Promise.all([
     supabase.from("owners").select("id").eq("building_id", id).not("email", "is", null),
     supabase.from("owners").select("id", { count: "exact", head: true }).eq("building_id", id).not("email", "is", null),
   ]);
 
-  const ownersReadError = ownersError ?? ownerCountError;
-  if (ownersReadError) {
-    return fail(`Nie udało się odczytać właścicieli: ${ownersReadError.message}`);
+  // Tested one result at a time rather than folded into a single `??` chain. `error === null`
+  // and `data !== null` are the same fact about a PostgREST response, but only a test against
+  // the result ITSELF carries it: a message folded out of two results narrows neither, and
+  // `owners` stays `rows | null` for the rest of the function.
+  if (ownersResult.error !== null) {
+    return fail(`Nie udało się odczytać właścicieli: ${ownersResult.error.message}`);
   }
+  if (ownerCountResult.error !== null) {
+    return fail(`Nie udało się odczytać właścicieli: ${ownerCountResult.error.message}`);
+  }
+
+  const owners = ownersResult.data;
+  const ownerCount = ownerCountResult.count;
+
   if (owners.length === 0) {
     return fail("Żaden właściciel w tym budynku nie ma adresu e-mail — nie ma komu wystawić linku.");
   }

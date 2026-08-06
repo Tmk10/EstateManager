@@ -84,10 +84,17 @@ export const POST: APIRoute = async (context) => {
     supabase.from("voting_links").select("id, attempt_count").eq("resolution_id", resolutionId).is("sent_at", null),
   ]);
 
-  const readError = linksResult.error ?? attemptsResult.error;
-  if (readError) {
-    // message only -- see the header note about `details` carrying the token.
-    return fail(`Nie udało się odczytać linków do głosowania: ${readError.message}`);
+  // Tested one result at a time rather than folded into a single `??` chain. `error === null`
+  // and `data !== null` are the same fact about a PostgREST response, but only a test against
+  // the result ITSELF carries it: a message folded out of both results narrows neither, and
+  // `links` stays `rows | null` for the rest of the function.
+  //
+  // message only, in both -- see the header note about `details` carrying the token.
+  if (linksResult.error !== null) {
+    return fail(`Nie udało się odczytać linków do głosowania: ${linksResult.error.message}`);
+  }
+  if (attemptsResult.error !== null) {
+    return fail(`Nie udało się odczytać linków do głosowania: ${attemptsResult.error.message}`);
   }
 
   const links = linksResult.data;

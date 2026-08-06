@@ -210,11 +210,21 @@ if (!supabase) {
           supabase.rpc("resolution_tally", { p_resolution_id: resolutionId }),
         ]);
 
-        const readError =
-          ownersResult.error ?? unitsResult.error ?? linksResult.error ?? votesResult.error ?? tallyResult.error;
-
-        if (readError) {
-          loadError = readError.message;
+        // Tested one result at a time rather than folded into a single `??` chain, and in the
+        // order the reads are listed above so the first failure is still the one reported.
+        // `error === null` and `data !== null` are the same fact about a PostgREST response,
+        // but only a test against the result ITSELF carries it: a message folded out of five
+        // results narrows none of them, and every `.data` below stays `rows | null`.
+        if (ownersResult.error !== null) {
+          loadError = ownersResult.error.message;
+        } else if (unitsResult.error !== null) {
+          loadError = unitsResult.error.message;
+        } else if (linksResult.error !== null) {
+          loadError = linksResult.error.message;
+        } else if (votesResult.error !== null) {
+          loadError = votesResult.error.message;
+        } else if (tallyResult.error !== null) {
+          loadError = tallyResult.error.message;
         } else {
           const linksByOwner = new Map(linksResult.data.map((link) => [link.owner_id, link]));
 

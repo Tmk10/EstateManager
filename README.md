@@ -127,10 +127,10 @@ Each hook raises its own failure to **exit 2**, which is what puts the compiler
 or test output into the agent's context instead of a one-line "something failed".
 A hook that exits 0 is silent by design — its output never reaches the transcript.
 
-**`astro check` is red on a clean checkout.** 13 pre-existing errors, none of them
-introduced by the hook and none caught by CI, which has no typecheck job. The first
-edit you make will look like it broke the build; read the paths in the output
-before believing that.
+**`astro check` is green on a clean checkout**, as of 2026-08-06 — the 13
+pre-existing errors it used to report are gone. CI still has no typecheck job, so
+this hook is the only thing that reports a regression: a red `astro check` after
+your edit is almost certainly your edit.
 
 **Per commit** — `.husky/pre-commit` → `lint-staged`, over staged files only:
 `eslint --fix` then `vitest related --run` for `*.{ts,tsx,astro}`, `prettier --write`
