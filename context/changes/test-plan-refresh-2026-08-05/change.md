@@ -1,9 +1,9 @@
 ---
 change_id: test-plan-refresh-2026-08-05
 title: Refresh the test plan against S-04 and S-05
-status: planned
+status: implemented
 created: 2026-08-05
-updated: 2026-08-05
+updated: 2026-08-06
 archived_at: null
 ---
 
