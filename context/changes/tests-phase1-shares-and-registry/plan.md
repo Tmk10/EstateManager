@@ -545,22 +545,22 @@ is where they get pinned.
 
 #### Automated
 
-- [x] 4.1 `npm test` green
-- [x] 4.2 Six-presentation test goes red when CR handling is narrowed, restored
+- [x] 4.1 `npm test` green — 3ea7d76
+- [x] 4.2 Six-presentation test goes red when CR handling is narrowed, restored — 3ea7d76
 
 #### Manual
 
-- [x] 4.3 Round-trip test reads as the real call path, with line references
-- [x] 4.4 No byte-equality assertion anywhere
+- [x] 4.3 Round-trip test reads as the real call path, with line references — 3ea7d76
+- [x] 4.4 No byte-equality assertion anywhere — 3ea7d76
 
 ### Phase 5: Correct the two byte-stability comments
 
 #### Automated
 
-- [ ] 5.1 `npm run lint && npm test && npm run build` pass
-- [ ] 5.2 `git diff` shows comment lines only
+- [x] 5.1 `npm run lint && npm test && npm run build` pass
+- [x] 5.2 `git diff` shows comment lines only
 
 #### Manual
 
-- [ ] 5.3 Neither comment claims byte stability
-- [ ] 5.4 Both name invariance and point at the test
+- [x] 5.3 Neither comment claims byte stability
+- [x] 5.4 Both name invariance and point at the test

@@ -133,11 +133,16 @@ if (Astro.request.method === "POST" && building && !alreadyImported) {
         const totalHundredths = parsed.rows.reduce((sum, row) => sum + row.areaHundredths, 0);
         previewAreaLabel = formatAreaHundredths(totalHundredths);
 
-        // The preview carries the original CSV text, not the computed shares. The confirm
-        // endpoint re-parses and recomputes from exactly these bytes; a decode here is
-        // safe because the parser has already accepted them as UTF-8. TextDecoder drops
-        // the BOM by default, and the parser strips one anyway, so the round trip is
-        // byte-stable either way.
+        // The preview carries the original CSV text, not the computed shares -- the confirm
+        // endpoint re-parses and recomputes rather than trusting anything shown here. The
+        // decode is safe because the parser has already accepted these bytes as UTF-8.
+        //
+        // What this is not is a byte-stable round trip, and it is worth being exact about
+        // that: the text loses its BOM right here (TextDecoder drops a leading U+FEFF), and
+        // submitting the form below rewrites every lone LF and lone CR to CRLF. The confirm
+        // parse agrees with this one because splitRecords treats all three terminators
+        // alike -- not because the bytes survive. The invariance group in
+        // src/lib/units-csv.test.ts is what holds that up.
         previewCsv = new TextDecoder("utf-8").decode(bytes);
       }
     }

@@ -48,9 +48,14 @@ export const POST: APIRoute = async (context) => {
 
   // The whole point of this endpoint: re-parse and recompute from the CSV text rather
   // than trust anything the browser posted back. A client that edited the shares in the
-  // preview could otherwise assign its own unit any voting weight it liked. This is only
-  // safe because the parse and the share computation are deterministic -- the same bytes
-  // must yield the same shares, which is what the file-order tie-break in shares.ts buys.
+  // preview could otherwise assign its own unit any voting weight it liked.
+  //
+  // Note that these are not the bytes the preview parsed. The BOM is gone (the preview
+  // decoded it away) and every lone LF and CR became CRLF when the form was submitted. So
+  // the property this rests on is not "the same bytes yield the same shares" but a pair of
+  // invariances: splitRecords is newline-agnostic, and the file-order tie-break in shares.ts
+  // makes the allocation reproducible. Pinned in src/lib/units-csv.test.ts (the invariance
+  // group) and src/lib/shares.test.ts (determinism).
   const parsed = parseUnitsCsv(new TextEncoder().encode(csv));
   if (!parsed.ok) {
     return fail(`Plik zawiera błędy i nie został zapisany: ${parsed.errors[0].message}`);
