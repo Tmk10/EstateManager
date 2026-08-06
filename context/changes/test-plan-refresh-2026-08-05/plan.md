@@ -676,19 +676,19 @@ branch base (see Critical Implementation Details), which is a Phase 1 gate.
 
 #### Automated
 
-- [x] 3.1 All eight section headings `## 1.`–`## 8.` are present and in order
-- [x] 3.2 §3's table has four phase rows, every `Status` cell a parser literal — the two prose cells PR #39 left behind were restored to `not started`; the plan's "already correct, do not re-touch" was a false premise
-- [x] 3.3 §8 has no remaining "Scheduled refresh" paragraph, and the three date lines read 2026-08-06 — the stack line names what was actually re-checked today and what keeps its 2026-08-05 check
-- [x] 3.4 §8's refresh entry records the withdrawn renumber as a decision
+- [x] 3.1 All eight section headings `## 1.`–`## 8.` are present and in order — b00d5cb
+- [x] 3.2 §3's table has four phase rows, every `Status` cell a parser literal — the two prose cells PR #39 left behind were restored to `not started`; the plan's "already correct, do not re-touch" was a false premise — b00d5cb
+- [x] 3.3 §8 has no remaining "Scheduled refresh" paragraph, and the three date lines read 2026-08-06 — the stack line names what was actually re-checked today and what keeps its 2026-08-05 check — b00d5cb
+- [x] 3.4 §8's refresh entry records the withdrawn renumber as a decision — b00d5cb
 - [x] 3.5 §4's `unit + integration` row no longer reads "none yet" — PR #39; `getViteConfig()` rejected with its reason
-- [x] 3.6 The document header's `Last updated` line reads 2026-08-06 and announces no renumber
-- [x] 3.7 Only `context/foundation/test-plan.md` and this change folder appear in `git diff --stat` against `origin/main`
-- [x] 3.8 Prettier's markdown formatting is clean — run explicitly rather than left to the commit hook, so the table reflow is visible in review
+- [x] 3.6 The document header's `Last updated` line reads 2026-08-06 and announces no renumber — b00d5cb
+- [x] 3.7 Only `context/foundation/test-plan.md` and this change folder appear in `git diff --stat` against `origin/main` — b00d5cb
+- [x] 3.8 Prettier's markdown formatting is clean — run explicitly rather than left to the commit hook, so the table reflow is visible in review — b00d5cb
 
 #### Manual
 
-- [x] 3.9 §3's order rationale contains no clause assuming `S-04` is unbuilt — the Phase 4 clause records the retrofit as a cost the rollout incurred; the runner clause was moved to past tense in the same pass
-- [x] 3.10 §8's entry accounts for every section touched, including the no-ops — §1, §4 and §7 recorded as considered no-ops; the withdrawn renumber and the retired scheduled trigger recorded as decisions
+- [x] 3.9 §3's order rationale contains no clause assuming `S-04` is unbuilt — the Phase 4 clause records the retrofit as a cost the rollout incurred; the runner clause was moved to past tense in the same pass — b00d5cb
+- [x] 3.10 §8's entry accounts for every section touched, including the no-ops — §1, §4 and §7 recorded as considered no-ops; the withdrawn renumber and the retired scheduled trigger recorded as decisions — b00d5cb
 - [x] 3.11 §4's Vitest row states the rejected alternative well enough not to be re-opened — PR #39
-- [x] 3.12 The document is honest about what a green run proves; `CLAUDE.md`'s rules are still true — three independent places say no risk in §2 is covered; the §8 stack line states which versions were actually re-checked and which keep their 2026-08-05 check
-- [x] 3.13 The document reads as one document, not three registers spliced together — §8 gained a signpost separating the four same-day entries, and §3's pre-runner clause was retired
+- [x] 3.12 The document is honest about what a green run proves; `CLAUDE.md`'s rules are still true — three independent places say no risk in §2 is covered; the §8 stack line states which versions were actually re-checked and which keep their 2026-08-05 check — b00d5cb
+- [x] 3.13 The document reads as one document, not three registers spliced together — §8 gained a signpost separating the four same-day entries, and §3's pre-runner clause was retired — b00d5cb
