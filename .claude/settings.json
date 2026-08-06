@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 30,
+            "command": "FILE=$(jq -r '.tool_input.file_path // empty'); case \"$FILE\" in *.ts|*.tsx|*.astro) ;; *) exit 0 ;; esac; OUT=$(npx eslint --fix --quiet \"$FILE\" 2>&1) || { printf '%s\\n' \"$OUT\" >&2; exit 2; }"
+          },
+          {
+            "type": "command",
+            "timeout": 60,
+            "command": "FILE=$(jq -r '.tool_input.file_path // empty'); case \"$FILE\" in *.ts|*.tsx|*.astro) ;; *) exit 0 ;; esac; OUT=$(npx astro check 2>&1) || { printf '%s\\n' \"$OUT\" >&2; exit 2; }"
+          },
+          {
+            "type": "command",
+            "timeout": 60,
+            "command": "FILE=$(jq -r '.tool_input.file_path // empty'); case \"$FILE\" in */src/lib/shares.ts|*/src/lib/resolution-trail.ts|*/src/lib/units-csv.ts|*/src/pages/api/buildings/units-template.csv.ts) ;; *) exit 0 ;; esac; OUT=$(AI_AGENT=1 npx vitest related \"$FILE\" --run 2>&1) || { printf '%s\\n' \"$OUT\" >&2; exit 2; }"
+          }
+        ]
+      }
+    ]
+  }
+}

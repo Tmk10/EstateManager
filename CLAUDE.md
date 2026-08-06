@@ -58,6 +58,7 @@ Rules that are cheap to break and expensive to discover. The evidence behind eac
 - **Every form endpoint needs `-H "Origin: <origin>"` when called with `curl`.** `security.checkOrigin` runs _before_ middleware, so without it you get `403 Cross-site POST form submissions are forbidden` — not the auth redirect you were testing for.
 - **Production accounts are made by hand in the Supabase dashboard; nothing in this repo creates them.** The asymmetry with the local seed is deliberate — do not script it. → §Auth and accounts
 - **RLS on every new table: eight policies, four `anon` at `false`.** `update` needs **both** `using` and `with check`. `authenticated` is still unscoped in v1 and that is a recorded decision, not an oversight. → §RLS shape
+- **The per-edit typecheck hook blocks on 13 errors that were already on `main`.** `.claude/settings.json` runs `astro check` after every agent edit of a `.ts`/`.tsx`/`.astro` file and refuses at exit 2; `ci.yml` runs sync, lint, test and build but **no typecheck**, which is why the backlog accumulated unseen. A red `astro check` after your edit is the baseline until someone clears it — read the reported paths before assuming your change caused it.
 - **`astro@6.3.1` carries an unfixed high-severity XSS advisory.** Do not bump Astro to fix it — no fixed release exists yet. `npm audit` reporting this one advisory is expected. → §Known advisories
 
 ## Commands
