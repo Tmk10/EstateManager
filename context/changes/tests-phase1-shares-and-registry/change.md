@@ -1,7 +1,7 @@
 ---
 change_id: tests-phase1-shares-and-registry
 title: Pin Phase 1 — the udział allocation oracle and the registry parse
-status: implementing
+status: implemented
 created: 2026-08-06
 updated: 2026-08-06
 archived_at: null

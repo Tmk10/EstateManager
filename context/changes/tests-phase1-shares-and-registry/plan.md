@@ -557,10 +557,10 @@ is where they get pinned.
 
 #### Automated
 
-- [x] 5.1 `npm run lint && npm test && npm run build` pass
-- [x] 5.2 `git diff` shows comment lines only
+- [x] 5.1 `npm run lint && npm test && npm run build` pass — 5a4b6a2
+- [x] 5.2 `git diff` shows comment lines only — 5a4b6a2
 
 #### Manual
 
-- [x] 5.3 Neither comment claims byte stability
-- [x] 5.4 Both name invariance and point at the test
+- [x] 5.3 Neither comment claims byte stability — 5a4b6a2
+- [x] 5.4 Both name invariance and point at the test — 5a4b6a2
