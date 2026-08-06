@@ -9,7 +9,7 @@ scored highest — #1 (link misdelivery) and #2 (an uchwała decided against wro
 were both estimates made against code that did not exist and now does.
 
 This change re-derives those two rows against the code that shipped, folds `S-05`'s two
-*reproduced* failure modes into existing rows rather than appending new ones, corrects a
+_reproduced_ failure modes into existing rows rather than appending new ones, corrects a
 §3 status cell that points at a change folder which has never existed on any branch,
 corrects a §1 hot-spot figure that measures something other than what its label claims,
 and retires the scheduled refresh trigger now that it has fired.
@@ -69,8 +69,8 @@ What is stale, verified rather than assumed:
 - **No test runner exists.** `package.json` has no test script; no Vitest, Playwright, or
   pgTAP in `devDependencies`; zero `*.test.*` or `*_test.sql` files anywhere in `src/` or
   `supabase/`. Phase 1 is genuinely `not started`, which is what the status cell should say.
-- **§1's hot-spot figure is wrong.** It reads: *"Hot-spot scope used for likelihood
-  weighting: `src/`, `supabase/` (68 commits in 30 days)."* Reconstructing that window
+- **§1's hot-spot figure is wrong.** It reads: _"Hot-spot scope used for likelihood
+  weighting: `src/`, `supabase/` (68 commits in 30 days)."_ Reconstructing that window
   (`2026-07-05`..`2026-08-04` on `origin/main`) gives **68 commits repo-wide** and **19
   commits** touching `src/` or `supabase/`. The number quoted as the scoped count is the
   unscoped one. Every likelihood cell citing a "hot-spot dir" rests on this scan, so the
@@ -84,7 +84,7 @@ What is stale, verified rather than assumed:
   `public.resolution_tally(uuid)` is the only place `sum * 2 > 10000` is expressed, and no
   TypeScript computes it. The denominator is the constant `10000`, not udziały cast.
 - **`S-05` shipped two reproduced failure modes §2 does not model.** A concurrent-vote
-  deadlock (`40P01`) that silently dropped the loser's vote, fixed by lock *order* (a
+  deadlock (`40P01`) that silently dropped the loser's vote, fixed by lock _order_ (a
   `before insert` trigger taking `FOR UPDATE` ahead of the FK's `KEY SHARE`); and `EM014`,
   a signed-in administrator flipping a resolution to `passed` through PostgREST with no
   votes behind it. Both were reproduced end to end before being fixed.
@@ -99,7 +99,7 @@ What is stale, verified rather than assumed:
 
 - §1's hot-spot sentence states a counting method and a figure that agree with each other.
 - §2's Risk #1 and #2 describe the code that shipped, not the code that was imagined.
-  Risk #2's row makes the *vanished vote* explicit — a vote silently not recorded is a
+  Risk #2's row makes the _vanished vote_ explicit — a vote silently not recorded is a
   wrong-outcome mode, and it is the one the user named as their top concern.
 - §2's Risk #3 names `EM014` as a reproduced instance of the guard-relaxation shape it
   already describes.
@@ -112,8 +112,8 @@ What is stale, verified rather than assumed:
   an unbuilt slice.
 - §4 names Vitest via `getViteConfig()` as Phase 1's runner, so §5's unit gate can cite a
   command.
-- §8 records this refresh, retires the fired trigger, and records the two *considered
-  no-ops* — §7 unchanged, no rows appended — so the next refresh does not re-litigate them.
+- §8 records this refresh, retires the fired trigger, and records the two _considered
+  no-ops_ — §7 unchanged, no rows appended — so the next refresh does not re-litigate them.
 
 **How to verify:** the automated checks in each phase (structure, numbering, forbidden
 anchors, status literals) plus a read-through against the §8 entry, which should account
@@ -126,7 +126,7 @@ for every section this change touched.
   create and reverts PR #34.
 - §2's schema forbids `file:line`, function names, schema names, and module names in the
   Source column (`.claude/skills/10x-test-plan/SKILL.md:356`). The re-derived rows describe
-  *S-04's send-state record* and *S-05's tally function* in prose, never as identifiers.
+  _S-04's send-state record_ and _S-05's tally function_ in prose, never as identifiers.
 - §3's Status column holds parser literals the orchestrator reads on every invocation:
   `not started` → `change opened` → `researched` → `planned` → `implementing` → `complete`
   (`SKILL.md:358`). A prose status breaks the orchestrator.
@@ -139,13 +139,13 @@ for every section this change touched.
 
 ## What We're NOT Doing
 
-- **Not installing a test runner.** §4 will *name* Vitest; nothing is added to
+- **Not installing a test runner.** §4 will _name_ Vitest; nothing is added to
   `package.json`, no config file is written, no test is authored. That is §3 Phase 1's job.
 - **Not editing `CLAUDE.md`.** Its "There is no test runner — never report that tests
   passed" hard rule stays true until a runner lands, and stays with the commit that lands
   one. §4 already records this as Phase 1 scope; this change leaves that note intact.
 - **Not launching §3 Phase 1.** No change folder is opened, and Phase 1's status is set to
-  `not started` — deliberately *not* to `change opened`, which is how the stale cell this
+  `not started` — deliberately _not_ to `change opened`, which is how the stale cell this
   change is correcting came to exist.
 - **Not appending new risk rows.** The two `S-05` failure modes fold into #2 and #3.
 - **Not adding or removing risk rows.** §2 has eight rows before and after. The registry
@@ -180,7 +180,7 @@ nothing.
 exists only on `origin/main`. A branch cut from local `main` (one commit behind) or from
 `docs/record-s05-current-state` will not contain the file, and the implementer will write a
 "new" 269-line document that reverts PR #34 without any conflict, error, or warning to
-signal it. Phase 1 verifies the file is present and 269 lines *before* any edit.
+signal it. Phase 1 verifies the file is present and 269 lines _before_ any edit.
 
 **§2 and §3 are machine-read, not just human-read.** The Source column has a forbidden
 vocabulary and the Status column has a closed one; both are enforced by convention, not by
@@ -292,7 +292,7 @@ those to buy a reading order the note already supplies.
 
 If the renumber is ever made, it is its own change with its own review, applied as a
 mechanical pass with nothing else in it — never folded into a refresh. Two things a future
-attempt must not lose: `§1 principle #3` cites a numbered *principle*, not a risk, and any
+attempt must not lose: `§1 principle #3` cites a numbered _principle_, not a risk, and any
 find-and-replace will hit it; and the sweep was self-contained only because no file outside
 `context/foundation/test-plan.md` cites a risk number, which is a fact to re-verify rather
 than inherit.
@@ -322,7 +322,7 @@ risk.
 
 **File**: `context/foundation/test-plan.md`
 
-**Intent**: Re-derive against `S-05`, and make the *vanished vote* an explicit mode of this
+**Intent**: Re-derive against `S-05`, and make the _vanished vote_ an explicit mode of this
 row rather than an unstated one. A vote silently not recorded produces exactly this row's
 outcome — an uchwała decided against udziały that do not reflect the electorate — and it is
 the failure the user named as their top concern.
@@ -371,7 +371,7 @@ actually reads before writing tests.
   than `unit`: unit for the allocation, contract for the threshold and the concurrency
   property. `Must challenge` gains "the threshold is only reachable through one code path" —
   it is reachable by any writer the guards do not bind.
-- **#3 (outsider votes)**: `Must challenge` gains that a guard *widened* to permit a
+- **#3 (outsider votes)**: `Must challenge` gains that a guard _widened_ to permit a
   legitimate transition permits it for every caller, not only for the one the author had in
   mind.
 
@@ -382,7 +382,7 @@ actually reads before writing tests.
 **Intent**: Record what counts as protection against the vanished vote, since racing two
 sessions is the most expensive and flakiest test available and was rejected on cost × signal.
 
-**Contract**: In #2's guidance row (wrong udziały), state that the protection asserted is the *ordering* of
+**Contract**: In #2's guidance row (wrong udziały), state that the protection asserted is the _ordering_ of
 the lock acquisition — that the strongest lock is taken before the row is inserted — and
 that the assertion must fail if that step is removed. Name the anti-pattern: the step looks
 redundant, because a foreign key already takes a weaker lock on the same parent row, and
@@ -464,9 +464,9 @@ integration plus gates (keeping the AI-native PR review). Phase 4 keeps its posi
 **File**: `context/foundation/test-plan.md`
 
 **Intent**: Two clauses in the rationale paragraph no longer hold. Its closing argument —
-*"Phase 4 last because [the top risk's] code does not exist yet"* — is now false, and it is
+_"Phase 4 last because [the top risk's] code does not exist yet"_ — is now false, and it is
 the sentence that justifies the whole ordering. And its account of the registry risk as
-something that *"rides along"* in Phase 1 "rather than getting its own" phase describes a
+something that _"rides along"_ in Phase 1 "rather than getting its own" phase describes a
 minor passenger, which is not what Risk #1 is.
 
 **Contract**: Two clause replacements, one paragraph. The numbers in it are already correct
@@ -657,38 +657,38 @@ branch base (see Critical Implementation Details), which is a Phase 1 gate.
 
 #### Automated
 
-- [x] 2.1 §2's risk table has exactly 9 data rows, numbered 1–9 ascending, none missing or duplicated
-- [x] 2.2 Every risk keeps the number and position it had before this phase
-- [x] 2.3 The Risk Response Guidance table carries one row per risk 1–9, in the same ascending order
-- [x] 2.4 §2's "Ordering note" survives and still accounts for both appended rows
-- [x] 2.5 §1's `principle #3` reference is unchanged
-- [x] 2.6 No Source cell matches a `file:line` pattern, a source filename, or a bare error code
-- [x] 2.7 `git diff --stat` shows `context/foundation/test-plan.md` as the only changed file
+- [x] 2.1 §2's risk table has exactly 9 data rows, numbered 1–9 ascending, none missing or duplicated — a83e9b2
+- [x] 2.2 Every risk keeps the number and position it had before this phase — a83e9b2
+- [x] 2.3 The Risk Response Guidance table carries one row per risk 1–9, in the same ascending order — a83e9b2
+- [x] 2.4 §2's "Ordering note" survives and still accounts for both appended rows — a83e9b2
+- [x] 2.5 §1's `principle #3` reference is unchanged — a83e9b2
+- [x] 2.6 No Source cell matches a `file:line` pattern, a source filename, or a bare error code — a83e9b2
+- [x] 2.7 `git diff --stat` shows `context/foundation/test-plan.md` as the only changed file — a83e9b2
 
 #### Manual
 
-- [x] 2.8 Risk #2 reads as one failure with three routes, not three risks in one cell
-- [x] 2.9 Risk #1's Source separates what production proved from what it did not
-- [x] 2.10 #1's guidance tells a reader what to assert and what mistake to avoid
-- [x] 2.11 Nothing in §2 names a file, function, trigger, or error code
+- [x] 2.8 Risk #2 reads as one failure with three routes, not three risks in one cell — a83e9b2
+- [x] 2.9 Risk #1's Source separates what production proved from what it did not — a83e9b2
+- [x] 2.10 #1's guidance tells a reader what to assert and what mistake to avoid — a83e9b2
+- [x] 2.11 Nothing in §2 names a file, function, trigger, or error code — a83e9b2
 
 ### Phase 3: Rollout, stack, gates and ledger (§3–§5, §8)
 
 #### Automated
 
-- [ ] 3.1 All eight section headings `## 1.`–`## 8.` are present and in order
-- [ ] 3.2 §3's table has four phase rows, every `Status` cell a parser literal
-- [ ] 3.3 §8 has no remaining "Scheduled refresh" paragraph, and the three date lines read 2026-08-06
-- [ ] 3.4 §8's refresh entry records the withdrawn renumber as a decision
+- [x] 3.1 All eight section headings `## 1.`–`## 8.` are present and in order
+- [x] 3.2 §3's table has four phase rows, every `Status` cell a parser literal — the two prose cells PR #39 left behind were restored to `not started`; the plan's "already correct, do not re-touch" was a false premise
+- [x] 3.3 §8 has no remaining "Scheduled refresh" paragraph, and the three date lines read 2026-08-06 — the stack line names what was actually re-checked today and what keeps its 2026-08-05 check
+- [x] 3.4 §8's refresh entry records the withdrawn renumber as a decision
 - [x] 3.5 §4's `unit + integration` row no longer reads "none yet" — PR #39; `getViteConfig()` rejected with its reason
-- [ ] 3.6 The document header's `Last updated` line reads 2026-08-06 and announces no renumber
-- [ ] 3.7 Only `context/foundation/test-plan.md` and this change folder appear in `git diff --stat` against `origin/main`
-- [ ] 3.8 Prettier's markdown formatting is clean
+- [x] 3.6 The document header's `Last updated` line reads 2026-08-06 and announces no renumber
+- [x] 3.7 Only `context/foundation/test-plan.md` and this change folder appear in `git diff --stat` against `origin/main`
+- [x] 3.8 Prettier's markdown formatting is clean — run explicitly rather than left to the commit hook, so the table reflow is visible in review
 
 #### Manual
 
-- [ ] 3.9 §3's order rationale contains no clause assuming `S-04` is unbuilt
-- [ ] 3.10 §8's entry accounts for every section touched, including the no-ops
+- [x] 3.9 §3's order rationale contains no clause assuming `S-04` is unbuilt — the Phase 4 clause records the retrofit as a cost the rollout incurred; the runner clause was moved to past tense in the same pass
+- [x] 3.10 §8's entry accounts for every section touched, including the no-ops — §1, §4 and §7 recorded as considered no-ops; the withdrawn renumber and the retired scheduled trigger recorded as decisions
 - [x] 3.11 §4's Vitest row states the rejected alternative well enough not to be re-opened — PR #39
-- [ ] 3.12 The document is honest about what a green run proves; `CLAUDE.md`'s rules are still true
-- [ ] 3.13 The document reads as one document, not three registers spliced together
+- [x] 3.12 The document is honest about what a green run proves; `CLAUDE.md`'s rules are still true — three independent places say no risk in §2 is covered; the §8 stack line states which versions were actually re-checked and which keep their 2026-08-05 check
+- [x] 3.13 The document reads as one document, not three registers spliced together — §8 gained a signpost separating the four same-day entries, and §3's pre-runner clause was retired
