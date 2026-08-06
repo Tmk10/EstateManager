@@ -518,28 +518,28 @@ is where they get pinned.
 
 #### Automated
 
-- [x] 2.1 `npm test` green with the new suite
-- [x] 2.2 `npm run lint` and `npm run build` pass
+- [x] 2.1 `npm test` green with the new suite — f2a293f
+- [x] 2.2 `npm run lint` and `npm run build` pass — f2a293f
 
 #### Manual
 
-- [x] 2.3 No expected value read out of `shares.ts`
-- [x] 2.4 No test names the recipient of a leftover basis point
-- [x] 2.5 The knife-edge test says nothing about 50%
+- [x] 2.3 No expected value read out of `shares.ts` — f2a293f
+- [x] 2.4 No test names the recipient of a leftover basis point — f2a293f
+- [x] 2.5 The knife-edge test says nothing about 50% — f2a293f
 
 ### Phase 3: The registry parse
 
 #### Automated
 
-- [ ] 3.1 `npm test` green with both new suites
-- [ ] 3.2 `npm run lint` and `npm run build` pass
-- [ ] 3.3 Completeness test goes red on `continue` → `break` at `:353` and `:362`, restored
+- [x] 3.1 `npm test` green with both new suites
+- [x] 3.2 `npm run lint` and `npm run build` pass
+- [x] 3.3 Completeness test goes red on `continue` → `break` at `:353` and `:362`, restored
 
 #### Manual
 
-- [ ] 3.4 No test asserts a full Polish sentence
-- [ ] 3.5 Every `line: 1` assertion carries its justification
-- [ ] 3.6 Every trait of the mess fixture is actually exercised
+- [x] 3.4 No test asserts a full Polish sentence
+- [x] 3.5 Every `line: 1` assertion carries its justification
+- [x] 3.6 Every trait of the mess fixture is actually exercised
 
 ### Phase 4: Round-trip invariance
 
