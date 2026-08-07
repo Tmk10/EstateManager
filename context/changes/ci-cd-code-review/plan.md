@@ -404,10 +404,10 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [x] 3.1 `npm run lint` passes on `scripts/review-eval-provider.ts`
-- [x] 3.2 `npm run build` still succeeds
+- [x] 3.1 `npm run lint` passes on `scripts/review-eval-provider.ts` — a8c2d7d
+- [x] 3.2 `npm run build` still succeeds — a8c2d7d
 
 #### Manual
 
-- [x] 3.3 `npx promptfoo eval` completes and prints the 2×2 matrix
-- [x] 3.4 `bad-change.diff` verdicts `fail` on both models; `clean-change.diff` verdicts `pass` on both models
+- [x] 3.3 `npx promptfoo eval` completes and prints the 2×2 matrix — a8c2d7d
+- [x] 3.4 `bad-change.diff` verdicts `fail` on both models; `clean-change.diff` verdicts `pass` on both models — a8c2d7d
