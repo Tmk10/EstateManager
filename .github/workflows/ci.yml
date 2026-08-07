@@ -135,4 +135,13 @@ jobs:
             exit 1
           fi
           echo "Fixture key reaches \`buildings\` (HTTP 200)."
+      - name: Report the table grants this database was built with
+        run: |
+          psql "$E2E_DB_URL" -c "select grantee, string_agg(distinct privilege_type, ',' order by privilege_type) from information_schema.role_table_grants where table_schema='public' and grantee in ('anon','authenticated','service_role') group by grantee order by grantee"
       - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
