@@ -110,3 +110,30 @@ where not exists (
     and city = 'Warszawa'
     and street = 'Kwiatowa 3'
 );
+
+-- The E2E fixtures reach the database as `service_role`, and on a database built from
+-- zero that role arrives with no privileges on our tables. It is not granted anywhere in
+-- supabase/migrations/ -- it never had to be, because `ALTER DEFAULT PRIVILEGES` on a
+-- long-lived local stack hands it every new table automatically. A fresh stack on a newer
+-- image does not, so the grant has to be said out loud somewhere.
+--
+-- Here rather than in a migration, deliberately. This is a property of a test database,
+-- not of the product's schema: migrations are forward-only and applied to production by
+-- hand, and production has no use for it -- no application code path authenticates as
+-- `service_role`. This file is local-only by construction.
+--
+-- The failure it prevents is a bad one to debug. A missing grant does not surface as a
+-- refused key; the role resolves fine and the first symptom is `permission denied for
+-- table buildings` raised by whichever fixture happened to run first, which is nowhere
+-- near the cause. `.github/workflows/ci.yml` checks the same thing before the browser
+-- suite starts, so CI names it in seconds rather than in three minutes of red.
+grant usage on schema public to service_role;
+grant all privileges on all tables in schema public to service_role;
+grant all privileges on all sequences in schema public to service_role;
+grant all privileges on all functions in schema public to service_role;
+
+-- Tables added by a later migration are covered too, without anyone having to remember
+-- this file exists.
+alter default privileges in schema public grant all on tables to service_role;
+alter default privileges in schema public grant all on sequences to service_role;
+alter default privileges in schema public grant all on functions to service_role;
