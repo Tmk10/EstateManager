@@ -157,8 +157,16 @@ alter default privileges in schema public grant all on functions to service_role
 grant usage on schema public to anon, authenticated;
 
 grant select, insert, update, delete
-  on public.buildings, public.owners, public.units, public.resolutions, public.votes
+  on public.buildings, public.owners, public.units, public.resolutions
   to anon, authenticated;
+
+-- `votes` used to sit in the list above, holding insert/update/delete it never needed --
+-- exactly the inherited-default-privilege posture review finding F2 flagged and
+-- `20260807113212_revoke_votes_dml_grants.sql` closed on production. Granting them here
+-- would put a fresh local/CI database back on the closed posture and stop this file from
+-- describing what production actually holds. Only `select` survives the revoke (RLS still
+-- denies it to `anon` via `votes_select_anon`), so only `select` is reproduced here.
+grant select on public.votes to anon, authenticated;
 
 -- `voting_links` is the exception, and it is the one line here that must not be widened.
 -- A table-level `select` on it would hand out `token`, which is a bearer credential --

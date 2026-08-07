@@ -109,11 +109,14 @@ prerequisite for a **second**: today any authenticated user reads every building
 and with `S-05` will read every building's tally. The v2 roles model must land before a second
 account does.
 
-### Known residual, deliberately not fixed (review finding F2)
+### Review finding F2 — closed 2026-08-07
 
-`public.votes` denies `insert` / `update` / `delete` to both roles by RLS policy alone; no
-`revoke` was written, so Supabase's default table-level grants still stand behind the
-policies. Verified denied for both roles through PostgREST today. The exposure is to a future
-edit that flips `votes_insert_authenticated` to `true` — which would read like restoring
-consistency with the other seven tables — rather than to anything live. Skipped knowingly;
-the fix is one `revoke` line.
+`public.votes` denied `insert` / `update` / `delete` to both roles by RLS policy alone; no
+`revoke` was written, so Supabase's default table-level grants still stood behind the
+policies. Verified denied for both roles through PostgREST at the time. The exposure was to
+a future edit that flipped `votes_insert_authenticated` to `true` — which would read like
+restoring consistency with the other seven tables — rather than to anything live. Skipped
+knowingly at the time; closed by `supabase/migrations/20260807113212_revoke_votes_dml_grants.sql`,
+a one-line `revoke` that changes no observable behaviour today (the policies already deny
+all three) and does not touch `cast_vote`'s write path, which is `security definer` and was
+never subject to these grants.
