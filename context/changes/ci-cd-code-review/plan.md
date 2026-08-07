@@ -159,14 +159,17 @@ jobs:
       - name: Post verdict comment and labels
         if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          REVIEW_OUTCOME: ${{ steps.review.outcome }}
+          REVIEW_RESULT: ${{ steps.review.outputs.result }}
         with:
           script: |
             const marker = '<!-- ai-code-review -->';
-            const failed = '${{ steps.review.outcome }}' !== 'success';
+            const failed = process.env.REVIEW_OUTCOME !== 'success';
             const body = failed
               ? `${marker}\n### ⚠️ AI code review nie uruchomiło się poprawnie\nZobacz log kroku \`review\`.`
               : (() => {
-                  const r = JSON.parse(`${{ steps.review.outputs.result }}`);
+                  const r = JSON.parse(process.env.REVIEW_RESULT);
                   return `${marker}\n${r.summary}`;
                 })();
             const { data: comments } = await github.rest.issues.listComments({
@@ -179,7 +182,7 @@ jobs:
               await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
             }
             if (!failed) {
-              const r = JSON.parse(`${{ steps.review.outputs.result }}`);
+              const r = JSON.parse(process.env.REVIEW_RESULT);
               const toRemove = r.verdict === 'pass' ? 'ai-cr:failed' : 'ai-cr:passed';
               const toAdd = r.verdict === 'pass' ? 'ai-cr:passed' : 'ai-cr:failed';
               await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, name: toRemove }).catch(() => {});
@@ -386,7 +389,7 @@ Not applicable — no data model or schema changes.
 
 #### Manual
 
-- [ ] 1.2 Piped diff through `npm run review --silent` returns JSON keyed by the five new field names
+- [x] 1.2 Piped diff through `npm run review --silent` returns JSON keyed by the five new field names — 210d3ee (CI run on PR #57)
 
 ### Phase 2: `review.yml` — the PR review workflow
 
@@ -397,8 +400,8 @@ Not applicable — no data model or schema changes.
 
 #### Manual
 
-- [ ] 2.3 Test PR (or `workflow_dispatch`) runs the review job, posts the marker comment, sets a verdict label
-- [ ] 2.4 `ai-cr:review` retrigger consumes the label, updates the existing comment in place, refreshes the verdict label
+- [x] 2.3 Test PR (or `workflow_dispatch`) runs the review job, posts the marker comment, sets a verdict label — 4879c10 (PR #57)
+- [x] 2.4 `ai-cr:review` retrigger consumes the label, updates the existing comment in place, refreshes the verdict label — 4879c10 (PR #57)
 
 ### Phase 3: Local promptfoo regression harness
 
