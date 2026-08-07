@@ -392,8 +392,8 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [x] 2.1 `npm run lint && npm test && npm run build` pass
-- [x] 2.2 `gh label list` shows `ai-cr:passed`, `ai-cr:failed`, `ai-cr:review`
+- [x] 2.1 `npm run lint && npm test && npm run build` pass — 01dcd92
+- [x] 2.2 `gh label list` shows `ai-cr:passed`, `ai-cr:failed`, `ai-cr:review` — 01dcd92
 
 #### Manual
 
@@ -404,10 +404,10 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [ ] 3.1 `npm run lint` passes on `scripts/review-eval-provider.ts`
-- [ ] 3.2 `npm run build` still succeeds
+- [x] 3.1 `npm run lint` passes on `scripts/review-eval-provider.ts`
+- [x] 3.2 `npm run build` still succeeds
 
 #### Manual
 
-- [ ] 3.3 `npx promptfoo eval` completes and prints the 2×2 matrix
-- [ ] 3.4 `bad-change.diff` verdicts `fail` on both models; `clean-change.diff` verdicts `pass` on both models
+- [x] 3.3 `npx promptfoo eval` completes and prints the 2×2 matrix
+- [x] 3.4 `bad-change.diff` verdicts `fail` on both models; `clean-change.diff` verdicts `pass` on both models

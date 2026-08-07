@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: EstateManager code-review prompt/schema regression gate
+prompts:
+  - "Zrecenzuj ten diff:\n\n{{diff}}"
+providers:
+  - id: file://scripts/review-eval-provider.ts
+    label: claude-sonnet-5
+    config:
+      model: anthropic/claude-sonnet-5
+  - id: file://scripts/review-eval-provider.ts
+    label: gpt-5.1
+    config:
+      model: openai/gpt-5.1
+tests:
+  - description: bad change — domain-rule violation, no tests
+    vars:
+      diff: file://scripts/eval-fixtures/bad-change.diff
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "JSON.parse(output).verdict === 'fail'"
+  - description: clean change — respects rules, tested
+    vars:
+      diff: file://scripts/eval-fixtures/clean-change.diff
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "JSON.parse(output).verdict === 'pass'"

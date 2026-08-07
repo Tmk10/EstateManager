@@ -1,0 +1,28 @@
+diff --git a/src/lib/format-bps.ts b/src/lib/format-bps.ts
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/src/lib/format-bps.ts
+@@ -0,0 +1,4 @@
++/** Formats a basis-point share (0-10000) as a Polish-locale percentage string, e.g. "42,50%". */
++export function formatSharePercentage(bps: number): string {
++  return `${(bps / 100).toFixed(2).replace(".", ",")}%`;
++}
+diff --git a/src/lib/format-bps.test.ts b/src/lib/format-bps.test.ts
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/src/lib/format-bps.test.ts
+@@ -0,0 +1,13 @@
++import { describe, expect, it } from "vitest";
++import { formatSharePercentage } from "./format-bps";
++
++describe("formatSharePercentage", () => {
++  it("formats whole basis points with a Polish decimal comma", () => {
++    expect(formatSharePercentage(4250)).toBe("42,50%");
++  });
++
++  it("formats the full building as 100,00%", () => {
++    expect(formatSharePercentage(10000)).toBe("100,00%");
++  });
++});
