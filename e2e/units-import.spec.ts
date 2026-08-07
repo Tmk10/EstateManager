@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { createBuilding, deleteBuildingNamed, uniqueBuildingName } from "./fixtures/db";
+import { waitForHydration } from "./fixtures/hydration";
 
 /**
  * Risk #8, `context/foundation/test-plan.md` §2 -- the half that is not the parser's.
@@ -79,6 +80,14 @@ test("a refused registry import names the offending line and leaves the budynek 
   ]);
 
   await page.goto(`/buildings/${buildingId}/units/import`);
+
+  // The upload form is a `client:load` React island, and the file input is its own kind of
+  // hydration trap: `setInputFiles` dispatches `change`, so a file attached before React
+  // listens leaves the node holding a file and the component holding nothing. The form's
+  // own guard then refuses the submit with "Wybierz plik CSV z listą lokali", which reads
+  // exactly like a test that forgot to choose a file.
+  await waitForHydration(page);
+
   await page.getByLabel("Plik CSV z listą lokali").setInputFiles(withDuplicateUnit);
   await page.getByRole("button", { name: "Wczytaj plik" }).click();
 
@@ -104,6 +113,10 @@ test("a refused registry import names the offending line and leaves the budynek 
     { unit: "2", area: "38,15", owner: "Łukasz Żółć", email: "lukasz@example.com" },
     { unit: "3", area: "61,45", owner, email: ownerEmail },
   ]);
+
+  // The refusal came back as a fresh server render, so the island is server-rendered again
+  // and the race is back with it.
+  await waitForHydration(page);
 
   await page.getByLabel("Plik CSV z listą lokali").setInputFiles(corrected);
   await page.getByRole("button", { name: "Wczytaj plik" }).click();

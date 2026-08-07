@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { deleteBuildingNamed, uniqueBuildingName } from "./fixtures/db";
+import { waitForHydration } from "./fixtures/hydration";
 
 /**
  * The pattern every other spec in this directory is modelled on. Four things are
@@ -31,6 +32,11 @@ test("an administrator adds a budynek and it is still on the list after a reload
   createdBuilding = name;
 
   await page.goto("/buildings/new");
+
+  // The form is a `client:load` React island. A fill that lands before hydration is
+  // discarded when the controlled input first renders, leaving the field empty and the
+  // submit refused -- which surfaces much later, as the redirect below never arriving.
+  await waitForHydration(page);
 
   await page.getByRole("textbox", { name: "Nazwa budynku" }).fill(name);
   await page.getByRole("textbox", { name: "Miejscowość" }).fill("Warszawa");
