@@ -1,4 +1,6 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { waitForHydration } from "./fixtures/hydration";
 
 /**
  * The sign-out path the product actually performs, guarded end to end.
@@ -23,23 +25,16 @@ import { expect, test, type Locator } from "@playwright/test";
 const EMAIL = process.env.E2E_EMAIL ?? "test@test.com";
 const PASSWORD = process.env.E2E_PASSWORD ?? "Test123!";
 
-/** Fills a controlled input and re-fills it until the value survives hydration. */
-async function fillWhenHydrated(field: Locator, value: string): Promise<void> {
-  await expect(async () => {
-    await field.fill(value);
-    await expect(field).toHaveValue(value, { timeout: 250 });
-  }).toPass();
-}
-
 test("an administrator signs out and the session no longer opens the dashboard", async ({ page }) => {
   await page.goto("/auth/signin");
 
   // The form is a React island, so a `fill()` that lands before hydration is thrown away
   // when the controlled input first renders -- the field ends up empty and the submit is
-  // refused client-side. Filling until the value sticks waits for hydration by its effect
-  // rather than by a duration.
-  await fillWhenHydrated(page.getByRole("textbox", { name: "Adres e-mail" }), EMAIL);
-  await fillWhenHydrated(page.getByRole("textbox", { name: "Hasło" }), PASSWORD);
+  // refused client-side.
+  await waitForHydration(page);
+
+  await page.getByRole("textbox", { name: "Adres e-mail" }).fill(EMAIL);
+  await page.getByRole("textbox", { name: "Hasło" }).fill(PASSWORD);
 
   // `button`, not `link` -- the header carries a "Zaloguj się" link on this same page.
   await page.getByRole("button", { name: "Zaloguj się" }).click();
