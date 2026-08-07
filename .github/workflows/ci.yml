@@ -118,4 +118,23 @@ jobs:
             echo "E2E_SERVICE_ROLE_KEY=$SECRET"
             echo "E2E_DB_URL=$DB_URL"
           } >> "$GITHUB_ENV"
+          # Which names this CLI actually emitted. Values never printed -- two of
+          # these are credentials -- but the names alone are what tells a reader
+          # whether a fallback fired, and they cost nothing to keep.
+          echo "Emitted by \`supabase status -o env\`: $(cut -d= -f1 "$RUNNER_TEMP/stack.env" | tr '\n' ' ')"
+      # The fixtures need a key that bypasses RLS, and the way that key fails is the
+      # problem: a wrong one is not rejected, it resolves to a role without the grants
+      # and surfaces much later as `permission denied` from whichever fixture ran
+      # first. Ask PostgREST here instead, where the answer names the actual cause.
+      - name: Check the fixture key reaches the database
+        run: |
+          status=$(curl -s -o "$RUNNER_TEMP/probe.json" -w '%{http_code}' \
+            "$E2E_SUPABASE_URL/rest/v1/buildings?select=id&limit=1" \
+            -H "apikey: $E2E_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $E2E_SERVICE_ROLE_KEY")
+          if [ "$status" != "200" ]; then
+            echo "::error::The fixture key cannot read \`buildings\` (HTTP $status). E2E would fail as \`permission denied\` from a fixture instead. PostgREST said: $(cat "$RUNNER_TEMP/probe.json")"
+            exit 1
+          fi
+          echo "Fixture key reaches \`buildings\` (HTTP 200)."
       - run: npx playwright test
