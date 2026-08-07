@@ -1,7 +1,7 @@
 ---
 change_id: swallowed-error-signout
 title: Swallowed error signout
-status: implementing
+status: implemented
 created: 2026-08-06
 updated: 2026-08-07
 archived_at: null

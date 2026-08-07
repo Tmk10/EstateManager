@@ -297,9 +297,9 @@ verification step in Phase 1 is what exercises it.
 
 #### Automated
 
-- [x] 2.1 E2E suite passes with the new spec: `npm run test:e2e`
-- [x] 2.2 Full repo gate green: `npm run lint && npm test && npm run build`
+- [x] 2.1 E2E suite passes with the new spec: `npm run test:e2e` — 76bd566
+- [x] 2.2 Full repo gate green: `npm run lint && npm test && npm run build` — 76bd566
 
 #### Manual
 
-- [x] 2.3 `signout` project runs after `chromium`, no sibling auth failures
+- [x] 2.3 `signout` project runs after `chromium`, no sibling auth failures — 76bd566
