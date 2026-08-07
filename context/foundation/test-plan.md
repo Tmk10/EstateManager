@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-08-06 (browser layer added, Phase 3 opened for #7 — see §8)
+> Last updated: 2026-08-07 (Phase 2 complete — see §8)
 
 Body is English (per `CLAUDE.md`: code, comments and docs in English) with Polish
 domain nouns kept verbatim — _uchwała_, _udziały_, _lokal_, _właściciel_ — because
@@ -101,7 +101,7 @@ orchestrator updates Status as artifacts appear on disk.
 | #   | Phase name                            | Goal (one line)                                                                                                                                                                                                                                                                                           | Risks covered                                        | Test types                                                                                       | Status      | Change folder                                           |
 | --- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ----------- | ------------------------------------------------------- |
 | 1   | Runner bootstrap and share arithmetic | Prove a real-world registry file parses or is refused legibly — nothing downstream is reachable until it does — and pin the udział allocation that parse feeds; the threshold comparison that turns those udziały into an outcome is Phase 2's                                                            | #8 (parse half), #2 (allocation half)                | unit                                                                                             | complete    | `context/changes/tests-phase1-shares-and-registry/`     |
-| 2   | Database contract tests               | Prove the electorate, vote finality, own-data-only, and registry-import atomicity rules hold as `anon` and as `authenticated`, that the outcome threshold is measured against the whole building rather than against the udziały cast, and that two owners voting at the same moment both end up recorded | #2 (threshold half), #3, #4, #6, #8 (atomicity half) | contract                                                                                         | not started | `context/changes/test-environment-bootstrap/` (harness) |
+| 2   | Database contract tests               | Prove the electorate, vote finality, own-data-only, and registry-import atomicity rules hold as `anon` and as `authenticated`, that the outcome threshold is measured against the whole building rather than against the udziały cast, and that two owners voting at the same moment both end up recorded | #2 (threshold half), #3, #4, #6, #8 (atomicity half) | contract                                                                                         | complete | `context/changes/testing-database-contract-tests/` |
 | 3   | Voting-path integration               | Prove a vote round-trips with the choice the właściciel pressed, that a hit and a miss stay indistinguishable, and that no branch of these routes emits a token                                                                                                                                           | #5, #7, #9                                           | integration (e2e only if no cheaper layer reaches the two-step confirm); e2e for #7 as of 2026-08-06; static assertion for #9 | in progress | —                                                       |
 | 4   | Quality gates and fanout retrofit     | Prove the send-state and owner↔link pairing rules hold against the fanout as it shipped, and lock the floor in CI                                                                                                                                                                                         | #1, cross-cutting                                    | integration, gates, AI-native PR review                                                          | not started | —                                                       |
 
@@ -111,8 +111,8 @@ direction, `context/changes/test-environment-bootstrap/` installed _both_ harnes
 writing the tests either phase exists to buy. Each layer carries a smoke test that
 proves the harness and deliberately asserts nothing about the domain. Both Status
 cells read `not started` from that day until a phase actually bought a test, and
-they meant it literally. Phase 1 closed that gap on 2026-08-06 (see below); **Phase 2
-still means it — no risk it covers is asserted yet.** What the harness change bought
+they meant it literally. Phase 1 closed that gap on 2026-08-06, Phase 2 on 2026-08-07
+(see below, both). What the harness change bought
 was that covering a risk became a matter of writing a test rather than of choosing a
 tool, with the §5 gates already in place to enforce it the moment one exists.
 The status cell this replaced
@@ -137,7 +137,29 @@ does not settle it, so an assertion would only mirror the implementation. The
 mutation log carries the consequence: re-ordering the leftover rule breaks the
 zero-udział refusal test, whose fixture leans on largest-remainder without saying
 so. Also out of scope by the same reasoning: Risk #2's threshold half and Risk #8's
-atomicity half, both Phase 2's, and both still unasserted.
+atomicity half, both Phase 2's — asserted there as of 2026-08-07, see below.
+
+**Phase 2 complete, 2026-08-07 — research skipped by user direction, grounded
+directly against the migrations instead.** 53 pgTAP assertions across five new
+files in `supabase/tests/database/`: `electorate_guards.test.sql` (#3),
+`vote_finality.test.sql` (#4), `own_data_only.test.sql` (#6),
+`outcome_threshold.test.sql` (#2, threshold half), `import_atomicity.test.sql`
+(#8, atomicity half). Every assertion cites the migration line and error code
+it protects; `context/changes/testing-database-contract-tests/mutations.md`
+carries the mutation log. Two of the four hypothesised mutations turned out to
+kill nothing as first stated — a plain split of `import_building_units`'s
+combined insert into two statements, and `for_missing_bps = 0` loosened to
+`<= 0` — both recorded rather than discarded, and the second produced a new
+near-boundary EM014 test rather than only a note. The concurrency half of
+Risk #2 — "two owners voting at the same moment both end up recorded" — is
+pinned **structurally**, not by reproducing a real two-transaction race:
+`votes_lock_resolution` is asserted to fire `BEFORE INSERT`, the exact fact a
+move to `AFTER` would break, because `dblink` sessions cannot see this
+project's rollback-only pgTAP fixtures under READ COMMITTED without breaking
+the convention every file here holds to. See `plan.md`, "What We're NOT
+Doing", for the full reasoning — a future contributor with a safe way to
+interleave two committed, fully-cleaned-up sessions may replace this with the
+real thing.
 
 **Order rationale.** Phase 1 first because nothing was testable until a runner
 existed, and standing one up is the half of that phase which has since landed; and
@@ -190,7 +212,8 @@ whether to promote something else should read this as the bar, not as permission
 *sees* after a refused import — no registry, the budynek still importable, the
 corrected file going all the way in. The transactional guarantee underneath that,
 "a refused import writes nothing", is `import_building_units`'s atomicity and is a
-database question; it stays Phase 2's, unasserted, and Phase 2 stays `not started`.
+database question; it was Phase 2's, and `import_atomicity.test.sql` asserted it
+directly as of 2026-08-07 — see the Phase 2 complete note above.
 The distinction is worth keeping sharp because the browser test would keep passing
 if atomicity were re-implemented as a best-effort loop that happened to roll back on
 the paths this fixture exercises.
@@ -341,16 +364,66 @@ Assert as a specific caller with `set local role <role>;` … `reset role;` — 
 working for `anon`. Run with `npm run test:db`, which needs Docker and the local
 stack up.
 
-**Substance — still owed, see §3 Phase 2.** The patterns this section was opened
-for are not written yet: asserting a rule _as a specific role_, the
-delete-then-recreate bypass shape, how to write a test that fails if a write
-denial is loosened — which matters specifically because `S-03` left the `votes`
-write denial resting on policies with no accompanying `revoke` — and asserting the
-outcome threshold, including the near-threshold uchwała where one rounding decision
-changes the result. That last one sits here rather than beside the allocation in
-§6.1 because the comparison is expressed once, in the database layer, and because
-the property that makes it survive two simultaneous voters is the order in which
-the vote path takes its locks, which no unit test can observe.
+**Substance (settled 2026-08-07, Phase 2).** Five files, all readable in
+`supabase/tests/database/`: `electorate_guards.test.sql`, `vote_finality.test.sql`,
+`own_data_only.test.sql`, `outcome_threshold.test.sql`, `import_atomicity.test.sql`.
+
+**Fixtures mint voting links while the resolution is still `draft`, then flip it
+to `open`.** `assert_voting_link_issuable` (EM012) refuses a genuinely new link
+the moment status leaves draft — a fixture that inserts pre-existing links
+against an already-`open` resolution is refused by the same guard a real bypass
+attempt would be. Match the real `open.ts` sequencing: mint links first, flip
+status second.
+
+**RLS denial splits on mechanism, and a test that expects only one shape is
+wrong for three of four operations.** `with check (false)` (INSERT) raises a
+real exception. `using (false)` (SELECT, UPDATE, DELETE) filters the candidate
+rows to nothing and raises **no exception at all** — assert zero rows returned
+or zero rows affected, not a caught error. `electorate_guards.test.sql` and
+`vote_finality.test.sql` are the worked examples.
+
+**A trigger binds a write path RLS cannot reach.** `cast_vote` and other
+`security definer` writers bypass RLS entirely; only a trigger on the table
+itself (`assert_vote_immutable` / EM010) binds them. Prove it by inserting
+directly, bypassing the definer function, as the connecting role — which
+bypasses RLS the same way a definer context does — then asserting the trigger
+still fires on UPDATE/DELETE.
+
+**Exercise more than one independent mechanism per risk, deliberately.**
+§2's risk guidance names "asserting one mechanism and assuming the rest" as the
+anti-pattern for #3 and #4. `vote_finality.test.sql` proves finality via RLS,
+the EM010 trigger, and `votes_resolution_owner_key` in the same file, each via
+a different writer.
+
+**The lock-ordering property behind the outcome threshold's concurrency
+guarantee is pinned structurally, not by reproducing a real two-transaction
+race.** `dblink` is available locally but a second session cannot see this
+transaction's uncommitted fixtures under READ COMMITTED, and a committed-then-
+cleaned-up fixture breaks the rollback-only convention every file here holds
+to. Instead: `trigger_is()` plus an `information_schema.triggers.action_timing`
+check that `votes_lock_resolution` is `BEFORE INSERT`, calling
+`lock_resolution_for_outcome` — confirmed by mutation to be exactly what a
+move to `AFTER INSERT` would break (`mutations.md`).
+
+**The knife-edge threshold test needs the smallest possible margin, not a
+comfortable one.** `for_bps * 2 > 10000` is false at exactly 5000 and true at
+5001 — a fixture using round numbers like 6000/4000 would never distinguish
+`>` from `>=`. Splits of 5000/4999/1 bps (summing to 10000) put the two
+knife-edge votes exactly either side of the line.
+
+**EM014 needs a near-boundary forgery attempt, not only an obviously-empty
+one.** A zero-vote forgery attempt (`for_missing_bps` far from zero) passes
+even when the guard's condition is re-derived with an off-by-one
+(`for_bps >= 5000` instead of `for_missing_bps = 0`) — confirmed by mutation.
+Only a forgery attempt one basis point short of the threshold catches that
+class of regression.
+
+**Atomicity is proved by forcing a failure genuinely mid-statement — the
+early-return guards (EM001/EM002/EM005) prove nothing about it.** All three
+return before any insert is attempted. A duplicate `unit_number` inside an
+otherwise-valid payload is the cheapest way to fail after the owners half of
+`import_building_units`'s combined `WITH` statement has notionally run; assert
+zero owner rows survive, not only zero unit rows.
 
 ### 6.3 Adding an integration test for a voting route
 
@@ -365,10 +438,32 @@ pattern, plus the rule for when an endpoint's failure mode justifies e2e instead
 
 ### 6.5 Adding a test for a new table or migration
 
-TBD — see §3 Phase 2. Will carry the checklist a new table must satisfy before
-merge: the per-operation × per-role policy shape, the `anon` denial, what to
-assert when a definer function is introduced, and — for any write path that
-refuses to run twice — what state a _failed_ run must leave behind.
+**Checklist (settled 2026-08-07, Phase 2).** Before a new table or a change to
+an existing one merges:
+
+1. **Eight policies, one per operation × role**, matching the shape every
+   table in this schema carries since `buildings`. `anon` written out
+   explicitly as `false`, never left to implicit deny.
+2. **Know which denial shape each policy produces, and test that shape.**
+   `with check (false)` (INSERT) raises an exception (`42501`) — assert with
+   `throws_ok`. `using (false)` (SELECT/UPDATE/DELETE) filters rows silently —
+   assert zero rows returned/affected, never expect an exception.
+3. **If a `security definer` function is introduced**, identify what write or
+   read path it bypasses RLS for, and whether any *other* guard (a trigger, a
+   unique constraint) still binds that path independently. A definer function
+   is not itself a test target — the guards it still cannot bypass are.
+4. **For any write path that refuses to run twice or refuses to run partially**
+   (a unique-per-something constraint, an atomic multi-row insert), assert
+   the state a *failed* attempt leaves behind, not only that the attempt
+   itself raised. Force the failure genuinely mid-statement — an early-return
+   guard proves nothing about what happens after the point of no return.
+5. **Column grants are a separate containment layer from RLS.** A column
+   excluded from `select (...)` fails structurally (`42501`) even before RLS
+   is evaluated; verify with `has_column_privilege`, not only by attempting a
+   read.
+
+Worked examples: `supabase/tests/database/electorate_guards.test.sql` (1–2),
+`own_data_only.test.sql` (3, 5), `import_atomicity.test.sql` (4).
 
 ### 6.6 Per-rollout-phase notes
 
@@ -433,10 +528,22 @@ contributors should respect these unless the underlying assumption changes.
 ## 8. Freshness Ledger
 
 - Strategy (§1–§5) last reviewed: 2026-08-06
-- Stack versions last verified: 2026-08-06 — Vitest and the Supabase CLI re-checked
-  against the installed tree; the server-side pgTAP version keeps its 2026-08-05
-  check, which needs the local stack running to repeat
+- Stack versions last verified: 2026-08-07 — pgTAP role-switching and `dblink`
+  availability re-confirmed against the running local stack while scoping
+  Phase 2's concurrency test
 - AI-native tool references last verified: 2026-08-06
+
+**Phase 2 landed, 2026-08-07 — research skipped by user direction.** Five
+pgTAP files, 53 assertions, closing Risks #2 (threshold half), #3, #4, #6, #8
+(atomicity half). Consequential edits: §3 (Phase 2 Status `not started` →
+`complete`, two stale cross-references to its old status corrected, a new
+"Phase 2 complete" paragraph); §6.2 and §6.5 (substance filled in, replacing
+their "still owed" / "TBD" placeholders). No change to §1, §2 or §4 — this
+phase asserted risks and response guidance already on record, added no new
+one, and introduced no new tool (pgTAP and `npm run test:db` were already §4's
+row). Recorded here rather than left implicit because §1–§5 are otherwise
+frozen between refreshes, same convention every earlier phase-completion
+amendment in this ledger follows.
 
 **Browser layer added, 2026-08-06 — Phase 3 opened for #7, and the plan changed
 shape in five places.** Playwright 1.62.1 is installed and wired into `ci.yml` as a
