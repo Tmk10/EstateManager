@@ -282,24 +282,24 @@ verification step in Phase 1 is what exercises it.
 
 #### Automated
 
-- [x] 1.1 The new test fails against the transcribed behaviour before the fix: `npm test`
-- [x] 1.2 All unit tests pass after the fix: `npm test`
-- [x] 1.3 Linting passes: `npm run lint`
-- [x] 1.4 Type check is clean: `npx astro check`
-- [x] 1.5 Production build succeeds: `npm run build`
+- [x] 1.1 The new test fails against the transcribed behaviour before the fix: `npm test` — 623a784
+- [x] 1.2 All unit tests pass after the fix: `npm test` — 623a784
+- [x] 1.3 Linting passes: `npm run lint` — 623a784
+- [x] 1.4 Type check is clean: `npx astro check` — 623a784
+- [x] 1.5 Production build succeeds: `npm run build` — 623a784
 
 #### Manual
 
-- [x] 1.6 Forced 500 on `/auth/v1/logout`: message visible on `/auth/signin`, `/dashboard` redirects
-- [x] 1.7 Healthy stack: "Wyloguj" lands on `/` and the session is gone
+- [x] 1.6 Forced 500 on `/auth/v1/logout`: message visible on `/auth/signin`, `/dashboard` redirects — 623a784
+- [x] 1.7 Healthy stack: "Wyloguj" lands on `/` and the session is gone — 623a784
 
 ### Phase 2: Guard the successful path in a browser
 
 #### Automated
 
-- [ ] 2.1 E2E suite passes with the new spec: `npm run test:e2e`
-- [ ] 2.2 Full repo gate green: `npm run lint && npm test && npm run build`
+- [x] 2.1 E2E suite passes with the new spec: `npm run test:e2e`
+- [x] 2.2 Full repo gate green: `npm run lint && npm test && npm run build`
 
 #### Manual
 
-- [ ] 2.3 `signout` project runs after `chromium`, no sibling auth failures
+- [x] 2.3 `signout` project runs after `chromium`, no sibling auth failures

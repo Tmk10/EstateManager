@@ -44,6 +44,18 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
       dependencies: ["setup"],
+      // The sign-out spec has its own project below; without this it would also run here,
+      // on the shared session, which is the one thing it must not touch.
+      testIgnore: /signout\.spec\.ts/,
+    },
+    // Signing out revokes every session of that account (`signOut()` defaults to
+    // `scope: "global"`), so this spec cannot share `storageState` with anything -- it
+    // signs in itself, and it waits for the rest of the suite to finish first.
+    {
+      name: "signout",
+      testMatch: /signout\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+      dependencies: ["chromium"],
     },
   ],
 
