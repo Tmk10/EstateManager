@@ -93,10 +93,29 @@ jobs:
           set -a
           . "$RUNNER_TEMP/stack.env"
           set +a
-          printf 'SUPABASE_URL=%s\nSUPABASE_KEY=%s\n' "$API_URL" "$ANON_KEY" > .dev.vars
+          # ANON_KEY and SERVICE_ROLE_KEY are the legacy JWTs. `status -o env` still
+          # emits both, marked deprecated, but the CLI pinned to `latest` has stopped
+          # issuing them for the local stack — its start banner now lists only
+          # Publishable and Secret. A legacy key against that stack does not fail as
+          # 401; it resolves to a role with no grants, so the first symptom is
+          # `permission denied for table buildings` from a fixture three layers away.
+          # Prefer the current names, keep the old ones as the fallback so an older
+          # CLI on a developer's machine still works.
+          PUBLISHABLE="${PUBLISHABLE_KEY:-$ANON_KEY}"
+          SECRET="${SECRET_KEY:-$SERVICE_ROLE_KEY}"
+          # An empty value here is the failure this whole step is written to avoid: it
+          # makes createClient() return null, every auth path no-op, and the suite red
+          # for reasons that point nowhere near the cause.
+          for pair in "API_URL:$API_URL" "PUBLISHABLE:$PUBLISHABLE" "SECRET:$SECRET" "DB_URL:$DB_URL"; do
+            if [ -z "${pair#*:}" ]; then
+              echo "::error::${pair%%:*} came back empty from \`supabase status -o env\`; the stack did not start as expected."
+              exit 1
+            fi
+          done
+          printf 'SUPABASE_URL=%s\nSUPABASE_KEY=%s\n' "$API_URL" "$PUBLISHABLE" > .dev.vars
           {
             echo "E2E_SUPABASE_URL=$API_URL"
-            echo "E2E_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "E2E_SERVICE_ROLE_KEY=$SECRET"
             echo "E2E_DB_URL=$DB_URL"
           } >> "$GITHUB_ENV"
       - run: npx playwright test
