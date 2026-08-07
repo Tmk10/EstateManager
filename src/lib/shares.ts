@@ -76,7 +76,7 @@ export function computeShareBps(areaHundredths: number[]): ShareResult {
 
   const order = shares.map((_, index) => index);
   order.sort((a, b) => {
-    const byRemainder = remainders[b] - remainders[a];
+    const byRemainder = remainders[a] - remainders[b];
     // Ties break by file order, and deliberately so. Any other tie-break -- by area, by
     // name, by anything float-derived -- would still be deterministic, but file order is
     // the only one an administrator can see for themselves in the file they uploaded.
