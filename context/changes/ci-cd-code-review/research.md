@@ -70,7 +70,7 @@ Per `context/changes/ci-cd-code-review/requirements.md`: how does `npm run revie
 ## Historical Context (from prior changes)
 
 - No prior `context/changes/**/` or `context/archive/**/` entry addresses CI/CD workflow design, PR automation, or promptfoo — this is the first change in either location to touch `.github/workflows/`.
-- `context/foundation/lessons.md` carries three superseding entries on branch/worktree/PR discipline (most recent: "Każdy feature i fix przez własną gałąź i pull request", 2026-08-02) — already reflected in this playbook's branch-gate handling, no new implication for the review pipeline itself.
+- `context/foundation/lessons.md` carries three superseding entries on branch/worktree/PR discipline (most recent: "Każdy feature i fix przez własną gałąź i pull request", 2026-08-02) — already reflected in how this change's branch was created, no new implication for the review pipeline itself.
 
 ## Related Research
 

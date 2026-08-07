@@ -43,7 +43,7 @@ Open a PR, and within a minute or two a comment appears scoring the diff against
 - Branch protection / required status checks (main stays unprotected per `CLAUDE.md`)
 - Wiring promptfoo into CI
 - Extending `scripts/review.ts`'s input beyond the diff
-- Task 4 (extra reviewer tools/context) — separate, optional playbook step
+- Task 4 (extra reviewer tools/context) — separate, optional follow-up
 
 ## Architecture / Approach
 
@@ -57,7 +57,7 @@ Open a PR, and within a minute or two a comment appears scoring the diff against
 | 2. Review workflow | `review.yml` posts a sticky comment + verdict label on every PR, retriggerable | `GITHUB_OUTPUT` multi-line capture or the always()-branching on review failure gets it wrong silently |
 | 3. Promptfoo harness | Local 2-model × 2-fixture regression gate for prompt changes | OpenRouter model identifiers drift/rename over time |
 
-**Prerequisites:** `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` as repo/local secrets (playbook K7, manual)
+**Prerequisites:** `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` as repo/local secrets (manual step, added by hand in GitHub settings)
 **Estimated effort:** ~1 session across 3 phases, most of it Phase 2's workflow wiring
 
 ## Open Risks & Assumptions

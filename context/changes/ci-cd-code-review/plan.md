@@ -24,11 +24,11 @@ Wire the existing local reviewer (`npm run review` → `scripts/review.ts`, Clau
 
 ## What We're NOT Doing
 
-- Not using `anthropics/claude-code-action@v1` — the existing local script is wired into CI directly instead (recorded decision, see the playbook's `## Ustalenia`).
+- Not using `anthropics/claude-code-action@v1` — the existing local script (`scripts/review.ts`, added in #56) already implements the reviewer agent, so wiring it into CI directly avoids building a second, parallel review engine.
 - Not adding branch protection / required status checks — `main` is deliberately unprotected per `CLAUDE.md`; `review.yml`'s verdict is advisory (comment + label), not a merge block.
 - Not wiring promptfoo into CI — it stays a local command the student runs before changing the prompt.
 - Not extending `scripts/review.ts`'s input surface (PR title/description) — it takes only the diff, matching `requirements.md`'s narrowed scope.
-- Not building Task 4 (extra tools/context for the reviewer) — that is the playbook's separate, optional K9 step.
+- Not building Task 4 (extra tools/context for the reviewer) — the lesson marks it as a separate, optional extension.
 
 ## Implementation Approach
 
@@ -44,7 +44,7 @@ Three independent-ish but sequential phases: the schema rewrite (Phase 1) has to
 
 ### Overview
 
-Replace `scripts/review-schema.ts`'s five generic criteria with EstateManager's five domain criteria (agreed in the playbook's K2), so both the CI reviewer and the Phase 3 eval score what actually matters for this repo.
+Replace `scripts/review-schema.ts`'s five generic criteria with EstateManager's five domain criteria (see `requirements.md`'s "Code Review Criteria"), so both the CI reviewer and the Phase 3 eval score what actually matters for this repo.
 
 ### Changes Required:
 
@@ -283,7 +283,7 @@ promptfoo loads `.ts` custom providers natively (documented `ApiProvider` patter
 
 **Intent**: Two small, hand-written diffs with unambiguous expected verdicts, so the eval's `javascript` assertion has a hard ground truth. `bad-change.diff` deliberately fails at least two criteria at once (e.g., re-adds a raw `insert`/`delete` grant on `public.votes` — a `CLAUDE.md` Hazard — with no accompanying test), so it should score low on both `domainRuleConformance` and `testCoverageForRisk` and verdict `fail`. `clean-change.diff` is a small, well-formed, tested, self-explanatory change that should verdict `pass`.
 
-**Contract**: Plain unified-diff text (`git diff` format), not real repo history — written by hand so the criteria they exercise are unambiguous, per the playbook's K5 decision.
+**Contract**: Plain unified-diff text (`git diff` format), not real repo history — written by hand so the criteria they exercise are unambiguous.
 
 #### 4. `promptfooconfig.yaml`
 
@@ -364,7 +364,7 @@ tests:
 
 ## Performance Considerations
 
-`review.yml` only runs on PR open and on-demand retrigger (not on every push), keeping Claude Agent SDK calls to roughly one per PR unless explicitly re-requested — the trigger-cadence decision recorded in the playbook.
+`review.yml` only runs on PR open and on-demand retrigger (not on every push), keeping Claude Agent SDK calls to roughly one per PR unless explicitly re-requested.
 
 ## Migration Notes
 
