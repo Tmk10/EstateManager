@@ -137,3 +137,40 @@ grant all privileges on all functions in schema public to service_role;
 alter default privileges in schema public grant all on tables to service_role;
 alter default privileges in schema public grant all on sequences to service_role;
 alter default privileges in schema public grant all on functions to service_role;
+
+-- `anon` and `authenticated` need the same treatment, and for a bigger reason: without it
+-- the application itself does not work. It runs as `authenticated`, and on a database built
+-- from zero that role arrives holding REFERENCES, TRIGGER and TRUNCATE and nothing else --
+-- no select, no insert, no update, no delete. Every page is then an error and every form a
+-- refusal, while the key, the session and the RLS policies are all perfectly correct.
+--
+-- Same cause as above: no migration in this repository grants these. They were always
+-- inherited from `ALTER DEFAULT PRIVILEGES`, which a long-lived stack has and a fresh one
+-- on a newer image does not. Which means the migration chain, applied from zero, does NOT
+-- produce a working database -- a real gap, and one this file only papers over for local
+-- and CI. Production is unaffected because it already holds these grants from the era it
+-- was created in, and nothing here reaches it. Closing it properly is a migration and a
+-- decision about production, recorded rather than made here.
+--
+-- The privileges below are the ones the local and production databases already hold, on
+-- purpose. Granting less would leave CI testing a posture the product does not run under.
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update, delete
+  on public.buildings, public.owners, public.units, public.resolutions, public.votes
+  to anon, authenticated;
+
+-- `voting_links` is the exception, and it is the one line here that must not be widened.
+-- A table-level `select` on it would hand out `token`, which is a bearer credential --
+-- `20260802214500_restrict_voting_link_token_select.sql` exists precisely to revoke that
+-- and replace it with a column list that omits `token`. Those column grants are explicit in
+-- the migrations, so they survive on a fresh database; only the non-select privileges below
+-- were ever inherited. Never add `select` to this statement.
+grant insert, update, delete on public.voting_links to anon, authenticated;
+
+-- Matching production's default privileges as well, not just today's tables. This carries
+-- production's trap with it: a table added by a later migration gets `select` for `anon`
+-- automatically, which is exactly how `voting_links` came to need its revoke. Reproducing
+-- that is the point -- a CI database that lacked it would stop catching the mistake.
+alter default privileges in schema public grant all on tables to anon, authenticated;
+alter default privileges in schema public grant all on sequences to anon, authenticated;
