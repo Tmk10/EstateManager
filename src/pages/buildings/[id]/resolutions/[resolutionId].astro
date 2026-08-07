@@ -396,7 +396,7 @@ const anySent = ownerRows.some((owner) => owner.send?.sentAt != null);
                 {failedCount > 0 && (
                   <>
                     {" · "}
-                    nie udało się: <span class="font-semibold text-red-800">{failedCount}</span>
+                    nie udało się: <span class="text-destructive font-semibold">{failedCount}</span>
                   </>
                 )}
                 {ownersWithoutEmail.length > 0 && (
@@ -774,7 +774,7 @@ const anySent = ownerRows.some((owner) => owner.send?.sentAt != null);
                             )}
                             {status.kind === "error" && (
                               <>
-                                <span class:list={[BADGE, "border-red-300 bg-red-50 text-red-900"]}>Błąd</span>
+                                <span class:list={[BADGE, BADGE_TONES.danger]}>Błąd</span>
                                 <span class="mt-1 block text-xs text-red-800">{status.sentence}</span>
                               </>
                             )}
