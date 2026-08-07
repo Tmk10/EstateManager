@@ -398,6 +398,10 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push and PR to `main`,
 
 `.github/workflows/deploy.yml` repeats lint, `npm test` and build before deploying, but deliberately not the database job — see the comment in that file.
 
+`.github/workflows/review.yml` runs `npm run review` against every PR's diff on open (and on demand via the `ai-cr:review` label or `workflow_dispatch`); needs `ANTHROPIC_API_KEY` as a repository secret.
+
+`npx promptfoo eval` (or `npm run eval:review`) compares the reviewer's prompt/schema across models on `scripts/eval-fixtures/*.diff` before you change `scripts/review-schema.ts`; needs `OPENROUTER_API_KEY` locally (not a CI secret — this eval is not wired into CI).
+
 ## License
 
 MIT

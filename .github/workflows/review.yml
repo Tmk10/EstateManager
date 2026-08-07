@@ -1,0 +1,80 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  review:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.action == 'opened' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'ai-cr:review')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Fetch base ref
+        run: git fetch origin ${{ github.base_ref || 'main' }} --depth=1
+      - name: Compute diff and run reviewer
+        id: review
+        run: |
+          {
+            echo "result<<EOF"
+            git diff "origin/${{ github.base_ref || 'main' }}" HEAD | npm run review --silent
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Reset the ai-cr:review trigger label
+        if: always() && github.event.action == 'labeled'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number, name: 'ai-cr:review',
+            }).catch(() => {});
+      - name: Post verdict comment and labels
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          REVIEW_OUTCOME: ${{ steps.review.outcome }}
+          REVIEW_RESULT: ${{ steps.review.outputs.result }}
+        with:
+          script: |
+            const marker = '<!-- ai-code-review -->';
+            const failed = process.env.REVIEW_OUTCOME !== 'success';
+            const body = failed
+              ? `${marker}\n### ⚠️ AI code review nie uruchomiło się poprawnie\nZobacz log kroku \`review\`.`
+              : (() => {
+                  const r = JSON.parse(process.env.REVIEW_RESULT);
+                  return `${marker}\n${r.summary}`;
+                })();
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            }
+            if (!failed) {
+              const r = JSON.parse(process.env.REVIEW_RESULT);
+              const toRemove = r.verdict === 'pass' ? 'ai-cr:failed' : 'ai-cr:passed';
+              const toAdd = r.verdict === 'pass' ? 'ai-cr:passed' : 'ai-cr:failed';
+              await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, name: toRemove }).catch(() => {});
+              await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, labels: [toAdd] });
+            }

@@ -1,0 +1,16 @@
+diff --git a/supabase/migrations/20260808090000_allow_vote_edits.sql b/supabase/migrations/20260808090000_allow_vote_edits.sql
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/supabase/migrations/20260808090000_allow_vote_edits.sql
+@@ -0,0 +1,9 @@
++-- Migration: let an owner correct a vote they cast by mistake.
++-- Purpose:   Support has no way to fix a mis-cast vote short of a manual database edit,
++--            so this re-grants update/delete on public.votes to authenticated so a future
++--            "cofnij glos" action on the confirm page has something to call.
++
++begin;
++
++grant update, delete on public.votes to authenticated;
++
++commit;
