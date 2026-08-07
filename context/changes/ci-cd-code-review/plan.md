@@ -382,7 +382,7 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [x] 1.1 `npm run lint` passes on `scripts/review-schema.ts`
+- [x] 1.1 `npm run lint` passes on `scripts/review-schema.ts` — 28f39c6
 
 #### Manual
 
@@ -392,8 +392,8 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [ ] 2.1 `npm run lint && npm test && npm run build` pass
-- [ ] 2.2 `gh label list` shows `ai-cr:passed`, `ai-cr:failed`, `ai-cr:review`
+- [x] 2.1 `npm run lint && npm test && npm run build` pass
+- [x] 2.2 `gh label list` shows `ai-cr:passed`, `ai-cr:failed`, `ai-cr:review`
 
 #### Manual
 
