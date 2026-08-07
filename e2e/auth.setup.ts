@@ -1,6 +1,7 @@
 import { expect, test as setup } from "@playwright/test";
 
 import { STORAGE_STATE } from "../playwright.config";
+import { waitForHydration } from "./fixtures/hydration";
 
 /**
  * Signs in once per run and hands the session to every other project through
@@ -17,6 +18,11 @@ const PASSWORD = process.env.E2E_PASSWORD ?? "Test123!";
 
 setup("administrator signs in and the session is stored", async ({ page }) => {
   await page.goto("/auth/signin");
+
+  // The sign-in form is a `client:load` React island. Filling it before React attaches
+  // leaves both fields empty and the submit refused client-side -- and because this runs
+  // as the `setup` project, that failure lands on every dependent test at once.
+  await waitForHydration(page);
 
   await page.getByRole("textbox", { name: "Adres e-mail" }).fill(EMAIL);
   await page.getByRole("textbox", { name: "Hasło" }).fill(PASSWORD);

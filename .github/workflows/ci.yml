@@ -93,10 +93,55 @@ jobs:
           set -a
           . "$RUNNER_TEMP/stack.env"
           set +a
-          printf 'SUPABASE_URL=%s\nSUPABASE_KEY=%s\n' "$API_URL" "$ANON_KEY" > .dev.vars
+          # ANON_KEY and SERVICE_ROLE_KEY are the legacy JWTs. `status -o env` still
+          # emits both, and both still work, but the CLI marks them deprecated and its
+          # start banner now advertises only Publishable and Secret. Prefer the current
+          # names and keep the old ones as the fallback, so an older CLI on a
+          # developer's machine still works. This is forward-compatibility, not a fix
+          # for anything failing today.
+          PUBLISHABLE="${PUBLISHABLE_KEY:-$ANON_KEY}"
+          SECRET="${SECRET_KEY:-$SERVICE_ROLE_KEY}"
+          # An empty value here is the failure this whole step is written to avoid: it
+          # makes createClient() return null, every auth path no-op, and the suite red
+          # for reasons that point nowhere near the cause.
+          for pair in "API_URL:$API_URL" "PUBLISHABLE:$PUBLISHABLE" "SECRET:$SECRET" "DB_URL:$DB_URL"; do
+            if [ -z "${pair#*:}" ]; then
+              echo "::error::${pair%%:*} came back empty from \`supabase status -o env\`; the stack did not start as expected."
+              exit 1
+            fi
+          done
+          printf 'SUPABASE_URL=%s\nSUPABASE_KEY=%s\n' "$API_URL" "$PUBLISHABLE" > .dev.vars
           {
             echo "E2E_SUPABASE_URL=$API_URL"
-            echo "E2E_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "E2E_SERVICE_ROLE_KEY=$SECRET"
             echo "E2E_DB_URL=$DB_URL"
           } >> "$GITHUB_ENV"
+          # Which names this CLI actually emitted. Values never printed -- two of
+          # these are credentials -- but the names alone are what tells a reader
+          # whether a fallback fired, and they cost nothing to keep.
+          echo "Emitted by \`supabase status -o env\`: $(cut -d= -f1 "$RUNNER_TEMP/stack.env" | tr '\n' ' ')"
+      # The fixtures need a key that bypasses RLS, and the way that key fails is the
+      # problem: a wrong one is not rejected, it resolves to a role without the grants
+      # and surfaces much later as `permission denied` from whichever fixture ran
+      # first. Ask PostgREST here instead, where the answer names the actual cause.
+      - name: Check the fixture key reaches the database
+        run: |
+          status=$(curl -s -o "$RUNNER_TEMP/probe.json" -w '%{http_code}' \
+            "$E2E_SUPABASE_URL/rest/v1/buildings?select=id&limit=1" \
+            -H "apikey: $E2E_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $E2E_SERVICE_ROLE_KEY")
+          if [ "$status" != "200" ]; then
+            echo "::error::The fixture key cannot read \`buildings\` (HTTP $status). E2E would fail as \`permission denied\` from a fixture instead. PostgREST said: $(cat "$RUNNER_TEMP/probe.json")"
+            exit 1
+          fi
+          echo "Fixture key reaches \`buildings\` (HTTP 200)."
+      - name: Report the table grants this database was built with
+        run: |
+          psql "$E2E_DB_URL" -c "select grantee, string_agg(distinct privilege_type, ',' order by privilege_type) from information_schema.role_table_grants where table_schema='public' and grantee in ('anon','authenticated','service_role') group by grantee order by grantee"
       - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7

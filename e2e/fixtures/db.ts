@@ -28,17 +28,27 @@ function localStackEnv(): { url: string; key: string; dbUrl: string } {
     stdio: ["ignore", "pipe", "ignore"],
   });
 
-  const read = (name: string): string => {
+  const find = (name: string): string | null => {
     const match = new RegExp(`^${name}="?([^"\n]+)"?$`, "m").exec(output);
-    if (!match) {
-      throw new Error(
-        `${name} is missing from \`npx supabase status\`. Is the local stack up? See README §Supabase Configuration.`,
-      );
-    }
-    return match[1];
+    return match ? match[1] : null;
   };
 
-  return { url: read("API_URL"), key: read("SERVICE_ROLE_KEY"), dbUrl: read("DB_URL") };
+  const read = (...names: string[]): string => {
+    for (const name of names) {
+      const value = find(name);
+      if (value !== null) return value;
+    }
+    throw new Error(
+      `${names.join(" / ")} is missing from \`npx supabase status\`. Is the local stack up? See README §Supabase Configuration.`,
+    );
+  };
+
+  // `SECRET_KEY` is the current name for the key that bypasses RLS; `SERVICE_ROLE_KEY` is
+  // the legacy JWT under it, still emitted but deprecated, and no longer issued at all by
+  // newer CLIs. Reading the new name first keeps this working across a CLI upgrade -- and
+  // the wrong one does not announce itself, it resolves to a role without the grants and
+  // surfaces as `permission denied` from whichever fixture ran first.
+  return { url: read("API_URL"), key: read("SECRET_KEY", "SERVICE_ROLE_KEY"), dbUrl: read("DB_URL") };
 }
 
 /**
