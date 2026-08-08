@@ -44,7 +44,7 @@ import {
  *      must not travel to anyone who does not already hold it. The reader of this markup is
  *      exactly that holder. Do not add a second place — no anchor, no hidden field, no text.
  *   3. **No outbound links, anywhere.** A click on one would put the token in a Referer
- *      header on its way to a third party. `Referrer-Policy: no-referrer` below is the
+ *      header on its way to a third party. `Referrer-Policy: same-origin` below is the
  *      belt to that suspenders, not a replacement for it. This is also why the page does not
  *      use Layout.astro: the configuration banner it renders carries an external
  *      documentation link when Supabase is unset, which is exactly the state this page can
@@ -68,11 +68,19 @@ const supabase = createClient(Astro.request.headers, Astro.cookies);
 //   no-store   — the receipt names how someone voted; a shared or proxied cache must not
 //                keep it, and neither must the browser's back-forward cache.
 //   noindex    — a token in a crawler's index is a token in a search result.
-//   no-referrer— the token is in this URL, so every outbound request would otherwise carry
-//                it. There are no outbound links, and this holds even if one is added.
+//   same-origin— the token is in this URL, so every outbound request would otherwise carry
+//                it. There are no outbound links, and this holds even if one is added: the
+//                referrer only ever travels within this origin, same as no-referrer would
+//                give. Not literally no-referrer, though: per the Fetch standard, a
+//                no-referrer policy also nulls the *Origin* header on this page's own POST
+//                (the confirm-vote form), even though that POST is same-origin -- which
+//                Astro's built-in CSRF check then rejects as a forbidden cross-site
+//                submission. same-origin keeps the leak-prevention property without that
+//                side effect, because it only nulls Origin/Referer for requests that
+//                actually cross an origin.
 Astro.response.headers.set("Cache-Control", "private, no-store");
 Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
-Astro.response.headers.set("Referrer-Policy", "no-referrer");
+Astro.response.headers.set("Referrer-Policy", "same-origin");
 
 /** The database's vocabulary (votes_choice_known), which is also cast_vote's. */
 type Choice = "for" | "against";
